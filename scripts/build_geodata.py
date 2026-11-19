@@ -7,7 +7,6 @@ import unicodedata
 from datetime import datetime, timezone
 from pathlib import Path
 from tempfile import TemporaryDirectory
-from collections import Counter
 
 import requests
 from shapely.geometry import (
@@ -17,7 +16,9 @@ from shapely.geometry import (
     MultiLineString,
     Polygon,
     MultiPolygon,
-    GeometryCollection
+    GeometryCollection,
+    Point,
+    LinearRing
 )
 from shapely.ops import unary_union
 
@@ -32,7 +33,6 @@ URL_COMMUNES = BASE + "/MAPA_BASE/LIMITES/MapServer/2"
 URL_PROVINCES = BASE + "/MAPA_BASE/LIMITES/MapServer/1"
 
 URL_IGM = BASE + "/MAPA_BASE/IGM50/MapServer"
-URL_IGM_NAMES = URL_IGM + "/2"
 URL_IGM_RIVERS = URL_IGM + "/15"
 URL_IGM_WATERS = URL_IGM + "/18"
 
@@ -44,6 +44,8 @@ URL_DGA_STATIONS = (
     BASE + "/DGA/Red_Hidrometrica/MapServer/0"
 )
 
+
+# Cabo de Hornos y Antártica quedan fuera del alcance.
 TARGET_COMMUNES = {
     "punta arenas": "Punta Arenas",
     "laguna blanca": "Laguna Blanca",
@@ -53,17 +55,20 @@ TARGET_COMMUNES = {
     "torres del paine": "Torres del Paine",
     "porvenir": "Porvenir",
     "primavera": "Primavera",
-    "timaukel": "Timaukel",
-    "cabo de hornos": "Cabo de Hornos"
+    "timaukel": "Timaukel"
 }
+
+EXPECTED_COMMUNES = 9
 
 BATCH_SIZE = 20
 MAX_RETRIES = 4
 
 SESSION = requests.Session()
 SESSION.headers.update({
-    "User-Agent": "AnglerMap-Geodata/2.0"
+    "User-Agent": "AnglerMap-Geodata/3.0"
 })
+
+COMMUNE_GEOMETRIES = []
 
 
 def log(message):
@@ -73,10 +78,12 @@ def log(message):
 def normalize(value):
     value = str(value or "").strip().lower()
     value = unicodedata.normalize("NFD", value)
+
     value = "".join(
         c for c in value
         if unicodedata.category(c) != "Mn"
     )
+
     return re.sub(r"\s+", " ", value)
 
 
@@ -100,6 +107,7 @@ def request_json(url, params=None):
                 )
 
             response.raise_for_status()
+
             data = response.json()
 
             if "error" in data:
@@ -117,6 +125,7 @@ def request_json(url, params=None):
 
             if attempt < MAX_RETRIES - 1:
                 wait = 2 ** attempt
+
                 log(
                     "Consulta fallida. Reintento "
                     + str(attempt + 1)
@@ -125,6 +134,7 @@ def request_json(url, params=None):
                     + " segundos: "
                     + str(error)
                 )
+
                 time.sleep(wait)
 
     raise RuntimeError(
@@ -174,6 +184,7 @@ def find_field(fields, candidates):
 
     for candidate in candidates:
         found = lookup.get(normalize(candidate))
+
         if found:
             return found
 
@@ -201,16 +212,53 @@ def esri_to_shape(geometry):
         if not rings:
             return None
 
-        result = Polygon(
-            rings[0],
-            rings[1:]
-        )
+        outer_rings = []
+        inner_rings = []
 
-        if not result.is_valid:
-            result = result.buffer(0)
+        for coordinates in rings:
+            ring = LinearRing(coordinates)
+
+            polygon = Polygon(coordinates)
+
+            if polygon.is_empty or polygon.area == 0:
+                continue
+
+            # ArcGIS normalmente utiliza anillos exteriores
+            # en sentido horario e interiores en sentido antihorario.
+            if ring.is_ccw:
+                inner_rings.append(polygon)
+            else:
+                outer_rings.append(polygon)
+
+        polygons = []
+
+        for outer in outer_rings:
+            holes = []
+
+            for inner in inner_rings:
+                if outer.contains(inner.representative_point()):
+                    holes.append(list(inner.exterior.coords))
+
+            polygon = Polygon(
+                outer.exterior.coords,
+                holes
+            )
+
+            if not polygon.is_valid:
+                polygon = polygon.buffer(0)
+
+            if not polygon.is_empty:
+                polygons.append(polygon)
+
+        if not polygons:
+            return None
+
+        if len(polygons) == 1:
+            result = polygons[0]
+        else:
+            result = MultiPolygon(polygons)
 
     elif "x" in geometry and "y" in geometry:
-        from shapely.geometry import Point
         result = Point(
             geometry["x"],
             geometry["y"]
@@ -229,15 +277,43 @@ def esri_to_shape(geometry):
 
 
 def fetch_ids(layer_url, where="1=1", geometry=None):
+    """
+    Recupera IDs candidatos desde ArcGIS.
+
+    Si se proporciona una geometría Shapely, se consulta
+    utilizando exclusivamente su bounding box.
+
+    El filtro espacial exacto se realiza posteriormente
+    en Python contra las geometrías comunales reales.
+    """
+
     params = {
         "where": where,
         "returnIdsOnly": "true"
     }
 
     if geometry is not None:
+        if geometry.is_empty:
+            return []
+
+        xmin, ymin, xmax, ymax = geometry.bounds
+
+        envelope = {
+            "xmin": xmin,
+            "ymin": ymin,
+            "xmax": xmax,
+            "ymax": ymax,
+            "spatialReference": {
+                "wkid": 4326
+            }
+        }
+
         params.update({
-            "geometry": json.dumps(geometry),
-            "geometryType": "esriGeometryPolygon",
+            "geometry": json.dumps(
+                envelope,
+                separators=(",", ":")
+            ),
+            "geometryType": "esriGeometryEnvelope",
             "inSR": "4326",
             "spatialRel": "esriSpatialRelIntersects"
         })
@@ -302,7 +378,7 @@ def fetch_features(layer_url, where="1=1", geometry=None):
 
     log(
         layer_url
-        + " · registros identificados: "
+        + " · registros candidatos: "
         + str(len(ids))
     )
 
@@ -420,13 +496,10 @@ def get_communes():
     records = records_from_features(features)
 
     selected = {}
-    all_names = []
 
     for record in records:
         name = record["properties"].get(name_field)
         normalized = normalize(name)
-
-        all_names.append(normalized)
 
         if normalized in TARGET_COMMUNES:
             selected[TARGET_COMMUNES[normalized]] = record
@@ -443,9 +516,15 @@ def get_communes():
             + ". No se publicarán datos parciales."
         )
 
+    if len(selected) != EXPECTED_COMMUNES:
+        raise RuntimeError(
+            "La cantidad de comunas recuperadas no coincide "
+            "con las nueve comunas objetivo."
+        )
+
     output = []
 
-    for display_name, record in selected.items():
+    for display_name, record in sorted(selected.items()):
         geometry = record["geometry"]
 
         if geometry.is_empty or not geometry.is_valid:
@@ -536,13 +615,10 @@ def query_water_layer(
     water_type,
     commune_union
 ):
-    geometry = json.loads(
-        json.dumps(mapping(commune_union))
-    )
-
+    # La consulta remota utiliza solamente el bounding box.
     features, fields, metadata = fetch_features(
         layer_url,
-        geometry=geometry
+        geometry=commune_union
     )
 
     name_field = find_field(
@@ -574,6 +650,7 @@ def query_water_layer(
     for record in records:
         geom = record["geometry"]
 
+        # Filtro espacial exacto contra los límites comunales.
         if not geom.intersects(commune_union):
             continue
 
@@ -641,13 +718,10 @@ def query_water_layer(
 
 
 def get_dga_stations(commune_union):
-    geometry = json.loads(
-        json.dumps(mapping(commune_union))
-    )
-
+    # Recuperación de candidatos mediante bounding box.
     features, fields, metadata = fetch_features(
         URL_DGA_STATIONS,
-        geometry=geometry
+        geometry=commune_union
     )
 
     records = records_from_features(features)
@@ -656,10 +730,18 @@ def get_dga_stations(commune_union):
     for record in records:
         geom = record["geometry"]
 
+        # Las estaciones se conservan solamente si están
+        # dentro o intersectan el territorio comunal real.
         if not geom.intersects(commune_union):
             continue
 
         props = record["properties"]
+
+        communes = []
+
+        for commune in COMMUNE_GEOMETRIES:
+            if geom.intersects(commune["geometry"]):
+                communes.append(commune["name"])
 
         output.append(
             geojson_feature(
@@ -667,6 +749,7 @@ def get_dga_stations(commune_union):
                 {
                     "official_source": "DGA · Red Hidrométrica Nacional",
                     "official_id": props.get("OBJECTID"),
+                    "communes": sorted(set(communes)),
                     "attributes": props
                 }
             )
@@ -708,6 +791,18 @@ def validate_geojson(path, minimum=1):
                 "Geometría vacía en " + path.name
             )
 
+        geometry = shape(feature["geometry"])
+
+        if geometry.is_empty:
+            raise RuntimeError(
+                "Geometría vacía en " + path.name
+            )
+
+        if not geometry.is_valid:
+            raise RuntimeError(
+                "Geometría inválida en " + path.name
+            )
+
     return len(features)
 
 
@@ -730,35 +825,61 @@ def publish_atomically(temp_dir):
                 "Falta archivo requerido: " + filename
             )
 
-    for filename in files:
-        destination = DATA / filename
-        source = temp_dir / filename
+    metadata_source = temp_dir / "sources.json"
 
-        destination.write_bytes(
-            source.read_bytes()
+    if not metadata_source.exists():
+        raise RuntimeError(
+            "Falta archivo requerido: sources.json"
         )
 
-    metadata_source = temp_dir / "sources.json"
-    metadata_destination = META / "sources.json"
+    # Preparar todos los archivos antes de reemplazar
+    # los archivos publicados.
+    staged = []
 
-    metadata_destination.write_bytes(
+    for filename in files:
+        destination = DATA / filename
+        staging = DATA / (filename + ".tmp")
+
+        staging.write_bytes(
+            (temp_dir / filename).read_bytes()
+        )
+
+        staged.append((staging, destination))
+
+    metadata_destination = META / "sources.json"
+    metadata_staging = META / "sources.json.tmp"
+
+    metadata_staging.write_bytes(
         metadata_source.read_bytes()
     )
+
+    staged.append((
+        metadata_staging,
+        metadata_destination
+    ))
+
+    # Reemplazo individual mediante rename en el mismo
+    # sistema de archivos.
+    for staging, destination in staged:
+        staging.replace(destination)
 
 
 def main():
     global COMMUNE_GEOMETRIES
 
-    log("Inicio de AnglerMap Geodata 2.0")
+    log("Inicio de AnglerMap Geodata 3.0")
+    log("Territorio: nueve comunas de Magallanes.")
     log("Fuentes: MOP, IGM y DGA. SNIA excluido.")
+    log("Cabo de Hornos y Antártica excluidos.")
 
     with TemporaryDirectory(
         prefix="anglermap-geodata-"
     ) as temporary:
+
         temp_dir = Path(temporary)
 
         # 1. Límites administrativos MOP
-        log("Descargando comunas MOP")
+        log("Descargando límites comunales MOP")
 
         commune_features, commune_records, commune_meta = (
             get_communes()
@@ -870,10 +991,8 @@ def main():
                 "reason": str(error)
             }
 
-        # IGM es la fuente principal de geometría detallada.
-        # MOP se conserva como capa complementaria separada
-        # para evitar duplicar entidades sin una conciliación
-        # de identificadores oficiales.
+        # IGM se conserva como fuente principal de geometría
+        # detallada. MOP queda como complemento separado.
         all_waters = (
             igm_rivers
             + igm_lakes
@@ -911,11 +1030,13 @@ def main():
             stations
         )
 
-        # 6. Validación de archivos
+        # 6. Validación
+        log("Validando archivos generados")
+
         counts = {
             "communes": validate_geojson(
                 temp_dir / "communes.geojson",
-                10
+                EXPECTED_COMMUNES
             ),
             "provinces": validate_geojson(
                 temp_dir / "provinces.geojson",
@@ -931,10 +1052,10 @@ def main():
             )
         }
 
-        if counts["communes"] != 10:
+        if counts["communes"] != EXPECTED_COMMUNES:
             raise RuntimeError(
                 "La cobertura comunal no contiene exactamente "
-                "las diez comunas objetivo."
+                "las nueve comunas objetivo."
             )
 
         commune_names = sorted(
@@ -952,15 +1073,22 @@ def main():
 
         metadata = {
             "application": "AnglerMap",
-            "version": "2.0",
+            "version": "3.0",
             "generated_at": datetime.now(
                 timezone.utc
             ).isoformat(),
             "geographic_scope": {
                 "region": "Magallanes y de la Antártica Chilena",
                 "communes": commune_names,
+                "commune_count": EXPECTED_COMMUNES,
                 "antarctica_commune_included": False,
-                "cape_horn_commune_included": True
+                "cape_horn_commune_included": False
+            },
+            "spatial_query_method": {
+                "remote_query": "bounding_box",
+                "remote_geometry_type": "esriGeometryEnvelope",
+                "local_filter": "exact_intersection_with_commune_geometries",
+                "spatial_reference": "EPSG:4326"
             },
             "sources": {
                 "administrative_boundaries": {
@@ -1004,8 +1132,8 @@ def main():
                 "La presencia de una geometría oficial no acredita acceso público ni permiso de pesca.",
                 "Las capas hidrográficas pueden no contener todos los cuerpos de agua existentes.",
                 "Las geometrías de fuentes diferentes se conservan identificadas por separado hasta realizar conciliación de entidades.",
-                "La cobertura administrativa de Cabo de Hornos se exige en la descarga; la cobertura hidrográfica austral debe evaluarse según las geometrías efectivamente entregadas.",
                 "La comuna Antártica queda excluida.",
+                "La comuna de Cabo de Hornos queda excluida del alcance inicial.",
                 "Las estaciones DGA son puntos de monitoreo; este archivo no representa por sí solo mediciones hidrométricas en tiempo real."
             ]
         }
@@ -1023,6 +1151,8 @@ def main():
             json.load(file)
 
         # 7. Publicación
+        log("Publicando archivos validados")
+
         publish_atomically(temp_dir)
 
         log("Publicación de archivos completada.")
@@ -1032,6 +1162,7 @@ def main():
 if __name__ == "__main__":
     try:
         main()
+
     except Exception as error:
         log("ERROR: " + str(error))
         raise
