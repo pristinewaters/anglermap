@@ -3,8 +3,10 @@ name: Update AnglerMap geographic data
 
 on:
   workflow_dispatch:
+
   schedule:
     - cron: "0 8 * * 1"
+
   push:
     paths:
       - "scripts/build_geodata.py"
@@ -31,9 +33,59 @@ jobs:
           python -m pip install --upgrade pip
           pip install requests shapely
 
-      - name: Build Magallanes geographic data
+      - name: Build geographic data
         run: |
           python scripts/build_geodata.py
+
+      - name: Validate generated files
+        run: |
+          python - <<'PY'
+          import json
+          from pathlib import Path
+
+          required = [
+              "data/magallanes/communes.geojson",
+              "data/magallanes/provinces.geojson",
+              "data/magallanes/waterbodies.geojson",
+              "data/magallanes/dga_stations.geojson",
+              "data/metadata/sources.json"
+          ]
+
+          for filename in required:
+              path = Path(filename)
+
+              if not path.exists():
+                  raise SystemExit(
+                      f"Missing required file: {filename}"
+                  )
+
+              if path.stat().st_size == 0:
+                  raise SystemExit(
+                      f"Empty required file: {filename}"
+                  )
+
+          for filename in required[:-1]:
+              with open(filename, encoding="utf-8") as file:
+                  data = json.load(file)
+
+              if data.get("type") != "FeatureCollection":
+                  raise SystemExit(
+                      f"Invalid GeoJSON: {filename}"
+                  )
+
+              if not data.get("features"):
+                  raise SystemExit(
+                      f"No features in: {filename}"
+                  )
+
+          with open(
+              "data/metadata/sources.json",
+              encoding="utf-8"
+          ) as file:
+              json.load(file)
+
+          print("All generated files passed validation.")
+          PY
 
       - name: Commit generated geographic data
         run: |
