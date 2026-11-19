@@ -1,0 +1,1481 @@
+
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="theme-color" content="#071a27">
+  <title>AnglerMap | Patagonia</title>
+
+  <!-- Leaflet: mapas interactivos -->
+  <link
+    rel="stylesheet"
+    href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
+  >
+
+  <style>
+    :root {
+      --bg: #071a27;
+      --panel: #102b3b;
+      --panel2: #15384a;
+      --cyan: #39d5e8;
+      --blue: #1686a5;
+      --text: #f1f7fa;
+      --muted: #91aab8;
+      --border: rgba(255,255,255,.10);
+      --green: #70d6ad;
+      --warning: #f3c66b;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      background: var(--bg);
+      color: var(--text);
+      font-family: Arial, Helvetica, sans-serif;
+    }
+
+    button, select {
+      font: inherit;
+    }
+
+    button {
+      cursor: pointer;
+    }
+
+    .app {
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+    }
+
+    header {
+      min-height: 70px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 20px;
+      padding: 12px 24px;
+      background: #091f2d;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .brand-mark {
+      width: 40px;
+      height: 40px;
+      display: grid;
+      place-items: center;
+      border: 1px solid var(--cyan);
+      border-radius: 11px;
+      color: var(--cyan);
+      font-size: 22px;
+      font-weight: bold;
+    }
+
+    .brand-name {
+      font-size: 21px;
+      font-weight: 800;
+      letter-spacing: 1.2px;
+    }
+
+    .brand-subtitle {
+      color: var(--muted);
+      font-size: 10px;
+      letter-spacing: 2px;
+      margin-top: 3px;
+    }
+
+    .header-right {
+      color: var(--muted);
+      font-size: 12px;
+      text-align: right;
+    }
+
+    .main {
+      display: grid;
+      grid-template-columns: 340px minmax(0, 1fr);
+      flex: 1;
+      min-height: calc(100vh - 70px);
+    }
+
+    aside {
+      padding: 18px;
+      background: #0a2231;
+      border-right: 1px solid var(--border);
+      overflow-y: auto;
+    }
+
+    .section-title {
+      color: var(--muted);
+      font-size: 10px;
+      font-weight: bold;
+      letter-spacing: 1.8px;
+      text-transform: uppercase;
+      margin: 8px 0 12px;
+    }
+
+    .card {
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: 13px;
+      padding: 15px;
+      margin-bottom: 14px;
+    }
+
+    .card h2 {
+      margin: 0 0 12px;
+      font-size: 15px;
+    }
+
+    .river-select {
+      width: 100%;
+      background: var(--panel2);
+      color: var(--text);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 12px;
+      outline: none;
+    }
+
+    .river-description {
+      margin-top: 11px;
+      color: var(--muted);
+      font-size: 12px;
+      line-height: 1.5;
+    }
+
+    .weather-status {
+      color: var(--muted);
+      font-size: 11px;
+      margin-bottom: 12px;
+    }
+
+    .weather-main {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+      margin-bottom: 12px;
+    }
+
+    .temperature {
+      font-size: 43px;
+      font-weight: 700;
+      letter-spacing: -2px;
+    }
+
+    .weather-description {
+      color: var(--cyan);
+      font-size: 12px;
+      margin-top: 3px;
+    }
+
+    .weather-minmax {
+      color: var(--muted);
+      font-size: 12px;
+      text-align: right;
+      line-height: 1.7;
+    }
+
+    .weather-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 8px;
+    }
+
+    .weather-item {
+      background: rgba(255,255,255,.045);
+      border-radius: 8px;
+      padding: 10px;
+      min-width: 0;
+    }
+
+    .weather-item span {
+      display: block;
+      color: var(--muted);
+      font-size: 10px;
+      margin-bottom: 6px;
+    }
+
+    .weather-item strong {
+      font-size: 13px;
+      overflow-wrap: anywhere;
+    }
+
+    .wind-list {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 7px;
+    }
+
+    .wind-item {
+      background: rgba(255,255,255,.045);
+      border-radius: 8px;
+      padding: 9px 5px;
+      text-align: center;
+    }
+
+    .wind-item span {
+      display: block;
+      color: var(--muted);
+      font-size: 10px;
+      margin-bottom: 6px;
+    }
+
+    .wind-item strong {
+      font-size: 13px;
+    }
+
+    .forecast-list {
+      display: grid;
+      gap: 7px;
+    }
+
+    .forecast-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+      padding: 9px 10px;
+      border-radius: 8px;
+      background: rgba(255,255,255,.045);
+      font-size: 11px;
+    }
+
+    .forecast-row span {
+      color: var(--muted);
+    }
+
+    .forecast-row strong {
+      text-align: right;
+    }
+
+    .source-note {
+      color: var(--muted);
+      font-size: 10px;
+      line-height: 1.5;
+      margin-top: 12px;
+    }
+
+    .source-note a {
+      color: var(--cyan);
+      text-decoration: none;
+    }
+
+    .error {
+      color: #ffb2a8;
+      font-size: 12px;
+      line-height: 1.5;
+    }
+
+    .map-area {
+      min-width: 0;
+      display: flex;
+      flex-direction: column;
+      position: relative;
+    }
+
+    .map-toolbar {
+      min-height: 58px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      padding: 10px 16px;
+      background: #0b2433;
+      border-bottom: 1px solid var(--border);
+      flex-wrap: wrap;
+    }
+
+    .map-toolbar-title {
+      font-size: 13px;
+      font-weight: bold;
+    }
+
+    .map-toolbar-title span {
+      color: var(--cyan);
+    }
+
+    .map-controls {
+      display: flex;
+      align-items: center;
+      gap: 7px;
+      flex-wrap: wrap;
+    }
+
+    .map-button {
+      background: var(--panel2);
+      border: 1px solid var(--border);
+      color: var(--text);
+      border-radius: 7px;
+      padding: 8px 11px;
+      font-size: 11px;
+    }
+
+    .map-button.active {
+      background: var(--blue);
+      border-color: var(--cyan);
+    }
+
+    #map {
+      width: 100%;
+      flex: 1;
+      min-height: 560px;
+      background: #172d38;
+      z-index: 1;
+    }
+
+    .map-legend {
+      position: absolute;
+      bottom: 25px;
+      left: 18px;
+      z-index: 500;
+      background: rgba(7,26,39,.94);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 12px 14px;
+      font-size: 11px;
+      line-height: 1.8;
+      pointer-events: none;
+    }
+
+    .legend-dot {
+      display: inline-block;
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: var(--cyan);
+      margin-right: 7px;
+    }
+
+    .map-disclaimer {
+      color: var(--muted);
+      font-size: 10px;
+      margin-top: 4px;
+    }
+
+    .bottom-nav {
+      display: flex;
+      gap: 8px;
+      padding: 12px 18px;
+      background: #091f2d;
+      border-top: 1px solid var(--border);
+      flex-wrap: wrap;
+    }
+
+    .nav-button {
+      background: transparent;
+      border: 1px solid var(--border);
+      color: var(--muted);
+      border-radius: 7px;
+      padding: 9px 12px;
+      font-size: 11px;
+    }
+
+    .nav-button.active {
+      color: var(--cyan);
+      border-color: var(--cyan);
+    }
+
+    .info-panel {
+      display: none;
+      padding: 22px;
+      background: #0a2231;
+      min-height: 250px;
+    }
+
+    .info-panel.active {
+      display: block;
+    }
+
+    .info-panel h2 {
+      margin-top: 0;
+    }
+
+    .info-panel p {
+      color: var(--muted);
+      font-size: 13px;
+      line-height: 1.7;
+      max-width: 800px;
+    }
+
+    .info-links {
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+      margin-top: 16px;
+    }
+
+    .info-links a {
+      color: var(--cyan);
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: 7px;
+      padding: 10px 12px;
+      text-decoration: none;
+      font-size: 12px;
+    }
+
+    .leaflet-popup-content-wrapper,
+    .leaflet-popup-tip {
+      background: #102b3b;
+      color: #f1f7fa;
+    }
+
+    .leaflet-popup-content {
+      line-height: 1.5;
+      font-size: 12px;
+    }
+
+    @media (max-width: 850px) {
+      .main {
+        grid-template-columns: 1fr;
+      }
+
+      aside {
+        border-right: 0;
+        border-bottom: 1px solid var(--border);
+      }
+
+      #map {
+        min-height: 480px;
+      }
+
+      .map-area {
+        min-height: 540px;
+      }
+
+      header {
+        padding: 12px 15px;
+      }
+
+      .header-right {
+        display: none;
+      }
+    }
+
+    @media (max-width: 480px) {
+      aside {
+        padding: 12px;
+      }
+
+      .map-toolbar {
+        align-items: flex-start;
+      }
+
+      #map {
+        min-height: 420px;
+      }
+
+      .temperature {
+        font-size: 37px;
+      }
+    }
+  </style>
+</head>
+
+<body>
+<div class="app">
+
+  <header>
+    <div class="brand">
+      <div class="brand-mark">A</div>
+      <div>
+        <div class="brand-name">ANGLERMAP</div>
+        <div class="brand-subtitle">FISHING TERRITORY INTELLIGENCE</div>
+      </div>
+    </div>
+
+    <div class="header-right">
+      PATAGONIA · CHILE<br>
+      Exploración territorial y pesca recreativa
+    </div>
+  </header>
+
+  <div class="main">
+
+    <aside>
+      <div class="section-title">Exploración territorial</div>
+
+      <div class="card">
+        <h2>Seleccionar río</h2>
+
+        <select id="riverSelect" class="river-select">
+          <option value="penitente">Río Penitente</option>
+          <option value="medio">Río del Medio</option>
+        </select>
+
+        <div id="riverDescription" class="river-description">
+          Río Penitente · Comuna de Laguna Blanca, Región de Magallanes.
+        </div>
+      </div>
+
+      <div class="section-title">Meteorología en tiempo real de pronóstico</div>
+
+      <div class="card">
+        <h2>Condiciones actuales</h2>
+
+        <div id="weatherStatus" class="weather-status">
+          Consultando Open-Meteo...
+        </div>
+
+        <div class="weather-main">
+          <div>
+            <div id="weatherTemp" class="temperature">--°</div>
+            <div id="weatherDescription" class="weather-description">
+              Cargando condiciones...
+            </div>
+          </div>
+
+          <div id="weatherMinMax" class="weather-minmax">
+            Mínima: --<br>
+            Máxima: --
+          </div>
+        </div>
+
+        <div class="weather-grid">
+          <div class="weather-item">
+            <span>Sensación térmica</span>
+            <strong id="weatherApparent">--</strong>
+          </div>
+
+          <div class="weather-item">
+            <span>Viento actual</span>
+            <strong id="windSpeed">--</strong>
+          </div>
+
+          <div class="weather-item">
+            <span>Dirección del viento</span>
+            <strong id="windDirection">--</strong>
+          </div>
+
+          <div class="weather-item">
+            <span>Ráfagas</span>
+            <strong id="windGusts">--</strong>
+          </div>
+
+          <div class="weather-item">
+            <span>Humedad relativa</span>
+            <strong id="humidity">--</strong>
+          </div>
+
+          <div class="weather-item">
+            <span>Nubosidad</span>
+            <strong id="cloudCover">--</strong>
+          </div>
+
+          <div class="weather-item">
+            <span>Precipitación actual</span>
+            <strong id="precipitation">--</strong>
+          </div>
+
+          <div class="weather-item">
+            <span>Probabilidad de lluvia</span>
+            <strong id="rainProbability">--</strong>
+          </div>
+
+          <div class="weather-item">
+            <span>Presión atmosférica</span>
+            <strong id="pressure">--</strong>
+          </div>
+
+          <div class="weather-item">
+            <span>Presión superficie</span>
+            <strong id="surfacePressure">--</strong>
+          </div>
+
+          <div class="weather-item">
+            <span>Visibilidad</span>
+            <strong id="visibility">--</strong>
+          </div>
+
+          <div class="weather-item">
+            <span>Radiación UV máxima diaria</span>
+            <strong id="uvIndex">--</strong>
+          </div>
+        </div>
+
+        <div class="source-note">
+          Fuente meteorológica:
+          <a href="https://open-meteo.com/" target="_blank" rel="noopener">
+            Open-Meteo
+          </a>.
+          Datos de pronóstico basados en modelos meteorológicos.
+        </div>
+      </div>
+
+      <div class="card">
+        <h2>Viento · Próximas horas</h2>
+        <div id="windForecast" class="wind-list">
+          <div class="wind-item">
+            <span>--:--</span>
+            <strong>--</strong>
+          </div>
+        </div>
+        <div class="source-note">
+          Velocidad del viento en km/h. Intervalos de cuatro horas desde la hora actual.
+        </div>
+      </div>
+
+      <div class="card">
+        <h2>Pronóstico diario</h2>
+        <div id="dailyForecast" class="forecast-list">
+          <div class="forecast-row">
+            <span>Consultando pronóstico...</span>
+            <strong>--</strong>
+          </div>
+        </div>
+      </div>
+
+      <div class="card">
+        <h2>Información astronómica</h2>
+
+        <div class="forecast-list">
+          <div class="forecast-row">
+            <span>Amanecer</span>
+            <strong id="sunrise">--</strong>
+          </div>
+          <div class="forecast-row">
+            <span>Atardecer</span>
+            <strong id="sunset">--</strong>
+          </div>
+          <div class="forecast-row">
+            <span>Horas de sol estimadas</span>
+            <strong id="sunshine">--</strong>
+          </div>
+          <div class="forecast-row">
+            <span>Temperatura máxima aparente</span>
+            <strong id="apparentMax">--</strong>
+          </div>
+          <div class="forecast-row">
+            <span>Temperatura mínima aparente</span>
+            <strong id="apparentMin">--</strong>
+          </div>
+          <div class="forecast-row">
+            <span>Ráfaga máxima diaria</span>
+            <strong id="dailyGusts">--</strong>
+          </div>
+          <div class="forecast-row">
+            <span>Dirección dominante del viento</span>
+            <strong id="dominantWind">--</strong>
+          </div>
+          <div class="forecast-row">
+            <span>Precipitación acumulada diaria</span>
+            <strong id="dailyPrecipitation">--</strong>
+          </div>
+        </div>
+      </div>
+
+      <div id="weatherError" class="error"></div>
+
+      <div class="source-note">
+        La meteorología corresponde a la ubicación de referencia seleccionada.
+        No representa una medición directa en el cauce.
+      </div>
+    </aside>
+
+    <main class="map-area">
+
+      <div class="map-toolbar">
+        <div class="map-toolbar-title">
+          MAPA TERRITORIAL · <span id="mapRiverName">RÍO PENITENTE</span>
+        </div>
+
+        <div class="map-controls">
+          <button id="satelliteButton" class="map-button active">
+            Satélite
+          </button>
+          <button id="topoButton" class="map-button">
+            Topográfico
+          </button>
+          <button id="streetButton" class="map-button">
+            Calles
+          </button>
+          <button id="centerButton" class="map-button">
+            Centrar
+          </button>
+        </div>
+      </div>
+
+      <div id="map"></div>
+
+      <div class="map-legend">
+        <div><span class="legend-dot"></span>Referencia geográfica</div>
+        <div class="map-disclaimer">
+          Ubicaciones de referencia; no indican accesos autorizados.
+        </div>
+      </div>
+
+      <div class="bottom-nav">
+        <button class="nav-button active" data-panel="mapPanel">
+          Mapa
+        </button>
+        <button class="nav-button" data-panel="accessPanel">
+          Accesos
+        </button>
+        <button class="nav-button" data-panel="fishingPanel">
+          Pesca
+        </button>
+        <button class="nav-button" data-panel="regulationsPanel">
+          Regulaciones
+        </button>
+        <button class="nav-button" data-panel="aboutPanel">
+          AnglerMap
+        </button>
+      </div>
+
+      <section id="mapPanel" class="info-panel active">
+        <h2>Exploración del territorio</h2>
+        <p>
+          Visualiza el territorio mediante imágenes satelitales, cartografía
+          topográfica y mapas de calles. Selecciona un río para cambiar la
+          ubicación de referencia y consultar su pronóstico meteorológico.
+        </p>
+      </section>
+
+      <section id="accessPanel" class="info-panel">
+        <h2>Accesos y territorio</h2>
+        <p>
+          Esta sección está preparada para incorporar accesos, caminos,
+          restricciones territoriales, propiedad de terrenos y puntos de
+          ingreso validados. No se muestran accesos ficticios ni se presume
+          autorización de ingreso a propiedades privadas.
+        </p>
+      </section>
+
+      <section id="fishingPanel" class="info-panel">
+        <h2>Información pesquera</h2>
+        <p>
+          Espacio destinado a incorporar sectores de pesca, especies,
+          temporadas, técnicas recomendadas, condiciones del río y registros
+          de actividad. La información deberá validarse antes de publicarse.
+        </p>
+      </section>
+
+      <section id="regulationsPanel" class="info-panel">
+        <h2>Regulaciones y conservación</h2>
+        <p>
+          Espacio para integrar normativa vigente, períodos de pesca,
+          restricciones, áreas protegidas, especies y recomendaciones
+          de conservación.
+        </p>
+        <div class="info-links">
+          <a href="https://www.sernapesca.cl/" target="_blank" rel="noopener">
+            SERNAPESCA
+          </a>
+          <a href="https://www.subpesca.cl/" target="_blank" rel="noopener">
+            SUBPESCA
+          </a>
+        </div>
+      </section>
+
+      <section id="aboutPanel" class="info-panel">
+        <h2>AnglerMap</h2>
+        <p>
+          Infraestructura digital especializada que integra información
+          territorial y pesquera para mejorar la experiencia de pesca
+          recreativa en Chile.
+        </p>
+        <div class="info-links">
+          <a href="https://open-meteo.com/" target="_blank" rel="noopener">
+            Open-Meteo
+          </a>
+          <a href="https://www.esri.com/" target="_blank" rel="noopener">
+            Esri
+          </a>
+          <a href="https://leafletjs.com/" target="_blank" rel="noopener">
+            Leaflet
+          </a>
+          <a href="https://www.openstreetmap.org/" target="_blank" rel="noopener">
+            OpenStreetMap
+          </a>
+        </div>
+      </section>
+
+    </main>
+  </div>
+</div>
+
+<!-- Leaflet JS -->
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+
+<script>
+/* =========================================================
+   1. UBICACIONES DE REFERENCIA
+   ========================================================= */
+
+const rivers = {
+  penitente: {
+    name: "Río Penitente",
+    coordinates: [-52.051111, -71.424721],
+    zoom: 11,
+    description:
+      "Río Penitente · Referencia de la estación DGA en Morro Chico, comuna de Laguna Blanca.",
+    locationNote:
+      "Estación DGA Morro Chico. No representa un acceso de pesca."
+  },
+
+  medio: {
+    name: "Río del Medio",
+    coordinates: [-52.12, -71.18],
+    zoom: 11,
+    description:
+      "Río del Medio · Ubicación geográfica aproximada en el sector de Laguna Blanca.",
+    locationNote:
+      "Centro geográfico aproximado. Coordenadas por validar en terreno."
+  }
+};
+
+let selectedRiver = "penitente";
+
+/* =========================================================
+   2. MAPA LEAFLET
+   ========================================================= */
+
+const map = L.map("map", {
+  zoomControl: true,
+  scrollWheelZoom: true
+}).setView(
+  rivers.penitente.coordinates,
+  rivers.penitente.zoom
+);
+
+// Imágenes satelitales Esri
+const satelliteLayer = L.tileLayer(
+  "https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}",
+  {
+    maxZoom: 19,
+    attribution: "Tiles © Esri"
+  }
+);
+
+// Cartografía topográfica Esri
+const topoLayer = L.tileLayer(
+  "https://server.arcgisonline.com/ArcGIS/rest/services/World_Topo_Map/MapServer/tile/{z}/{y}/{x}",
+  {
+    maxZoom: 19,
+    attribution: "Tiles © Esri"
+  }
+);
+
+// Calles OpenStreetMap
+const streetLayer = L.tileLayer(
+  "https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png",
+  {
+    maxZoom: 19,
+    attribution: "© OpenStreetMap contributors"
+  }
+);
+
+// Capa inicial
+satelliteLayer.addTo(map);
+
+let activeLayer = "satellite";
+
+// Marcador de referencia
+const riverMarker = L.circleMarker(
+  rivers.penitente.coordinates,
+  {
+    radius: 8,
+    color: "#ffffff",
+    weight: 2,
+    fillColor: "#39d5e8",
+    fillOpacity: 1
+  }
+).addTo(map);
+
+riverMarker.bindPopup(
+  "<strong>Río Penitente</strong><br>" +
+  "Referencia geográfica DGA: Morro Chico.<br>" +
+  "No representa un acceso de pesca."
+);
+
+function changeMapLayer(layerName) {
+  map.removeLayer(satelliteLayer);
+  map.removeLayer(topoLayer);
+  map.removeLayer(streetLayer);
+
+  if (layerName === "satellite") {
+    satelliteLayer.addTo(map);
+  }
+
+  if (layerName === "topo") {
+    topoLayer.addTo(map);
+  }
+
+  if (layerName === "street") {
+    streetLayer.addTo(map);
+  }
+
+  activeLayer = layerName;
+
+  document.getElementById("satelliteButton")
+    .classList.toggle("active", layerName === "satellite");
+
+  document.getElementById("topoButton")
+    .classList.toggle("active", layerName === "topo");
+
+  document.getElementById("streetButton")
+    .classList.toggle("active", layerName === "street");
+}
+
+document.getElementById("satelliteButton").addEventListener(
+  "click",
+  () => changeMapLayer("satellite")
+);
+
+document.getElementById("topoButton").addEventListener(
+  "click",
+  () => changeMapLayer("topo")
+);
+
+document.getElementById("streetButton").addEventListener(
+  "click",
+  () => changeMapLayer("street")
+);
+
+document.getElementById("centerButton").addEventListener(
+  "click",
+  () => {
+    const river = rivers[selectedRiver];
+    map.setView(river.coordinates, river.zoom);
+  }
+);
+
+/* =========================================================
+   3. SELECTOR DE RÍOS
+   ========================================================= */
+
+document.getElementById("riverSelect").addEventListener(
+  "change",
+  async function () {
+    selectedRiver = this.value;
+
+    const river = rivers[selectedRiver];
+
+    document.getElementById("riverDescription").textContent =
+      river.description;
+
+    document.getElementById("mapRiverName").textContent =
+      river.name.toUpperCase();
+
+    riverMarker.setLatLng(river.coordinates);
+
+    riverMarker.bindPopup(
+      "<strong>" + river.name + "</strong><br>" +
+      river.locationNote
+    );
+
+    map.setView(river.coordinates, river.zoom);
+
+    await loadWeather();
+  }
+);
+
+/* =========================================================
+   4. NAVEGACIÓN DE PANELES
+   ========================================================= */
+
+document.querySelectorAll(".nav-button").forEach(button => {
+  button.addEventListener("click", function () {
+    document.querySelectorAll(".nav-button").forEach(item => {
+      item.classList.remove("active");
+    });
+
+    document.querySelectorAll(".info-panel").forEach(panel => {
+      panel.classList.remove("active");
+    });
+
+    this.classList.add("active");
+
+    const panelId = this.dataset.panel;
+    document.getElementById(panelId).classList.add("active");
+  });
+});
+
+/* =========================================================
+   5. METEOROLOGÍA OPEN-METEO
+   Fuente única: API pública Open-Meteo
+   ========================================================= */
+
+const weatherElements = {
+  status: document.getElementById("weatherStatus"),
+  temp: document.getElementById("weatherTemp"),
+  description: document.getElementById("weatherDescription"),
+  minmax: document.getElementById("weatherMinMax"),
+  apparent: document.getElementById("weatherApparent"),
+  wind: document.getElementById("windSpeed"),
+  direction: document.getElementById("windDirection"),
+  gusts: document.getElementById("windGusts"),
+  humidity: document.getElementById("humidity"),
+  clouds: document.getElementById("cloudCover"),
+  precipitation: document.getElementById("precipitation"),
+  probability: document.getElementById("rainProbability"),
+  pressure: document.getElementById("pressure"),
+  surfacePressure: document.getElementById("surfacePressure"),
+  visibility: document.getElementById("visibility"),
+  uv: document.getElementById("uvIndex"),
+  windForecast: document.getElementById("windForecast"),
+  dailyForecast: document.getElementById("dailyForecast"),
+  sunrise: document.getElementById("sunrise"),
+  sunset: document.getElementById("sunset"),
+  sunshine: document.getElementById("sunshine"),
+  apparentMax: document.getElementById("apparentMax"),
+  apparentMin: document.getElementById("apparentMin"),
+  dailyGusts: document.getElementById("dailyGusts"),
+  dominantWind: document.getElementById("dominantWind"),
+  dailyPrecipitation: document.getElementById("dailyPrecipitation"),
+  error: document.getElementById("weatherError")
+};
+
+function displayValue(value, unit = "", decimals = 0) {
+  if (value === null || value === undefined || !Number.isFinite(Number(value))) {
+    return "--";
+  }
+
+  return Number(value).toFixed(decimals) + unit;
+}
+
+function weatherDescription(code) {
+  const descriptions = {
+    0: "Despejado",
+    1: "Principalmente despejado",
+    2: "Parcialmente nublado",
+    3: "Nublado",
+    45: "Niebla",
+    48: "Niebla con escarcha",
+    51: "Llovizna ligera",
+    53: "Llovizna moderada",
+    55: "Llovizna intensa",
+    56: "Llovizna helada ligera",
+    57: "Llovizna helada intensa",
+    61: "Lluvia ligera",
+    63: "Lluvia moderada",
+    65: "Lluvia intensa",
+    66: "Lluvia helada ligera",
+    67: "Lluvia helada intensa",
+    71: "Nevada ligera",
+    73: "Nevada moderada",
+    75: "Nevada intensa",
+    77: "Granizo pequeño",
+    80: "Chubascos ligeros",
+    81: "Chubascos moderados",
+    82: "Chubascos intensos",
+    85: "Chubascos de nieve ligeros",
+    86: "Chubascos de nieve intensos",
+    95: "Tormenta eléctrica",
+    96: "Tormenta con granizo ligero",
+    99: "Tormenta con granizo intenso"
+  };
+
+  return descriptions[code] || "Condición no identificada";
+}
+
+function windDirection(degrees) {
+  if (degrees === null || degrees === undefined) {
+    return "--";
+  }
+
+  const directions = [
+    "N", "NNE", "NE", "ENE",
+    "E", "ESE", "SE", "SSE",
+    "S", "SSO", "SO", "OSO",
+    "O", "ONO", "NO", "NNO"
+  ];
+
+  const index = Math.round(Number(degrees) / 22.5) % 16;
+
+  return directions[index] + " (" + Math.round(degrees) + "°)";
+}
+
+function formatHour(dateTime) {
+  if (!dateTime) return "--";
+
+  return dateTime.slice(11, 16);
+}
+
+function formatDate(dateString) {
+  if (!dateString) return "--";
+
+  const date = new Date(dateString + "T12:00:00");
+
+  return date.toLocaleDateString("es-CL", {
+    weekday: "short",
+    day: "2-digit",
+    month: "short"
+  });
+}
+
+function formatTime(dateTime) {
+  if (!dateTime) return "--";
+
+  return dateTime.slice(11, 16);
+}
+
+function formatVisibility(meters) {
+  if (meters === null || meters === undefined) return "--";
+
+  return Number(meters) >= 1000
+    ? (Number(meters) / 1000).toFixed(1) + " km"
+    : Math.round(Number(meters)) + " m";
+}
+
+function setWeatherError(message) {
+  weatherElements.error.textContent = message;
+}
+
+async function loadWeather() {
+  const river = rivers[selectedRiver];
+  const latitude = river.coordinates[0];
+  const longitude = river.coordinates[1];
+
+  weatherElements.status.textContent =
+    "Consultando datos meteorológicos...";
+
+  weatherElements.error.textContent = "";
+
+  const parameters = {
+    latitude: latitude,
+    longitude: longitude,
+    timezone: "America/Santiago",
+    temperature_unit: "celsius",
+    wind_speed_unit: "kmh",
+    precipitation_unit: "mm",
+    forecast_days: 7,
+
+    current: [
+      "temperature_2m",
+      "relative_humidity_2m",
+      "apparent_temperature",
+      "is_day",
+      "precipitation",
+      "rain",
+      "showers",
+      "snowfall",
+      "weather_code",
+      "cloud_cover",
+      "pressure_msl",
+      "surface_pressure",
+      "wind_speed_10m",
+      "wind_direction_10m",
+      "wind_gusts_10m"
+    ].join(","),
+
+    hourly: [
+      "temperature_2m",
+      "relative_humidity_2m",
+      "apparent_temperature",
+      "precipitation_probability",
+      "precipitation",
+      "rain",
+      "showers",
+      "snowfall",
+      "weather_code",
+      "cloud_cover",
+      "visibility",
+      "wind_speed_10m",
+      "wind_direction_10m",
+      "wind_gusts_10m"
+    ].join(","),
+
+    daily: [
+      "temperature_2m_max",
+      "temperature_2m_min",
+      "apparent_temperature_max",
+      "apparent_temperature_min",
+      "precipitation_sum",
+      "precipitation_probability_max",
+      "wind_speed_10m_max",
+      "wind_gusts_10m_max",
+      "wind_direction_10m_dominant",
+      "weather_code",
+      "sunrise",
+      "sunset",
+      "sunshine_duration",
+      "uv_index_max"
+    ].join(",")
+  };
+
+  const query = new URLSearchParams(parameters);
+
+  const apiUrl =
+    "https://api.open-meteo.com/v1/forecast?" + query.toString();
+
+  try {
+    const response = await fetch(apiUrl);
+
+    if (!response.ok) {
+      throw new Error("La API respondió con estado " + response.status);
+    }
+
+    const data = await response.json();
+
+    if (!data.current || !data.hourly || !data.daily) {
+      throw new Error("La respuesta meteorológica está incompleta.");
+    }
+
+    // Conserva la respuesta original completa del proveedor.
+    // Puede utilizarse posteriormente para otras funciones de AnglerMap.
+    window.anglerMapWeather = {
+      source: "Open-Meteo",
+      coordinates: {
+        latitude: data.latitude,
+        longitude: data.longitude,
+        elevation: data.elevation
+      },
+      timezone: data.timezone,
+      current_units: data.current_units,
+      hourly_units: data.hourly_units,
+      daily_units: data.daily_units,
+      current: data.current,
+      hourly: data.hourly,
+      daily: data.daily
+    };
+
+    renderCurrentWeather(data);
+    renderHourlyWeather(data);
+    renderDailyWeather(data);
+
+    const now = new Date();
+
+    weatherElements.status.textContent =
+      "Actualizado: " +
+      now.toLocaleTimeString("es-CL", {
+        hour: "2-digit",
+        minute: "2-digit"
+      }) +
+      " · " + river.name;
+
+  } catch (error) {
+    console.error("Error Open-Meteo:", error);
+
+    weatherElements.status.textContent =
+      "No fue posible actualizar el pronóstico.";
+
+    setWeatherError(
+      "Error al consultar Open-Meteo. Comprueba tu conexión e inténtalo nuevamente. " +
+      error.message
+    );
+  }
+}
+
+/* =========================================================
+   6. CONDICIONES ACTUALES
+   ========================================================= */
+
+function renderCurrentWeather(data) {
+  const c = data.current;
+  const d = data.daily;
+  const h = data.hourly;
+
+  weatherElements.temp.textContent =
+    displayValue(c.temperature_2m, "°");
+
+  weatherElements.description.textContent =
+    weatherDescription(c.weather_code);
+
+  weatherElements.minmax.innerHTML =
+    "Mínima: " + displayValue(d.temperature_2m_min[0], "°") +
+    "<br>Máxima: " + displayValue(d.temperature_2m_max[0], "°");
+
+  weatherElements.apparent.textContent =
+    displayValue(c.apparent_temperature, " °C");
+
+  weatherElements.wind.textContent =
+    displayValue(c.wind_speed_10m, " km/h");
+
+  weatherElements.direction.textContent =
+    windDirection(c.wind_direction_10m);
+
+  weatherElements.gusts.textContent =
+    displayValue(c.wind_gusts_10m, " km/h");
+
+  weatherElements.humidity.textContent =
+    displayValue(c.relative_humidity_2m, "%");
+
+  weatherElements.clouds.textContent =
+    displayValue(c.cloud_cover, "%");
+
+  weatherElements.precipitation.textContent =
+    displayValue(c.precipitation, " mm", 1);
+
+  weatherElements.pressure.textContent =
+    displayValue(c.pressure_msl, " hPa", 1);
+
+  weatherElements.surfacePressure.textContent =
+    displayValue(c.surface_pressure, " hPa", 1);
+
+  // Encuentra la hora actual en la serie horaria.
+  let currentIndex = h.time.indexOf(c.time);
+
+  if (currentIndex < 0) {
+    currentIndex = h.time.findIndex(time => time >= c.time);
+  }
+
+  if (currentIndex < 0) currentIndex = 0;
+
+  const probability =
+    h.precipitation_probability[currentIndex];
+
+  weatherElements.probability.textContent =
+    displayValue(probability, "%");
+
+  weatherElements.visibility.textContent =
+    formatVisibility(h.visibility[currentIndex]);
+
+  weatherElements.uv.textContent =
+    displayValue(d.uv_index_max[0]);
+
+  weatherElements.sunrise.textContent =
+    formatTime(d.sunrise[0]);
+
+  weatherElements.sunset.textContent =
+    formatTime(d.sunset[0]);
+
+  weatherElements.sunshine.textContent =
+    displayValue(d.sunshine_duration[0] / 3600, " h", 1);
+
+  weatherElements.apparentMax.textContent =
+    displayValue(d.apparent_temperature_max[0], " °C");
+
+  weatherElements.apparentMin.textContent =
+    displayValue(d.apparent_temperature_min[0], " °C");
+
+  weatherElements.dailyGusts.textContent =
+    displayValue(d.wind_gusts_10m_max[0], " km/h");
+
+  weatherElements.dominantWind.textContent =
+    windDirection(d.wind_direction_10m_dominant[0]);
+
+  weatherElements.dailyPrecipitation.textContent =
+    displayValue(d.precipitation_sum[0], " mm", 1);
+}
+
+/* =========================================================
+   7. VIENTO CADA CUATRO HORAS
+   ========================================================= */
+
+function renderHourlyWeather(data) {
+  const h = data.hourly;
+  const currentTime = data.current.time;
+
+  let startIndex = h.time.indexOf(currentTime);
+
+  if (startIndex < 0) {
+    startIndex = h.time.findIndex(time => time >= currentTime);
+  }
+
+  if (startIndex < 0) startIndex = 0;
+
+  const container = weatherElements.windForecast;
+  container.innerHTML = "";
+
+  for (let offset = 0; offset <= 20; offset += 4) {
+    const index = startIndex + offset;
+
+    if (index >= h.time.length) break;
+
+    const item = document.createElement("div");
+    item.className = "wind-item";
+
+    const hour = document.createElement("span");
+    hour.textContent = formatHour(h.time[index]);
+
+    const speed = document.createElement("strong");
+    speed.textContent =
+      displayValue(h.wind_speed_10m[index], "");
+
+    const direction = document.createElement("div");
+    direction.style.fontSize = "10px";
+    direction.style.color = "#91aab8";
+    direction.style.marginTop = "5px";
+    direction.textContent =
+      windDirection(h.wind_direction_10m[index]);
+
+    item.appendChild(hour);
+    item.appendChild(speed);
+    item.appendChild(direction);
+
+    container.appendChild(item);
+  }
+}
+
+/* =========================================================
+   8. PRONÓSTICO DIARIO
+   ========================================================= */
+
+function renderDailyWeather(data) {
+  const d = data.daily;
+  const container = weatherElements.dailyForecast;
+
+  container.innerHTML = "";
+
+  for (let i = 0; i < d.time.length; i++) {
+    const row = document.createElement("div");
+    row.className = "forecast-row";
+
+    const date = document.createElement("span");
+    date.textContent = formatDate(d.time[i]);
+
+    const details = document.createElement("strong");
+
+    details.textContent =
+      displayValue(d.temperature_2m_min[i], "°") +
+      " / " +
+      displayValue(d.temperature_2m_max[i], "°") +
+      " · " +
+      weatherDescription(d.weather_code[i]);
+
+    row.appendChild(date);
+    row.appendChild(details);
+
+    container.appendChild(row);
+
+    // Añade información meteorológica diaria adicional.
+    const extra = document.createElement("div");
+    extra.className = "forecast-row";
+
+    const extraLabel = document.createElement("span");
+    extraLabel.textContent =
+      "Lluvia / Viento máximo";
+
+    const extraValue = document.createElement("strong");
+    extraValue.textContent =
+      displayValue(d.precipitation_sum[i], " mm", 1) +
+      " / " +
+      displayValue(d.wind_speed_10m_max[i], " km/h");
+
+    extra.appendChild(extraLabel);
+    extra.appendChild(extraValue);
+
+    container.appendChild(extra);
+  }
+}
+
+/* =========================================================
+   9. INICIO Y ACTUALIZACIÓN
+   ========================================================= */
+
+// Primera consulta meteorológica
+loadWeather();
+
+// Actualización automática cada 30 minutos
+setInterval(loadWeather, 30 * 60 * 1000);
+
+// Ajuste del mapa después de cargar la interfaz
+setTimeout(() => {
+  map.invalidateSize();
+}, 300);
+
+</script>
+</body>
+</html>
