@@ -1,19 +1,22 @@
 
 import hashlib
 import json
-import os
 import re
-import sys
+import time
 import unicodedata
 from datetime import datetime, timezone
 from pathlib import Path
 
 import requests
 from shapely.geometry import (
-    shape, mapping, LineString, MultiLineString,
-    Polygon, MultiPolygon, box
+    shape,
+    mapping,
+    LineString,
+    MultiLineString,
+    box
 )
 from shapely.ops import unary_union
+
 
 ROOT = Path(__file__).resolve().parents[1]
 DATA = ROOT / "data" / "magallanes"
@@ -29,11 +32,16 @@ URL_COMUNA = BASE + "/MAPA_BASE/LIMITES/MapServer/2"
 URL_PROVINCIA = BASE + "/MAPA_BASE/LIMITES/MapServer/1"
 URL_LAGOS = BASE + "/MAPA_BASE/RED_HIDROGRAFICA/MapServer/17"
 
+# Cobertura continental utilizada en esta primera etapa.
+# La comuna Antártica queda pendiente de una consulta geográfica específica.
 REGION_BOUNDS = box(-76.5, -56.2, -65.5, -48.0)
+
+BATCH_SIZE = 10
+MAX_RETRIES = 4
 
 SESSION = requests.Session()
 SESSION.headers.update({
-    "User-Agent": "AnglerMap-Geodata/1.0 (public geographic data)"
+    "User-Agent": "AnglerMap-Geodata/1.1"
 })
 
 
@@ -48,30 +56,154 @@ def normalize(value):
         char for char in value
         if unicodedata.category(char) != "Mn"
     )
-    value = re.sub(r"\s+", " ", value)
-    return value
+    return re.sub(r"\s+", " ", value)
 
 
 def arcgis_request(url, params):
-    response = SESSION.get(
-        url + "/query",
-        params=params,
-        timeout=120
+    last_error = None
+
+    for attempt in range(MAX_RETRIES):
+        try:
+            response = SESSION.get(
+                url + "/query",
+                params=params,
+                timeout=(20, 120)
+            )
+
+            if response.status_code == 429 or response.status_code >= 500:
+                raise requests.HTTPError(
+                    "HTTP " + str(response.status_code)
+                )
+
+            response.raise_for_status()
+            data = response.json()
+
+            if "error" in data:
+                error = data["error"]
+                raise RuntimeError(
+                    "ArcGIS "
+                    + str(error.get("code"))
+                    + ": "
+                    + json.dumps(error, ensure_ascii=False)
+                )
+
+            return data
+
+        except (
+            requests.RequestException,
+            ValueError,
+            RuntimeError
+        ) as error:
+            last_error = error
+
+            if attempt < MAX_RETRIES - 1:
+                wait = 2 ** attempt
+                log(
+                    "Consulta fallida. Reintento "
+                    + str(attempt + 1)
+                    + "/"
+                    + str(MAX_RETRIES - 1)
+                    + " en "
+                    + str(wait)
+                    + " segundos. Motivo: "
+                    + str(error)
+                )
+                time.sleep(wait)
+
+    raise RuntimeError(
+        "No fue posible consultar ArcGIS después de "
+        + str(MAX_RETRIES)
+        + " intentos: "
+        + str(last_error)
     )
-    response.raise_for_status()
 
-    data = response.json()
 
-    if "error" in data:
-        raise RuntimeError(
-            "ArcGIS: " + json.dumps(data["error"], ensure_ascii=False)
+def fetch_batch(layer_url, object_ids):
+    """
+    Descarga un grupo pequeño de IDs.
+    Si el servidor sigue fallando, divide el grupo
+    en dos y vuelve a intentarlo.
+    """
+
+    if not object_ids:
+        return []
+
+    params = {
+        "objectIds": ",".join(map(str, object_ids)),
+        "outFields": "*",
+        "returnGeometry": "true",
+        "outSR": "4326",
+        "f": "json"
+    }
+
+    try:
+        data = arcgis_request(layer_url, params)
+
+        if data.get("exceededTransferLimit"):
+            raise RuntimeError(
+                "ArcGIS indicó exceededTransferLimit"
+            )
+
+        features = data.get("features", [])
+
+        received_ids = {
+            str(
+                feature.get("attributes", {}).get("OBJECTID")
+            )
+            for feature in features
+        }
+
+        expected_ids = set(map(str, object_ids))
+
+        missing_ids = expected_ids - received_ids
+
+        if missing_ids:
+            raise RuntimeError(
+                "ArcGIS no devolvió todos los registros. "
+                "IDs pendientes: "
+                + ", ".join(sorted(missing_ids))
+            )
+
+        return features
+
+    except Exception as error:
+        if len(object_ids) == 1:
+            raise RuntimeError(
+                "No se pudo descargar el registro "
+                + str(object_ids[0])
+                + " desde "
+                + layer_url
+                + ". Motivo: "
+                + str(error)
+            )
+
+        middle = len(object_ids) // 2
+
+        first_half = object_ids[:middle]
+        second_half = object_ids[middle:]
+
+        log(
+            "Dividiendo grupo de "
+            + str(len(object_ids))
+            + " registros por error del servidor."
         )
 
-    return data
+        first_features = fetch_batch(
+            layer_url,
+            first_half
+        )
+
+        second_features = fetch_batch(
+            layer_url,
+            second_half
+        )
+
+        return first_features + second_features
 
 
 def fetch_features(layer_url, where="1=1"):
-    log("Consultando " + layer_url)
+    log("Consultando capa: " + layer_url)
+    log("Filtro: " + where)
 
     ids_data = arcgis_request(layer_url, {
         "where": where,
@@ -82,31 +214,45 @@ def fetch_features(layer_url, where="1=1"):
     object_ids = ids_data.get("objectIds") or []
 
     if not object_ids:
-        log("Sin registros para: " + where)
+        log("No se encontraron registros.")
         return []
 
-    log("Registros identificados: " + str(len(object_ids)))
+    object_ids = sorted(set(object_ids))
+
+    log(
+        "Registros identificados: "
+        + str(len(object_ids))
+    )
 
     features = []
 
-    for start in range(0, len(object_ids), 250):
-        batch = object_ids[start:start + 250]
+    for start in range(0, len(object_ids), BATCH_SIZE):
+        batch = object_ids[start:start + BATCH_SIZE]
 
-        data = arcgis_request(layer_url, {
-            "objectIds": ",".join(map(str, batch)),
-            "outFields": "*",
-            "returnGeometry": "true",
-            "outSR": "4326",
-            "f": "json"
-        })
+        batch_features = fetch_batch(
+            layer_url,
+            batch
+        )
 
-        features.extend(data.get("features", []))
+        features.extend(batch_features)
 
         log(
             "Descargados "
-            + str(min(start + len(batch), len(object_ids)))
+            + str(len(features))
             + " de "
             + str(len(object_ids))
+        )
+
+        time.sleep(0.15)
+
+    if len(features) != len(object_ids):
+        raise RuntimeError(
+            "Descarga incompleta en "
+            + layer_url
+            + ". Esperados: "
+            + str(len(object_ids))
+            + ", recibidos: "
+            + str(len(features))
         )
 
     return features
@@ -118,6 +264,9 @@ def esri_geometry_to_shape(geometry):
 
     if "paths" in geometry:
         paths = geometry["paths"]
+
+        if not paths:
+            return None
 
         if len(paths) == 1:
             geom = LineString(paths[0])
@@ -147,6 +296,7 @@ def feature_records(features):
 
     for feature in features:
         attributes = feature.get("attributes") or {}
+
         geometry = esri_geometry_to_shape(
             feature.get("geometry")
         )
@@ -188,13 +338,11 @@ def save_geojson(filename, features):
 
 
 def bounds_filter(records):
-    result = []
-
-    for record in records:
-        if record["geometry"].intersects(REGION_BOUNDS):
-            result.append(record)
-
-    return result
+    return [
+        record
+        for record in records
+        if record["geometry"].intersects(REGION_BOUNDS)
+    ]
 
 
 def build_admin_layer(url, name_field, output):
@@ -207,13 +355,12 @@ def build_admin_layer(url, name_field, output):
     features = []
 
     for record in records:
-        geom = record["geometry"]
-        props = record["properties"]
-
-        geom = geom.simplify(
+        geom = record["geometry"].simplify(
             0.00002,
             preserve_topology=True
         )
+
+        props = record["properties"]
 
         features.append({
             "type": "Feature",
@@ -233,10 +380,7 @@ def build_admin_layer(url, name_field, output):
 def water_type_from_river(props):
     value = normalize(props.get("TIPO"))
 
-    if "estero" in value:
-        return "stream"
-
-    if "quebrada" in value:
+    if "estero" in value or "quebrada" in value:
         return "stream"
 
     return "river"
@@ -263,13 +407,13 @@ def build_water_records(records, source, water_type, communes):
         props = record["properties"]
         geom = record["geometry"]
 
-        name = (
+        primary_name = (
             props.get("NOMBRE")
             or props.get("NOMBRESS")
             or ""
         ).strip()
 
-        alternate = (
+        alternate_name = (
             props.get("NOMBRESS")
             or props.get("NOMBRE")
             or ""
@@ -277,8 +421,7 @@ def build_water_records(records, source, water_type, communes):
 
         official_id = props.get("OBJECTID")
 
-        if not name:
-            name = "Cauce sin nombre"
+        name = primary_name or "Cauce sin nombre"
 
         if source == "DGA/SNIA":
             kind = water_type_from_river(props)
@@ -295,8 +438,8 @@ def build_water_records(records, source, water_type, communes):
             kind
         )
 
-        if not name or name == "Cauce sin nombre":
-            group_key = group_key + (str(official_id),)
+        if name == "Cauce sin nombre":
+            group_key += (str(official_id),)
 
         if group_key not in grouped:
             grouped[group_key] = {
@@ -311,8 +454,8 @@ def build_water_records(records, source, water_type, communes):
 
         group = grouped[group_key]
 
-        if alternate and alternate != name:
-            group["alternates"].add(alternate)
+        if alternate_name and alternate_name != name:
+            group["alternates"].add(alternate_name)
 
         group["geometries"].append(geom)
         group["official_ids"].append(official_id)
@@ -347,7 +490,11 @@ def build_water_records(records, source, water_type, communes):
         water_communes = sorted(set(water_communes))
 
         source_ids = sorted(
-            set(str(value) for value in group["official_ids"])
+            set(
+                str(value)
+                for value in group["official_ids"]
+                if value is not None
+            )
         )
 
         stable_key = (
@@ -389,24 +536,20 @@ def build_water_records(records, source, water_type, communes):
 def main():
     log("Inicio de construcción cartográfica")
 
-    # Límites administrativos
-    log("Descargando comunas")
+    # 1. Comunas
+    log("Descargando límites comunales")
+
     communes = feature_records(
         fetch_features(URL_COMUNA)
     )
-    communes = bounds_filter(communes)
 
-    log("Descargando provincias")
-    provinces = build_admin_layer(
-        URL_PROVINCIA,
-        "NOM_PROV",
-        "provinces.geojson"
-    )
+    communes = bounds_filter(communes)
 
     commune_features = []
 
     for record in communes:
         props = record["properties"]
+
         geom = record["geometry"].simplify(
             0.00002,
             preserve_topology=True
@@ -425,12 +568,28 @@ def main():
             }
         })
 
-    save_geojson("communes.geojson", commune_features)
+    # 2. Provincias
+    log("Descargando límites provinciales")
 
-    # Ríos, esteros y quebradas DGA
-    log("Descargando cauces DGA de la Región 12")
+    provinces = build_admin_layer(
+        URL_PROVINCIA,
+        "NOM_PROV",
+        "provinces.geojson"
+    )
+
+    save_geojson(
+        "communes.geojson",
+        commune_features
+    )
+
+    # 3. Ríos, esteros y quebradas
+    log("Descargando cauces DGA/SNIA")
+
     river_records = feature_records(
-        fetch_features(URL_CAUCE, "REGION = 12")
+        fetch_features(
+            URL_CAUCE,
+            "REGION = 12"
+        )
     )
 
     river_records = bounds_filter(river_records)
@@ -442,10 +601,14 @@ def main():
         communes
     )
 
-    # Lagos, lagunas y otros sistemas lacustres
+    # 4. Lagos y sistemas lacustres
     log("Descargando sistemas lacustres MOP")
+
     lake_records = feature_records(
-        fetch_features(URL_LAGOS, "COD_REG = '12'")
+        fetch_features(
+            URL_LAGOS,
+            "COD_REG = '12'"
+        )
     )
 
     lake_records = bounds_filter(lake_records)
@@ -466,9 +629,12 @@ def main():
         )
     )
 
-    save_geojson("waterbodies.geojson", all_waters)
+    # 5. Archivos finales
+    save_geojson(
+        "waterbodies.geojson",
+        all_waters
+    )
 
-    # Metadatos de generación y procedencia
     metadata = {
         "application": "AnglerMap",
         "region": "Magallanes y de la Antártica Chilena",
@@ -507,14 +673,17 @@ def main():
             "waterbodies": len(all_waters)
         },
         "limitations": [
-            "La cobertura territorial depende de las fuentes oficiales.",
-            "La comuna Antártica debe verificarse por separado.",
+            "La cobertura depende de las capas oficiales consultadas.",
+            "La comuna Antártica requiere una consulta geográfica específica y no se considera cubierta por el recorte continental actual.",
             "La geometría oficial no acredita acceso público ni permiso de pesca.",
-            "Los cauces sin nombre se mantienen identificados por su ID oficial."
+            "Los cauces sin nombre se mantienen identificados por su ID oficial.",
+            "La agrupación de tramos por nombre y cuenca requiere validación cartográfica."
         ]
     }
 
-    with (META / "sources.json").open(
+    metadata_path = META / "sources.json"
+
+    with metadata_path.open(
         "w",
         encoding="utf-8"
     ) as file:
@@ -526,7 +695,12 @@ def main():
         )
 
     log("Construcción finalizada correctamente")
-    log(json.dumps(metadata["counts"], ensure_ascii=False))
+    log(
+        json.dumps(
+            metadata["counts"],
+            ensure_ascii=False
+        )
+    )
 
 
 if __name__ == "__main__":
