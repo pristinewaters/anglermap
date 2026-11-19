@@ -4,219 +4,286 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<meta name="theme-color" content="#071521">
-<title>AnglerMap | Patagonia</title>
+<meta name="theme-color" content="#081521">
+<title>AnglerMap | Explore Patagonia</title>
+<link rel="preconnect" href="https://unpkg.com">
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
 <style>
-:root{--bg:#071521;--panel:#0c1e2c;--panel2:#102638;--line:#20394b;--text:#e8f2f7;--muted:#91a9b8;--cyan:#55d9e8;--gold:#e8bd70}
+:root{
+ --bg:#081521;--panel:#0c1c29;--panel2:#112637;--panel3:#173246;
+ --line:#20394b;--text:#edf5f8;--muted:#91a9b8;
+ --cyan:#55d9e8;--blue:#258ba8;--gold:#e8bd70;
+ --danger:#e58d7b;--radius:13px;
+}
 *{box-sizing:border-box}
-body{margin:0;background:var(--bg);color:var(--text);font-family:Inter,system-ui,-apple-system,sans-serif;font-size:14px;overflow:hidden}
-button,input,select{font:inherit}
+html,body{height:100%;margin:0}
+body{background:var(--bg);color:var(--text);font-family:Inter,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;font-size:13px;overflow:hidden}
+button,input,select,textarea{font:inherit}
 button{cursor:pointer}
-.app{height:100vh;display:grid;grid-template-rows:64px 1fr}
-.topbar{z-index:1000;display:flex;align-items:center;gap:16px;padding:0 18px;background:#091a27;border-bottom:1px solid var(--line)}
-.brand{display:flex;align-items:center;gap:10px;min-width:220px}
-.logo{width:38px;height:38px}
-.brand-name{font-size:19px;font-weight:850;letter-spacing:.5px}
+button:focus-visible,input:focus-visible,select:focus-visible{outline:2px solid var(--cyan);outline-offset:2px}
+.app{height:100dvh;display:grid;grid-template-rows:66px minmax(0,1fr)}
+.topbar{z-index:1000;display:flex;align-items:center;gap:17px;padding:0 19px;background:#091925;border-bottom:1px solid var(--line)}
+.brand{display:flex;align-items:center;gap:10px;min-width:218px}
+.logo{width:39px;height:39px;flex-shrink:0}
+.brand-name{font-size:19px;font-weight:850;letter-spacing:.7px}
 .brand-name span{color:var(--cyan)}
-.brand-sub{font-size:9px;letter-spacing:2px;color:var(--muted);margin-top:2px}
-.top-search{flex:1;max-width:500px;position:relative}
-.top-search input{width:100%;height:39px;background:#102638;border:1px solid var(--line);border-radius:10px;padding:0 14px 0 38px;color:white;outline:none}
-.top-search input:focus{border-color:var(--cyan)}
-.search-symbol{position:absolute;left:13px;top:9px;color:var(--muted);font-size:19px}
-.top-actions{margin-left:auto;display:flex;gap:8px;align-items:center}
-.profile-select,.icon-btn{background:#102638;color:var(--text);border:1px solid var(--line);border-radius:9px;padding:9px 11px}
-.icon-btn{width:39px;height:38px;padding:0;font-size:18px}
-.workspace{min-height:0;display:grid;grid-template-columns:310px minmax(0,1fr)}
-.sidebar{z-index:500;background:var(--panel);border-right:1px solid var(--line);display:flex;flex-direction:column;min-height:0;overflow:hidden}
-.side-scroll{overflow:auto;padding:15px 14px 25px}
-.side-heading{display:flex;justify-content:space-between;align-items:center;font-size:10px;letter-spacing:1.4px;text-transform:uppercase;color:var(--muted);font-weight:800;margin:8px 2px 11px}
-.nav-list{display:grid;gap:4px;margin-bottom:19px}
-.nav-item{display:flex;align-items:center;gap:11px;padding:10px 11px;border:1px solid transparent;border-radius:10px;color:#c5d5df;background:transparent;text-align:left;width:100%;font-size:13px;text-decoration:none}
-.nav-item:hover,.nav-item.active{background:#143044;border-color:#21465b;color:white}
+.brand-sub{font-size:9px;letter-spacing:2px;color:var(--muted);margin-top:3px}
+.menu-btn,.icon-btn{height:38px;width:39px;display:grid;place-items:center;background:var(--panel2);color:var(--text);border:1px solid var(--line);border-radius:10px;font-size:18px}
+.menu-btn{display:none}
+.search-wrap{position:relative;flex:1;max-width:540px}
+.search-wrap input{height:41px;width:100%;padding:0 15px 0 41px;background:#102638;border:1px solid var(--line);border-radius:11px;color:white;outline:none}
+.search-wrap input:focus{border-color:var(--cyan)}
+.search-icon{position:absolute;left:14px;top:9px;color:var(--muted);font-size:19px}
+.top-actions{margin-left:auto;display:flex;align-items:center;gap:9px}
+.profile-select{height:38px;padding:0 12px;background:var(--panel2);color:var(--text);border:1px solid var(--line);border-radius:9px}
+.status-dot{width:7px;height:7px;background:#59d6a0;border-radius:50%;display:inline-block;margin-right:6px}
+.workspace{min-height:0;display:grid;grid-template-columns:320px minmax(0,1fr)}
+.sidebar{z-index:600;background:var(--panel);border-right:1px solid var(--line);display:flex;flex-direction:column;min-height:0;overflow:hidden}
+.side-scroll{overflow:auto;padding:16px 14px 25px;scrollbar-width:thin;scrollbar-color:#29485b transparent}
+.side-heading{display:flex;justify-content:space-between;align-items:center;margin:8px 3px 10px;color:var(--muted);font-size:10px;font-weight:800;letter-spacing:1.35px;text-transform:uppercase}
+.side-heading small{font-size:9px;color:#668495;letter-spacing:1px}
+.nav-list{display:grid;gap:4px;margin-bottom:18px}
+.nav-item{width:100%;display:flex;align-items:center;gap:11px;padding:10px 11px;border:1px solid transparent;border-radius:9px;color:#c4d5de;background:transparent;text-align:left;font-size:12px;text-decoration:none;transition:.15s}
+.nav-item:hover,.nav-item.active{background:#153246;border-color:#24475a;color:#fff}
 .nav-item.active .nav-icon{color:var(--cyan)}
-.nav-icon{width:18px;text-align:center;color:var(--muted);font-size:16px}
-.nav-count{margin-left:auto;color:var(--muted);font-size:11px}
+.nav-icon{width:19px;text-align:center;color:#88a2b2;font-size:16px}
+.nav-count{margin-left:auto;color:var(--muted);font-size:10px}
 .section-rule{height:1px;background:var(--line);margin:15px 0}
-.zone{border:1px solid var(--line);border-radius:11px;overflow:hidden;margin-bottom:8px}
-.zone-head{width:100%;display:flex;align-items:center;gap:9px;padding:11px;background:#102638;border:0;color:var(--text);text-align:left;font-weight:700}
-.zone-head small{margin-left:auto;color:var(--muted);font-weight:500}
+.zone{border:1px solid var(--line);border-radius:10px;overflow:hidden;margin-bottom:7px;background:#0b1a26}
+.zone-head{width:100%;display:flex;align-items:center;gap:9px;padding:11px;background:#102638;border:0;color:var(--text);text-align:left;font-weight:700;font-size:12px}
+.zone-head:hover{background:#17364a}
 .zone-arrow{color:var(--cyan);transition:transform .2s}
 .zone.open .zone-arrow{transform:rotate(90deg)}
+.zone-head small{margin-left:auto;color:var(--muted);font-size:10px;font-weight:500}
 .zone-body{display:none;padding:5px}
 .zone.open .zone-body{display:block}
-.water-item{display:flex;align-items:center;gap:8px;padding:9px 8px;border-radius:8px;color:#c5d5df;cursor:pointer}
+.water-item{display:flex;align-items:center;gap:9px;padding:9px 8px;border-radius:8px;color:#c3d3dc;cursor:pointer;font-size:12px}
 .water-item:hover,.water-item.selected{background:#17394b;color:white}
-.water-dot{width:6px;height:6px;border-radius:50%;background:var(--cyan)}
-.water-item small{margin-left:auto;color:var(--muted);font-size:10px}
-.weather-card{background:linear-gradient(145deg,#12364b,#0d2536);border:1px solid #245066;border-radius:14px;padding:13px;margin:8px 0 17px}
+.water-dot{width:6px;height:6px;border-radius:50%;background:var(--cyan);flex-shrink:0}
+.water-item small{margin-left:auto;color:#7793a3;font-size:9px}
+.weather-card{background:linear-gradient(145deg,#12374c,#0c2333);border:1px solid #245066;border-radius:13px;padding:13px;margin:8px 0 17px}
 .weather-head{display:flex;justify-content:space-between;align-items:center}
-.weather-head strong{font-size:12px}
-.weather-head span{font-size:10px;color:var(--muted)}
-.weather-main{display:flex;align-items:center;gap:12px;margin:13px 0}
-.weather-temp{font-size:37px;font-weight:750;letter-spacing:-2px}
-.weather-desc{font-size:11px;color:#c2d5df;line-height:1.6}
-.weather-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px}
-.weather-stat{background:#0c2536;border-radius:9px;padding:9px}
-.weather-stat span{display:block;font-size:10px;color:var(--muted);margin-bottom:4px}
-.weather-stat b{font-size:13px}
-.hourly{display:flex;gap:7px;overflow-x:auto;margin-top:12px;padding-bottom:4px}
-.hour{flex:0 0 59px;background:#0b2434;border-radius:8px;padding:8px 5px;text-align:center}
-.hour small{display:block;color:var(--muted);font-size:10px}
-.hour b{display:block;margin:7px 0;font-size:13px}
-.hour span{font-size:10px;color:var(--cyan)}
+.weather-head strong{font-size:11px;letter-spacing:.7px}
+.weather-head span{font-size:9px;color:var(--muted)}
+.weather-main{display:flex;align-items:center;gap:13px;margin:13px 0}
+.weather-temp{font-size:38px;font-weight:750;letter-spacing:-2px;line-height:1}
+.weather-desc{font-size:10px;color:#c2d5df;line-height:1.7}
+.weather-grid{display:grid;grid-template-columns:1fr 1fr;gap:7px}
+.weather-stat{background:#0b2434;border-radius:8px;padding:9px}
+.weather-stat span{display:block;font-size:9px;color:var(--muted);margin-bottom:4px}
+.weather-stat b{font-size:12px}
+.hourly{display:flex;gap:6px;overflow-x:auto;margin-top:11px;padding-bottom:4px;scrollbar-width:thin}
+.hour{flex:0 0 57px;background:#0b2434;border-radius:8px;padding:8px 4px;text-align:center}
+.hour small{display:block;color:var(--muted);font-size:9px}
+.hour b{display:block;margin:7px 0;font-size:12px}
+.hour span{font-size:9px;color:var(--cyan)}
+.weather-note{font-size:9px;color:#7894a4;margin-top:8px}
 .map-area{position:relative;min-width:0;min-height:0;background:#132b39}
 #map{height:100%;width:100%;background:#102735}
-.map-controls{position:absolute;z-index:450;top:15px;right:15px;display:flex;flex-direction:column;gap:7px}
-.map-control{border:1px solid #385366;background:#0b1d2be8;color:#e8f2f7;border-radius:9px;padding:10px 12px;backdrop-filter:blur(10px);font-size:12px}
-.map-control.active{border-color:var(--cyan);color:var(--cyan)}
-.map-bottom{position:absolute;z-index:450;bottom:16px;left:16px;display:flex;gap:8px;flex-wrap:wrap}
-.map-chip{background:#0b1d2be8;border:1px solid #385366;border-radius:8px;color:#dceaf1;padding:8px 11px;font-size:11px;backdrop-filter:blur(8px)}
+.map-controls{position:absolute;z-index:450;top:15px;right:15px;display:flex;gap:5px;padding:5px;background:#091b29eF;border:1px solid #385366;border-radius:11px;backdrop-filter:blur(12px)}
+.map-control{border:0;background:transparent;color:#c1d2dc;border-radius:7px;padding:9px 11px;font-size:11px}
+.map-control.active{background:#1a4053;color:var(--cyan)}
+.map-tools{position:absolute;z-index:450;top:77px;right:15px;display:flex;flex-direction:column;gap:7px}
+.map-tool{width:39px;height:39px;border:1px solid #385366;background:#0b1d2beF;color:#e8f2f7;border-radius:10px;font-size:16px;backdrop-filter:blur(10px)}
+.map-tool:hover,.map-tool.active{border-color:var(--cyan);color:var(--cyan)}
+.map-bottom{position:absolute;z-index:450;bottom:16px;left:16px;display:flex;gap:7px;flex-wrap:wrap}
+.map-chip{background:#0b1d2beF;border:1px solid #385366;border-radius:8px;color:#dceaf1;padding:8px 10px;font-size:10px;backdrop-filter:blur(8px)}
 .map-chip b{color:var(--cyan)}
-.weather-float{position:absolute;z-index:450;right:15px;bottom:16px;width:250px;background:#0b1d2bf2;border:1px solid #385366;border-radius:13px;padding:12px;backdrop-filter:blur(12px)}
-.float-head{display:flex;justify-content:space-between;align-items:center;font-size:10px;font-weight:750}
+.weather-float{position:absolute;z-index:450;right:15px;bottom:15px;width:260px;background:#0b1d2bf2;border:1px solid #385366;border-radius:13px;padding:12px;backdrop-filter:blur(12px);box-shadow:0 8px 30px #0003}
+.float-head{display:flex;justify-content:space-between;align-items:center;font-size:9px;font-weight:800;letter-spacing:.6px}
 .float-head span{color:var(--cyan)}
 .float-weather{display:flex;align-items:center;justify-content:space-between;margin-top:9px}
-.float-temp{font-size:29px;font-weight:750}
-.float-details{font-size:11px;color:#b4c7d2;line-height:1.7;text-align:right}
-.float-summary{border-top:1px solid var(--line);margin-top:9px;padding-top:8px;font-size:10px;color:var(--muted)}
-.detail-panel{position:absolute;z-index:600;top:15px;left:15px;width:330px;max-height:calc(100% - 30px);overflow:auto;background:#0b1d2bf5;border:1px solid #385366;border-radius:15px;box-shadow:0 12px 45px #0008;backdrop-filter:blur(15px);display:none}
+.float-temp{font-size:30px;font-weight:750}
+.float-details{font-size:10px;color:#b4c7d2;line-height:1.8;text-align:right}
+.float-summary{border-top:1px solid var(--line);margin-top:8px;padding-top:8px;font-size:9px;color:var(--muted)}
+.detail-panel{position:absolute;z-index:550;top:15px;left:15px;width:350px;max-height:calc(100% - 30px);overflow:auto;background:#0b1d2bf5;border:1px solid #385366;border-radius:15px;box-shadow:0 12px 45px #0008;backdrop-filter:blur(15px);display:none}
 .detail-panel.show{display:block}
 .detail-top{padding:16px;border-bottom:1px solid var(--line)}
 .detail-topline{display:flex;justify-content:space-between;align-items:center}
-.detail-kicker{font-size:9px;color:var(--cyan);letter-spacing:1.6px;text-transform:uppercase}
-.close-btn{background:#173246;color:#dceaf1;border:1px solid var(--line);border-radius:8px;width:30px;height:30px}
-.detail-title{font-size:22px;font-weight:750;margin:12px 0 5px}
-.detail-sub{color:var(--muted);font-size:11px}
+.detail-kicker{font-size:9px;color:var(--cyan);letter-spacing:1.5px;text-transform:uppercase;font-weight:800}
+.close-btn{background:#173246;color:#dceaf1;border:1px solid var(--line);border-radius:8px;width:30px;height:30px;font-size:17px}
+.detail-title{font-size:23px;font-weight:760;margin:12px 0 5px}
+.detail-sub{color:var(--muted);font-size:10px}
 .detail-content{padding:15px}
-.detail-description{color:#c5d5df;line-height:1.65;font-size:12px}
-.detail-warning{margin-top:13px;padding:10px;border-radius:9px;background:#332b1d;border:1px solid #665335;color:#e9cf9e;font-size:11px;line-height:1.5}
-.detail-actions{display:flex;gap:8px;margin-top:14px}
-.action-btn{flex:1;border:1px solid #31566a;background:#143448;color:#eaf6fa;padding:10px 8px;border-radius:9px;font-size:11px}
+.detail-tabs{display:flex;gap:5px;border-bottom:1px solid var(--line);padding-bottom:9px;margin-bottom:12px}
+.detail-tab{background:transparent;border:0;color:var(--muted);padding:7px 9px;border-radius:7px;font-size:10px}
+.detail-tab.active{background:#17394b;color:var(--cyan)}
+.detail-description{color:#c5d5df;line-height:1.7;font-size:11px;margin:0}
+.detail-warning{margin-top:12px;padding:10px;border-radius:9px;background:#332b1d;border:1px solid #665335;color:#e9cf9e;font-size:10px;line-height:1.6}
+.detail-actions{display:flex;gap:7px;margin-top:13px}
+.action-btn{flex:1;border:1px solid #31566a;background:#143448;color:#eaf6fa;padding:10px 7px;border-radius:9px;font-size:10px}
 .action-btn.primary{background:#1c7180;border-color:#2a9eac}
-.info-card{padding:11px;border:1px solid var(--line);border-radius:10px;margin-top:10px}
-.info-card b{display:block;font-size:11px;margin-bottom:5px}
-.info-card p{margin:0;color:var(--muted);font-size:11px;line-height:1.5}
+.info-card{padding:11px;border:1px solid var(--line);border-radius:10px;margin-top:9px}
+.info-card b{display:block;font-size:10px;margin-bottom:5px}
+.info-card p{margin:0;color:var(--muted);font-size:10px;line-height:1.55}
+.panel-content{padding:16px}
+.panel-content h3{font-size:17px;margin:0 0 5px}
+.panel-subtitle{font-size:10px;color:var(--muted);margin-bottom:14px}
+.panel-row{padding:11px;border:1px solid var(--line);border-radius:10px;margin-top:8px;background:#102638}
+.panel-row strong{font-size:11px}
+.panel-row p{margin:5px 0 0;color:var(--muted);font-size:10px;line-height:1.5}
+.empty-state{padding:22px 12px;text-align:center;color:var(--muted);line-height:1.7;font-size:11px}
 .leaflet-control-attribution{font-size:9px!important}
 .leaflet-popup-content-wrapper,.leaflet-popup-tip{background:#102638;color:#eaf4f8}
-.leaflet-popup-content{font-size:12px}
+.leaflet-popup-content{font-size:11px}
 .leaflet-bar a{background:#102638!important;color:#eaf4f8!important;border-color:#294456!important}
+.leaflet-control-scale-line{background:#0b1d2be8;color:#eaf4f8;border-color:#91a9b8}
 [hidden]{display:none!important}
-@media(max-width:850px){
- .app{grid-template-rows:58px 1fr}
- .topbar{padding:0 10px;gap:9px}
- .brand{min-width:0}.brand-name{font-size:16px}.brand-sub{display:none}
- .top-search{max-width:none}.top-actions .profile-select{display:none}
+@media(max-width:900px){
  .workspace{grid-template-columns:1fr}
- .sidebar{position:absolute;z-index:900;top:58px;bottom:0;left:0;width:310px;transform:translateX(-102%);transition:transform .25s;box-shadow:12px 0 35px #0006}
+ .menu-btn{display:grid}
+ .brand{min-width:0}
+ .sidebar{position:absolute;z-index:900;top:66px;bottom:0;left:0;width:320px;transform:translateX(-103%);transition:transform .22s;box-shadow:12px 0 35px #0007}
  .sidebar.open{transform:translateX(0)}
- .detail-panel{left:10px;top:10px;width:min(330px,calc(100% - 20px))}
- .weather-float{width:205px;right:10px;bottom:10px}
- .map-bottom{left:10px;bottom:10px;max-width:calc(100% - 225px)}
+ .topbar{gap:10px;padding:0 11px}
+ .brand-name{font-size:16px}
+ .brand-sub{display:none}
+ .search-wrap{max-width:none}
+ .profile-select{max-width:145px}
 }
-@media(max-width:520px){
- .top-search{display:none}
- .weather-float{width:180px;padding:9px}
+@media(max-width:600px){
+ .app{grid-template-rows:58px minmax(0,1fr)}
+ .topbar{gap:7px}
+ .menu-btn,.icon-btn{width:35px;height:35px}
+ .logo{width:32px;height:32px}
+ .brand-name{font-size:14px}
+ .search-wrap{display:none}
+ .profile-select{font-size:10px;max-width:125px;padding:0 5px}
+ .sidebar{top:58px;width:min(320px,88vw)}
+ .map-controls{top:10px;right:10px}
+ .map-control{padding:8px 9px;font-size:10px}
+ .map-tools{top:62px;right:10px}
+ .map-tool{width:35px;height:35px}
+ .detail-panel{left:8px;top:8px;width:min(350px,calc(100% - 16px));max-height:calc(100% - 16px)}
+ .weather-float{right:8px;bottom:8px;width:185px;padding:9px}
  .float-temp{font-size:24px}
- .float-details{font-size:10px}
- .map-bottom{max-width:calc(100% - 195px)}
- .map-chip{padding:7px 8px;font-size:10px}
+ .float-details{font-size:9px}
+ .float-head{font-size:8px}
+ .map-bottom{left:8px;bottom:8px;max-width:calc(100% - 200px)}
+ .map-chip{padding:7px;font-size:9px}
 }
 </style>
 </head>
 <body>
 <div class="app">
 <header class="topbar">
- <button class="icon-btn" id="menuBtn" aria-label="Abrir menú">☰</button>
+ <button class="menu-btn" id="menuBtn" aria-label="Abrir menú">☰</button>
  <div class="brand">
-  <svg class="logo" viewBox="0 0 64 64" fill="none">
-   <path d="M7 51 28 11l11 20 7-12 11 32H7Z" stroke="#55d9e8" stroke-width="2.5" stroke-linejoin="round"/>
-   <path d="M18 49c8-5 10-14 17-14 6 0 7 7 13 6" stroke="#e8bd70" stroke-width="2.5" stroke-linecap="round"/>
-   <circle cx="48" cy="41" r="3" fill="#e8bd70"/>
+  <svg class="logo" viewBox="0 0 64 64" fill="none" aria-hidden="true">
+   <path d="M5 52 27 10l12 21 8-13 12 34H5Z" stroke="#55d9e8" stroke-width="2.5" stroke-linejoin="round"/>
+   <path d="M14 48c9-3 12-13 20-13 6 0 9 7 17 5" stroke="#e8bd70" stroke-width="2.5" stroke-linecap="round"/>
+   <path d="M20 55h25" stroke="#55d9e8" stroke-width="2" stroke-linecap="round"/>
   </svg>
   <div><div class="brand-name">ANGLER<span>MAP</span></div><div class="brand-sub">EXPLORE WATERS · PATAGONIA</div></div>
  </div>
- <div class="top-search"><span class="search-symbol">⌕</span><input id="globalSearch" placeholder="Buscar río, lago o sector..."></div>
+ <div class="search-wrap"><span class="search-icon">⌕</span><input id="globalSearch" placeholder="Buscar río, lago o sector..."></div>
  <div class="top-actions">
-  <select class="profile-select" id="profileSelect"><option value="angler">Pescador recreativo</option><option value="admin">Administrador</option></select>
-  <button class="icon-btn" id="locateBtn" title="Mi ubicación">◎</button>
+  <select class="profile-select" id="profileSelect" aria-label="Perfil">
+   <option value="angler">Pescador recreativo</option>
+   <option value="admin">Administrador territorial</option>
+  </select>
+  <button class="icon-btn" id="locateBtn" title="Mi ubicación" aria-label="Mi ubicación">◎</button>
  </div>
 </header>
 <div class="workspace">
 <aside class="sidebar" id="sidebar">
-<div class="side-scroll">
- <div class="side-heading">Descubrir</div>
- <nav class="nav-list">
-  <button class="nav-item active" data-view="explore"><span class="nav-icon">⌖</span>Explorar aguas</button>
-  <button class="nav-item" data-view="saved"><span class="nav-icon">☆</span>Mis aguas<span class="nav-count" id="savedCount">0</span></button>
-  <button class="nav-item" data-view="points"><span class="nav-icon">⌁</span>Mis puntos<span class="nav-count" id="pointCount">0</span></button>
-  <button class="nav-item" data-view="logbook"><span class="nav-icon">▤</span>Bitácora</button>
- </nav>
- <div class="side-heading">Explorar por zona <span>MAGALLANES</span></div>
- <div id="zones"></div>
- <div class="section-rule"></div>
- <div class="side-heading">Condiciones actuales <span id="weatherPlace">CENTRO DEL MAPA</span></div>
- <section class="weather-card">
-  <div class="weather-head"><strong>METEOROLOGÍA</strong><span id="weatherUpdated">Cargando...</span></div>
-  <div class="weather-main">
-   <div class="weather-temp" id="weatherTemp">--°</div>
-   <div class="weather-desc"><b id="weatherCondition">Consultando condiciones</b><br>Sensación <span id="weatherFeels">--</span>° · Humedad <span id="weatherHumidity">--</span>%</div>
-  </div>
-  <div class="weather-grid">
-   <div class="weather-stat"><span>Viento</span><b id="weatherWind">-- km/h</b></div>
-   <div class="weather-stat"><span>Ráfagas</span><b id="weatherGust">-- km/h</b></div>
-   <div class="weather-stat"><span>Precipitación</span><b id="weatherRain">-- mm</b></div>
-   <div class="weather-stat"><span>Presión</span><b id="weatherPressure">-- hPa</b></div>
-  </div>
-  <div class="hourly" id="hourly"></div>
- </section>
- <div class="side-heading">Herramientas</div>
- <nav class="nav-list">
-  <button class="nav-item" id="addPointBtn"><span class="nav-icon">＋</span>Guardar punto en el mapa</button>
-  <button class="nav-item" id="measureBtn"><span class="nav-icon">↔</span>Medir distancia</button>
-  <button class="nav-item" id="regulationBtn"><span class="nav-icon">⚖</span>Regulación pesquera</button>
- </nav>
- <div id="adminSection" hidden>
-  <div class="section-rule"></div><div class="side-heading">Administración territorial</div>
+ <div class="side-scroll">
+  <div class="side-heading">Explorar <small>MAGALLANES</small></div>
   <nav class="nav-list">
-   <button class="nav-item" id="territoryBtn"><span class="nav-icon">⌂</span>Mis territorios</button>
-   <button class="nav-item" id="accessBtn"><span class="nav-icon">◇</span>Accesos y permisos</button>
+   <button class="nav-item active" data-view="explore"><span class="nav-icon">⌖</span>Explorar aguas</button>
+   <button class="nav-item" data-view="saved"><span class="nav-icon">☆</span>Mis aguas<span class="nav-count" id="savedCount">0</span></button>
+   <button class="nav-item" data-view="points"><span class="nav-icon">⌁</span>Mis puntos<span class="nav-count" id="pointCount">0</span></button>
+   <button class="nav-item" data-view="logbook"><span class="nav-icon">▤</span>Bitácora</button>
   </nav>
+  <div class="section-rule"></div>
+  <div class="side-heading">Aguas por territorio <small>14 REGISTRADAS</small></div>
+  <div id="zones"></div>
+  <div class="section-rule"></div>
+  <div class="side-heading">Condiciones actuales <small id="weatherPlace">CENTRO DEL MAPA</small></div>
+  <section class="weather-card">
+   <div class="weather-head"><strong>METEOROLOGÍA</strong><span id="weatherUpdated">Consultando...</span></div>
+   <div class="weather-main">
+    <div class="weather-temp" id="weatherTemp">--°</div>
+    <div class="weather-desc"><b id="weatherCondition">Consultando condiciones</b><br>Sensación <span id="weatherFeels">--</span>° · Humedad <span id="weatherHumidity">--</span>%</div>
+   </div>
+   <div class="weather-grid">
+    <div class="weather-stat"><span>Viento</span><b id="weatherWind">-- km/h</b></div>
+    <div class="weather-stat"><span>Ráfagas</span><b id="weatherGust">-- km/h</b></div>
+    <div class="weather-stat"><span>Precipitación</span><b id="weatherRain">-- mm</b></div>
+    <div class="weather-stat"><span>Presión</span><b id="weatherPressure">-- hPa</b></div>
+   </div>
+   <div class="hourly" id="hourly"></div>
+   <div class="weather-note">Pronóstico de Open-Meteo · Ubicación del centro del mapa</div>
+  </section>
+  <div class="side-heading">Herramientas</div>
+  <nav class="nav-list">
+   <button class="nav-item" id="addPointBtn"><span class="nav-icon">＋</span>Guardar punto en el mapa</button>
+   <button class="nav-item" id="measureBtn"><span class="nav-icon">↔</span>Medir distancia</button>
+   <button class="nav-item" id="regulationBtn"><span class="nav-icon">⚖</span>Regulación pesquera</button>
+  </nav>
+  <div id="adminSection" hidden>
+   <div class="section-rule"></div><div class="side-heading">Administración territorial</div>
+   <nav class="nav-list">
+    <button class="nav-item" id="territoryBtn"><span class="nav-icon">⌂</span>Mis territorios</button>
+    <button class="nav-item" id="accessBtn"><span class="nav-icon">◇</span>Accesos y permisos</button>
+   </nav>
+  </div>
+  <div class="section-rule"></div>
+  <div class="side-heading">Fuentes y recursos</div>
+  <nav class="nav-list">
+   <a class="nav-item" href="https://pescarecreativa.sernapesca.cl/" target="_blank" rel="noopener"><span class="nav-icon">↗</span>Comprar licencia de pesca</a>
+   <a class="nav-item" href="https://www.sernapesca.cl/" target="_blank" rel="noopener"><span class="nav-icon">↗</span>SERNAPESCA</a>
+   <a class="nav-item" href="https://dga.mop.gob.cl/" target="_blank" rel="noopener"><span class="nav-icon">↗</span>Dirección General de Aguas</a>
+  </nav>
+  <div style="font-size:9px;color:var(--muted);line-height:1.7;padding:8px 3px">AnglerMap · Patagonia<br>Cartografía y datos territoriales en desarrollo.</div>
  </div>
- <div class="section-rule"></div><div class="side-heading">Recursos</div>
- <nav class="nav-list">
-  <a class="nav-item" href="https://pescarecreativa.sernapesca.cl/" target="_blank" rel="noopener"><span class="nav-icon">↗</span>Comprar licencia de pesca</a>
-  <a class="nav-item" href="https://www.sernapesca.cl/" target="_blank" rel="noopener"><span class="nav-icon">↗</span>SERNAPESCA</a>
-  <a class="nav-item" href="https://dga.mop.gob.cl/" target="_blank" rel="noopener"><span class="nav-icon">↗</span>Dirección General de Aguas</a>
- </nav>
- <div style="font-size:10px;color:var(--muted);line-height:1.6;padding:8px 3px">AnglerMap · Patagonia<br>Información territorial en desarrollo.</div>
-</div>
 </aside>
 <main class="map-area">
- <div id="map"></div>
+ <div id="map" aria-label="Mapa de exploración de AnglerMap"></div>
  <div class="map-controls">
   <button class="map-control active" id="satBtn">▧ Satélite</button>
   <button class="map-control" id="topoBtn">▤ Topográfico</button>
   <button class="map-control" id="osmBtn">▦ Mapa base</button>
  </div>
- <div class="map-bottom"><div class="map-chip"><b>●</b> Punto guardado</div><div class="map-chip">Cartografía de referencia</div></div>
+ <div class="map-tools">
+  <button class="map-tool" id="zoomIn" title="Acercar">＋</button>
+  <button class="map-tool" id="zoomOut" title="Alejar">−</button>
+  <button class="map-tool" id="mapLocate" title="Mi ubicación">◎</button>
+ </div>
+ <div class="map-bottom">
+  <div class="map-chip"><b>●</b> Puntos personales</div>
+  <div class="map-chip">Cartografía de referencia</div>
+ </div>
  <section class="weather-float">
   <div class="float-head">CONDICIONES EN EL MAPA <span id="floatPlace">CENTRO</span></div>
   <div class="float-weather"><div class="float-temp" id="floatTemp">--°</div><div class="float-details">Viento <b id="floatWind">--</b><br>Ráfagas <b id="floatGust">--</b></div></div>
-  <div class="float-summary" id="floatSummary">Pronóstico actualizado desde Open-Meteo</div>
+  <div class="float-summary" id="floatSummary">Pronóstico de Open-Meteo</div>
  </section>
  <section class="detail-panel" id="detailPanel">
   <div class="detail-top">
-   <div class="detail-topline"><span class="detail-kicker">Ficha de agua · Magallanes</span><button class="close-btn" id="closeDetail">×</button></div>
+   <div class="detail-topline"><span class="detail-kicker" id="detailKicker">Ficha de agua · Magallanes</span><button class="close-btn" id="closeDetail" aria-label="Cerrar">×</button></div>
    <div class="detail-title" id="detailTitle">Nombre del río</div><div class="detail-sub" id="detailZone">Zona</div>
   </div>
   <div class="detail-content">
-   <p class="detail-description" id="detailDescription"></p>
-   <div class="detail-warning" id="detailWarning"></div>
+   <div class="detail-tabs"><button class="detail-tab active" data-tab="overview">Resumen</button><button class="detail-tab" data-tab="conditions">Condiciones</button><button class="detail-tab" data-tab="access">Territorio</button></div>
+   <div id="tabOverview">
+    <p class="detail-description" id="detailDescription"></p>
+    <div class="detail-warning" id="detailWarning"></div>
+   </div>
+   <div id="tabConditions" hidden>
+    <div class="info-card"><b>Condiciones meteorológicas</b><p id="riverWeather">Consulta las condiciones del centro del mapa para esta zona.</p></div>
+    <div class="info-card"><b>Pesca y especies</b><p>Las especies, temporadas y técnicas deberán incorporarse con fuentes oficiales y validación local para cada tramo.</p></div>
+   </div>
+   <div id="tabAccess" hidden>
+    <div class="info-card"><b>Cartografía y ubicación</b><p id="detailGeometry"></p></div>
+    <div class="info-card"><b>Accesos y permisos</b><p>No se presume acceso público. Verifica propiedad, servidumbres y autorización antes de ingresar.</p></div>
+   </div>
    <div class="detail-actions"><button class="action-btn primary" id="favoriteBtn">☆ Guardar agua</button><button class="action-btn" id="detailWeatherBtn">Ver condiciones</button></div>
-   <div class="info-card"><b>Cartografía y ubicación</b><p id="detailGeometry"></p></div>
-   <div class="info-card"><b>Accesos y permisos</b><p>La aplicación no presume acceso público. Verifica propiedad, servidumbres y autorización antes de ingresar.</p></div>
   </div>
+ </section>
+ <section class="detail-panel" id="generalPanel">
+  <div class="detail-top"><div class="detail-topline"><span class="detail-kicker">ANGLERMAP · ESPACIO PERSONAL</span><button class="close-btn" id="closeGeneral">×</button></div></div>
+  <div class="panel-content" id="generalContent"></div>
  </section>
 </main>
 </div>
@@ -246,17 +313,27 @@ const zoneOrder=["Última Esperanza","Magallanes continental","Tierra del Fuego"
 const readStore=(key,fallback)=>{
  try{return JSON.parse(localStorage.getItem(key))??fallback}catch(e){return fallback}
 };
-const saveStore=(key,value)=>localStorage.setItem(key,JSON.stringify(value));
+const saveStore=(key,value)=>{
+ try{localStorage.setItem(key,JSON.stringify(value))}
+ catch(e){alert("No fue posible guardar los datos en este navegador.")}
+};
 let favorites=readStore("anglerMapFavorites",[]);
 let savedPoints=readStore("anglerMapPoints",[]);
 let selectedRiver=null,addPointMode=false,measureMode=false;
-let pointMarkers=[],measurePoints=[],measureLine=null,weatherDebounce=null;
+let pointMarkers=[],measureMarkers=[],measurePoints=[],measureLine=null,weatherDebounce=null;
 
 const map=L.map("map",{zoomControl:false}).setView([-52.1,-70.8],7);
 L.control.zoom({position:"bottomright"}).addTo(map);
-const satellite=L.tileLayer("https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}",{maxZoom:19,attribution:"Tiles © Esri"});
-const topo=L.tileLayer("https://server.arcgisonline.com/ArcGIS/rest/services/World_Topo_Map/MapServer/tile/{z}/{y}/{x}",{maxZoom:19,attribution:"Tiles © Esri"});
-const osm=L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png",{maxZoom:19,attribution:"© OpenStreetMap contributors"});
+
+const satellite=L.tileLayer("https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}",{
+ maxZoom:19,attribution:"Tiles © Esri"
+});
+const topo=L.tileLayer("https://server.arcgisonline.com/ArcGIS/rest/services/World_Topo_Map/MapServer/tile/{z}/{y}/{x}",{
+ maxZoom:19,attribution:"Tiles © Esri"
+});
+const osm=L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png",{
+ maxZoom:19,attribution:"© OpenStreetMap contributors"
+});
 satellite.addTo(map);
 
 function setBase(layer,id){
@@ -270,7 +347,8 @@ $("topoBtn").onclick=()=>setBase(topo,"topoBtn");
 $("osmBtn").onclick=()=>setBase(osm,"osmBtn");
 
 function renderZones(filter=""){
- const root=$("zones");root.innerHTML="";
+ const root=$("zones");
+ root.innerHTML="";
  zoneOrder.forEach((zone,index)=>{
   const waters=RIVERS.filter(r=>r.zone===zone&&r.name.toLowerCase().includes(filter.toLowerCase()));
   if(!waters.length)return;
@@ -278,35 +356,66 @@ function renderZones(filter=""){
   section.className="zone"+(index===0||filter?" open":"");
   const head=document.createElement("button");
   head.className="zone-head";
-  head.innerHTML=`<span class="zone-arrow">›</span><span>${zone}</span><small>${waters.length} aguas</small>`;
+  const arrow=document.createElement("span");
+  arrow.className="zone-arrow";
+  arrow.textContent="›";
+  const name=document.createElement("span");
+  name.textContent=zone;
+  const count=document.createElement("small");
+  count.textContent=waters.length+" aguas";
+  head.append(arrow,name,count);
   head.onclick=()=>section.classList.toggle("open");
-  const body=document.createElement("div");body.className="zone-body";
+  const body=document.createElement("div");
+  body.className="zone-body";
   waters.forEach(r=>{
    const item=document.createElement("div");
    item.className="water-item"+(selectedRiver?.name===r.name?" selected":"");
-   item.innerHTML=`<span class="water-dot"></span><span>${r.name}</span><small>Ficha ↗</small>`;
+   const dot=document.createElement("span");
+   dot.className="water-dot";
+   const label=document.createElement("span");
+   label.textContent=r.name;
+   const hint=document.createElement("small");
+   hint.textContent="Ficha ↗";
+   item.append(dot,label,hint);
    item.onclick=()=>openRiver(r);
    body.appendChild(item);
   });
-  section.append(head,body);root.appendChild(section);
+  section.append(head,body);
+  root.appendChild(section);
  });
 }
 
 function openRiver(r){
  selectedRiver=r;
+ $("generalPanel").classList.remove("show");
+ $("detailKicker").textContent="Ficha de agua · Magallanes";
  $("detailTitle").textContent=r.name;
  $("detailZone").textContent=r.zone+" · Región de Magallanes";
  $("detailDescription").textContent=r.desc;
- $("detailDescription").style.whiteSpace="normal";
  $("detailWarning").textContent="Ubicación y trazado geográfico pendientes de validación. No se mostrará una posición aproximada como si fuera la ubicación oficial del río.";
  $("detailGeometry").textContent="Sin geometría validada disponible en esta versión. Esta ficha no representa un punto de acceso ni garantiza la ubicación del curso de agua.";
+ $("riverWeather").textContent="La meteorología corresponde al centro actual del mapa y no necesariamente a este río. Mueve el mapa hasta el sector de interés para consultar el pronóstico local.";
+ $("favoriteBtn").textContent=favorites.includes(r.name)?"★ En Mis aguas":"☆ Guardar agua";
  $("favoriteBtn").style.display="";
  $("detailWeatherBtn").style.display="";
- $("favoriteBtn").textContent=favorites.includes(r.name)?"★ En Mis aguas":"☆ Guardar agua";
  $("detailPanel").classList.add("show");
+ document.querySelectorAll(".detail-tab").forEach((b,i)=>b.classList.toggle("active",i===0));
+ $("tabOverview").hidden=false;
+ $("tabConditions").hidden=true;
+ $("tabAccess").hidden=true;
  renderZones($("globalSearch").value);
 }
 $("closeDetail").onclick=()=>$("detailPanel").classList.remove("show");
+
+document.querySelectorAll(".detail-tab").forEach(button=>{
+ button.onclick=()=>{
+  const tab=button.dataset.tab;
+  document.querySelectorAll(".detail-tab").forEach(b=>b.classList.toggle("active",b===button));
+  $("tabOverview").hidden=tab!=="overview";
+  $("tabConditions").hidden=tab!=="conditions";
+  $("tabAccess").hidden=tab!=="access";
+ };
+});
 
 $("favoriteBtn").onclick=()=>{
  if(!selectedRiver)return;
@@ -318,46 +427,59 @@ $("favoriteBtn").onclick=()=>{
  $("savedCount").textContent=favorites.length;
 };
 
-function showPanel(title,subtitle,description,warning,geometry=""){
- $("detailPanel").classList.add("show");
- $("detailTitle").textContent=title;
- $("detailZone").textContent=subtitle;
- $("detailDescription").textContent=description;
- $("detailDescription").style.whiteSpace="pre-line";
- $("detailWarning").textContent=warning;
- $("detailGeometry").textContent=geometry;
- $("favoriteBtn").style.display="none";
- $("detailWeatherBtn").style.display="none";
+function openGeneral(title,subtitle,html){
+ $("detailPanel").classList.remove("show");
+ $("generalContent").innerHTML="";
+ const heading=document.createElement("h3");
+ heading.textContent=title;
+ const sub=document.createElement("div");
+ sub.className="panel-subtitle";
+ sub.textContent=subtitle;
+ $("generalContent").append(heading,sub);
+ const content=document.createElement("div");
+ content.innerHTML=html;
+ $("generalContent").append(content);
+ $("generalPanel").classList.add("show");
 }
+$("closeGeneral").onclick=()=>$("generalPanel").classList.remove("show");
 
 function setView(view){
  document.querySelectorAll(".nav-item[data-view]").forEach(b=>b.classList.toggle("active",b.dataset.view===view));
  $("sidebar").classList.remove("open");
+ $("detailPanel").classList.remove("show");
+ $("generalPanel").classList.remove("show");
  if(view==="explore"){
-  $("detailPanel").classList.remove("show");
   renderZones($("globalSearch").value);
+  return;
  }
  if(view==="saved"){
   const saved=RIVERS.filter(r=>favorites.includes(r.name));
-  showPanel("Mis aguas",saved.length+" aguas guardadas",
-   saved.length?saved.map(r=>"• "+r.name+" — "+r.zone).join("\n"):"Todavía no has guardado aguas. Explora la lista y utiliza «Guardar agua» para crear tu colección.",
-   "Tus favoritos se guardan localmente en este navegador. No se sincronizan entre dispositivos.",
-   "Selecciona un río en el menú para abrir su ficha.");
+  let html=saved.length?saved.map(r=>`
+   <div class="panel-row"><strong>${escapeHtml(r.name)}</strong><p>${escapeHtml(r.zone)}</p>
+   <button class="action-btn" style="margin-top:9px" onclick="openRiverByName('${escapeHtml(r.name)}')">Abrir ficha</button></div>`).join("")
+   :'<div class="empty-state">☆<br>Todavía no tienes aguas guardadas.<br>Explora los ríos y utiliza «Guardar agua» para crear tu colección.</div>';
+  openGeneral("Mis aguas",saved.length+" aguas guardadas",html);
  }
  if(view==="points"){
-  showPanel("Mis puntos",savedPoints.length+" puntos guardados",
-   savedPoints.length?savedPoints.map((p,i)=>`${i+1}. ${p.name} (${p.type})`).join("\n"):"Aún no tienes puntos guardados. Activa «Guardar punto en el mapa» y selecciona una ubicación.",
-   "Los puntos se almacenan en este navegador. Comprueba siempre que el acceso esté autorizado.",
-   "Puedes guardar coordenadas y notas de referencia.");
+  const html=savedPoints.length?savedPoints.map((p,i)=>`
+   <div class="panel-row"><strong>${escapeHtml(p.name)}</strong><p>${escapeHtml(p.type)} · ${p.lat.toFixed(5)}, ${p.lng.toFixed(5)}</p><p>${escapeHtml(p.notes||"Sin notas")}</p>
+   <button class="action-btn" style="margin-top:9px" onclick="zoomToPoint(${i})">Ver en el mapa</button>
+   <button class="action-btn" style="margin-top:9px" onclick="deletePoint(${i})">Eliminar</button></div>`).join("")
+   :'<div class="empty-state">⌁<br>Aún no tienes puntos guardados.<br>Activa «Guardar punto en el mapa» y selecciona una ubicación.</div>';
+  openGeneral("Mis puntos",savedPoints.length+" puntos guardados",html);
  }
  if(view==="logbook"){
-  showPanel("Bitácora de pesca","Registro personal",
-   "La bitácora de jornadas, capturas, especies, técnicas y fotografías será un módulo de AnglerMap. Esta versión deja preparada la navegación, pero todavía no almacena jornadas.",
-   "Módulo en desarrollo. No se almacenan capturas ni fotografías todavía.",
-   "Próxima etapa: registro de jornadas y exportación de datos.");
+  openGeneral("Bitácora","Registro personal de pesca",`
+   <div class="empty-state">▤<br>Tu bitácora será el espacio para registrar jornadas, especies, capturas, técnicas, condiciones y fotografías.<br><br><strong>Módulo en desarrollo.</strong><br>Esta versión todavía no almacena jornadas ni fotografías.</div>
+   <div class="panel-row"><strong>Próxima etapa</strong><p>Registro de salidas, datos de captura, observaciones, fotografías y exportación de jornadas.</p></div>`);
  }
 }
 document.querySelectorAll(".nav-item[data-view]").forEach(b=>b.addEventListener("click",()=>setView(b.dataset.view)));
+
+window.openRiverByName=name=>{
+ const river=RIVERS.find(r=>r.name===name);
+ if(river)openRiver(river);
+};
 $("globalSearch").addEventListener("input",e=>renderZones(e.target.value));
 $("globalSearch").addEventListener("keydown",e=>{
  if(e.key==="Enter"){
@@ -369,88 +491,153 @@ $("globalSearch").addEventListener("keydown",e=>{
 });
 
 function escapeHtml(value){
- return String(value??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+ return String(value??"").replace(/[&<>"']/g,c=>({
+  "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"
+ }[c]));
 }
+
 function renderPoints(){
- pointMarkers.forEach(m=>map.removeLayer(m));pointMarkers=[];
+ pointMarkers.forEach(marker=>map.removeLayer(marker));
+ pointMarkers=[];
  savedPoints.forEach((p,index)=>{
-  const marker=L.circleMarker([p.lat,p.lng],{radius:7,color:"#e8bd70",weight:2,fillColor:"#e8bd70",fillOpacity:.9}).addTo(map);
-  marker.bindPopup(`<b>${escapeHtml(p.name)}</b><br>${escapeHtml(p.type)}<br><small>${p.lat.toFixed(5)}, ${p.lng.toFixed(5)}</small><br>${escapeHtml(p.notes)}<br><button onclick="deletePoint(${index})">Eliminar punto</button>`);
+  const marker=L.circleMarker([p.lat,p.lng],{
+   radius:7,color:"#e8bd70",weight:2,fillColor:"#e8bd70",fillOpacity:.9
+  }).addTo(map);
+  marker.bindPopup(
+   `<b>${escapeHtml(p.name)}</b><br>${escapeHtml(p.type)}<br>`+
+   `<small>${p.lat.toFixed(5)}, ${p.lng.toFixed(5)}</small><br>`+
+   `${escapeHtml(p.notes)}<br><button onclick="deletePoint(${index})">Eliminar punto</button>`
+  );
   pointMarkers.push(marker);
  });
  $("pointCount").textContent=savedPoints.length;
 }
 window.deletePoint=index=>{
+ if(!Number.isInteger(index)||index<0||index>=savedPoints.length)return;
  savedPoints.splice(index,1);
  saveStore("anglerMapPoints",savedPoints);
  renderPoints();
+ if(document.querySelector('[data-view="points"]').classList.contains("active"))setView("points");
+};
+window.zoomToPoint=index=>{
+ const p=savedPoints[index];
+ if(!p)return;
+ $("generalPanel").classList.remove("show");
+ map.setView([p.lat,p.lng],14);
+ const marker=pointMarkers[index];
+ if(marker)marker.openPopup();
 };
 
 $("addPointBtn").onclick=()=>{
  addPointMode=!addPointMode;
+ measureMode=false;
+ $("measureBtn").classList.remove("active");
  $("addPointBtn").classList.toggle("active",addPointMode);
  alert(addPointMode?"Haz clic en el mapa para guardar un punto.":"Modo de guardar punto desactivado.");
 };
+function clearMeasure(){
+ measureMarkers.forEach(marker=>map.removeLayer(marker));
+ measureMarkers=[];
+ if(measureLine){map.removeLayer(measureLine);measureLine=null;}
+ measurePoints=[];
+}
 $("measureBtn").onclick=()=>{
- measureMode=!measureMode;measurePoints=[];
+ measureMode=!measureMode;
+ addPointMode=false;
+ $("addPointBtn").classList.remove("active");
  $("measureBtn").classList.toggle("active",measureMode);
- if(!measureMode&&measureLine){map.removeLayer(measureLine);measureLine=null;}
+ clearMeasure();
  if(measureMode)alert("Selecciona dos puntos en el mapa para medir la distancia en línea recta.");
 };
 
 map.on("click",e=>{
  if(addPointMode){
   const name=prompt("Nombre del punto:");
-  if(!name)return;
+  if(!name||!name.trim())return;
   const type=prompt("Tipo (acceso, estacionamiento, pesca, campamento, otro):","pesca")||"otro";
   const notes=prompt("Notas o referencia (opcional):","")||"";
-  savedPoints.push({name,type,notes,lat:e.latlng.lat,lng:e.latlng.lng});
-  saveStore("anglerMapPoints",savedPoints);renderPoints();
-  addPointMode=false;$("addPointBtn").classList.remove("active");
+  savedPoints.push({
+   name:name.trim(),type:type.trim(),notes:notes.trim(),
+   lat:e.latlng.lat,lng:e.latlng.lng
+  });
+  saveStore("anglerMapPoints",savedPoints);
+  renderPoints();
+  addPointMode=false;
+  $("addPointBtn").classList.remove("active");
   return;
  }
  if(measureMode){
   measurePoints.push(e.latlng);
-  L.circleMarker(e.latlng,{radius:5,color:"#55d9e8",fillOpacity:1}).addTo(map);
+  const marker=L.circleMarker(e.latlng,{
+   radius:5,color:"#55d9e8",weight:2,fillColor:"#55d9e8",fillOpacity:1
+  }).addTo(map);
+  measureMarkers.push(marker);
   if(measurePoints.length===2){
    const km=map.distance(measurePoints[0],measurePoints[1])/1000;
-   if(measureLine)map.removeLayer(measureLine);
-   measureLine=L.polyline(measurePoints,{color:"#55d9e8",weight:3,dashArray:"6 7"}).addTo(map);
+   measureLine=L.polyline(measurePoints,{
+    color:"#55d9e8",weight:3,dashArray:"6 7"
+   }).addTo(map);
    alert("Distancia en línea recta: "+km.toFixed(2)+" km");
-   measureMode=false;measurePoints=[];
+   measureMode=false;
    $("measureBtn").classList.remove("active");
   }
  }
 });
-renderZones();
-renderPoints();
-$("savedCount").textContent=favorites.length;
 
-$("locateBtn").onclick=()=>{
- if(!navigator.geolocation){alert("Tu navegador no permite geolocalización.");return;}
+function locateUser(){
+ if(!navigator.geolocation){
+  alert("Tu navegador no permite geolocalización.");
+  return;
+ }
  navigator.geolocation.getCurrentPosition(pos=>{
   const ll=[pos.coords.latitude,pos.coords.longitude];
   map.setView(ll,13);
-  L.circleMarker(ll,{radius:8,color:"#55d9e8",fillColor:"#55d9e8",fillOpacity:.8}).addTo(map).bindPopup("Tu ubicación aproximada").openPopup();
- },()=>alert("No fue posible obtener tu ubicación. Revisa los permisos del navegador."));
-};
+  L.circleMarker(ll,{
+   radius:8,color:"#55d9e8",weight:2,fillColor:"#55d9e8",fillOpacity:.85
+  }).addTo(map).bindPopup("Tu ubicación aproximada").openPopup();
+ },()=>{
+  alert("No fue posible obtener tu ubicación. Revisa los permisos del navegador.");
+ },{enableHighAccuracy:true,timeout:12000,maximumAge:60000});
+}
+$("locateBtn").onclick=locateUser;
+$("mapLocate").onclick=locateUser;
+$("zoomIn").onclick=()=>map.zoomIn();
+$("zoomOut").onclick=()=>map.zoomOut();
 $("menuBtn").onclick=()=>$("sidebar").classList.toggle("open");
+
 $("profileSelect").onchange=e=>{
  const admin=e.target.value==="admin";
  $("adminSection").hidden=!admin;
- if(admin)alert("Vista de administrador: prototipo visual. La gestión real de predios, usuarios y permisos requiere autenticación y base de datos.");
+ if(admin)alert("Perfil de administrador: prototipo visual. La gestión real de predios, usuarios y permisos requiere autenticación y base de datos.");
 };
-$("territoryBtn").onclick=()=>alert("Módulo de territorios: requiere base de datos y verificación de titularidad.");
-$("accessBtn").onclick=()=>alert("Módulo de accesos y permisos: requiere validación del administrador del territorio.");
-$("regulationBtn").onclick=()=>window.open("https://www.sernapesca.cl/","_blank","noopener");
+$("territoryBtn").onclick=()=>{
+ openGeneral("Mis territorios","Administración territorial",`
+  <div class="panel-row"><strong>Gestión de predios</strong><p>La incorporación de territorios requiere identificación del administrador y verificación de titularidad o representación.</p></div>
+  <div class="panel-row"><strong>Información territorial</strong><p>Podrás organizar cursos de agua, límites, sectores y reglas de acceso cuando exista una fuente geográfica validada.</p></div>`);
+};
+$("accessBtn").onclick=()=>{
+ openGeneral("Accesos y permisos","Control territorial",`
+  <div class="panel-row"><strong>Accesos autorizados</strong><p>Los accesos deberán contar con autorización y validación del administrador correspondiente.</p></div>
+  <div class="panel-row"><strong>Estado de permisos</strong><p>La gestión de solicitudes y permisos requiere una base de datos y autenticación de usuarios.</p></div>`);
+};
+$("regulationBtn").onclick=()=>{
+ window.open("https://www.sernapesca.cl/","_blank","noopener");
+};
 $("detailWeatherBtn").onclick=()=>{
  $("detailPanel").classList.remove("show");
  loadWeather();
 };
-</script>
 
-<script>
-/* METEOROLOGÍA: OPEN-METEO */
+renderZones();
+renderPoints();
+$("savedCount").textContent=favorites.length;
+$("pointCount").textContent=savedPoints.length;
+
+/* =========================================================
+   METEOROLOGÍA · OPEN-METEO
+   Coordenadas consultadas según el centro visible del mapa.
+   ========================================================= */
+
 function weatherText(code){
  if(code===0)return "Despejado";
  if([1,2].includes(code))return "Parcialmente nublado";
@@ -464,29 +651,51 @@ function weatherText(code){
  if([95,96,99].includes(code))return "Tormenta";
  return "Condiciones variables";
 }
+
 function directionText(deg){
  if(deg===undefined||deg===null)return "--";
  return ["N","NE","E","SE","S","SO","O","NO"][Math.round(deg/45)%8];
 }
-function formatHour(value){return value?value.slice(11,16):"--";}
+
+function formatHour(value){
+ return value?value.slice(11,16):"--";
+}
 
 async function loadWeather(lat=map.getCenter().lat,lon=map.getCenter().lng){
- $("weatherUpdated").textContent="Actualizando";
+ $("weatherUpdated").textContent="Actualizando...";
  const params=new URLSearchParams({
-  latitude:lat,
-  longitude:lon,
-  current:"temperature_2m,relative_humidity_2m,apparent_temperature,precipitation,weather_code,cloud_cover,pressure_msl,wind_speed_10m,wind_direction_10m,wind_gusts_10m",
-  hourly:"temperature_2m,relative_humidity_2m,apparent_temperature,precipitation_probability,precipitation,weather_code,cloud_cover,wind_speed_10m,wind_direction_10m,wind_gusts_10m,pressure_msl",
-  daily:"temperature_2m_max,temperature_2m_min,precipitation_sum,precipitation_probability_max,wind_speed_10m_max,wind_gusts_10m_max,weather_code",
-  forecast_days:3,
+  latitude:lat.toFixed(4),
+  longitude:lon.toFixed(4),
+  current:[
+   "temperature_2m","relative_humidity_2m","apparent_temperature",
+   "precipitation","weather_code","cloud_cover","pressure_msl",
+   "wind_speed_10m","wind_direction_10m","wind_gusts_10m"
+  ].join(","),
+  hourly:[
+   "temperature_2m","relative_humidity_2m","apparent_temperature",
+   "precipitation_probability","precipitation","weather_code",
+   "cloud_cover","wind_speed_10m","wind_direction_10m",
+   "wind_gusts_10m","pressure_msl"
+  ].join(","),
+  daily:[
+   "temperature_2m_max","temperature_2m_min","precipitation_sum",
+   "precipitation_probability_max","wind_speed_10m_max",
+   "wind_gusts_10m_max","weather_code"
+  ].join(","),
+  forecast_days:"3",
   timezone:"America/Santiago",
   wind_speed_unit:"kmh"
  });
+
  try{
   const response=await fetch("https://api.open-meteo.com/v1/forecast?"+params.toString());
-  if(!response.ok)throw new Error("No fue posible consultar el pronóstico");
+  if(!response.ok)throw new Error("Error HTTP "+response.status);
   const data=await response.json();
-  const c=data.current,h=data.hourly,d=data.daily;
+  if(!data.current||!data.hourly||!data.daily)throw new Error("Respuesta meteorológica incompleta");
+
+  const c=data.current;
+  const h=data.hourly;
+  const d=data.daily;
 
   $("weatherTemp").textContent=Math.round(c.temperature_2m)+"°";
   $("weatherCondition").textContent=weatherText(c.weather_code);
@@ -500,37 +709,52 @@ async function loadWeather(lat=map.getCenter().lat,lon=map.getCenter().lng){
   $("floatTemp").textContent=Math.round(c.temperature_2m)+"°";
   $("floatWind").textContent=Math.round(c.wind_speed_10m)+" km/h";
   $("floatGust").textContent=Math.round(c.wind_gusts_10m)+" km/h";
-  $("floatSummary").textContent=
-   "Dirección "+directionText(c.wind_direction_10m)+
-   " · Humedad "+Math.round(c.relative_humidity_2m)+"%"+
-   " · Nubes "+Math.round(c.cloud_cover)+"%";
-
-  $("weatherUpdated").textContent="Ahora";
-  $("weatherPlace").textContent="CENTRO DEL MAPA";
   $("floatPlace").textContent="CENTRO DEL MAPA";
+  $("weatherPlace").textContent="CENTRO DEL MAPA";
 
-  const root=$("hourly");root.innerHTML="";
-  const now=new Date();
-  let first=h.time.findIndex(t=>new Date(t)>=now);
+  const root=$("hourly");
+  root.innerHTML="";
+
+  /* Se compara la hora local entregada por Open-Meteo,
+     evitando desfases entre el reloj del navegador y la API. */
+  let first=h.time.findIndex(t=>t>=c.time);
   if(first<0)first=0;
+
   for(let i=first;i<h.time.length&&i<first+24;i+=4){
    const card=document.createElement("div");
    card.className="hour";
-   card.innerHTML=`
-    <small>${formatHour(h.time[i])}</small>
-    <b>${Math.round(h.temperature_2m[i])}°</b>
-    <span>${Math.round(h.wind_speed_10m[i])} km/h</span>
-    <small>${Math.round(h.precipitation_probability[i]??0)}% lluvia</small>`;
+   const time=document.createElement("small");
+   time.textContent=formatHour(h.time[i]);
+   const temp=document.createElement("b");
+   temp.textContent=Math.round(h.temperature_2m[i])+"°";
+   const wind=document.createElement("span");
+   wind.textContent=Math.round(h.wind_speed_10m[i])+" km/h";
+   const rain=document.createElement("small");
+   rain.textContent=Math.round(h.precipitation_probability[i]??0)+"% lluvia";
+   card.append(time,temp,wind,rain);
    root.appendChild(card);
   }
 
   if(d.time.length){
    $("floatSummary").textContent=
     "Hoy "+Math.round(d.temperature_2m_min[0])+"° / "+
-    Math.round(d.temperature_2m_max[0])+"°"+
-    " · Viento "+Math.round(c.wind_speed_10m)+" km/h"+
-    " · "+directionText(c.wind_direction_10m);
+    Math.round(d.temperature_2m_max[0])+"° · Viento "+
+    Math.round(c.wind_speed_10m)+" km/h · "+
+    directionText(c.wind_direction_10m);
   }
+
+  $("weatherUpdated").textContent="Ahora";
+  if(selectedRiver){
+   $("riverWeather").textContent=
+    "Condiciones del centro del mapa: "+
+    Math.round(c.temperature_2m)+"°C, "+
+    weatherText(c.weather_code)+", viento "+
+    Math.round(c.wind_speed_10m)+" km/h desde "+
+    directionText(c.wind_direction_10m)+
+    ", ráfagas de "+Math.round(c.wind_gusts_10m)+" km/h. "+
+    "Estos datos no representan necesariamente el punto exacto del río.";
+  }
+
  }catch(error){
   $("weatherUpdated").textContent="Sin conexión";
   $("weatherCondition").textContent="No se pudo cargar el pronóstico";
@@ -539,24 +763,43 @@ async function loadWeather(lat=map.getCenter().lat,lon=map.getCenter().lng){
  }
 }
 
-/* Actualización al mover el mapa */
+/* Actualizar meteorología cuando cambia el centro del mapa. */
 map.on("moveend",()=>{
  clearTimeout(weatherDebounce);
- weatherDebounce=setTimeout(()=>loadWeather(),1000);
+ weatherDebounce=setTimeout(()=>{
+  loadWeather();
+ },1200);
 });
 
-/* Primera consulta y actualización cada 30 minutos */
+/* Primera consulta meteorológica. */
 loadWeather();
-setInterval(()=>loadWeather(),30*60*1000);
 
-/* Escala cartográfica */
-L.control.scale({metric:true,imperial:false,position:"bottomleft"}).addTo(map);
+/* Actualización automática cada 30 minutos. */
+setInterval(()=>{
+ loadWeather();
+},30*60*1000);
 
-/* Cierre de navegación móvil */
+/* Escala cartográfica. */
+L.control.scale({
+ metric:true,
+ imperial:false,
+ position:"bottomleft"
+}).addTo(map);
+
+/* Cerrar menú móvil al seleccionar el mapa. */
 map.on("click",()=>{
- if(window.innerWidth<=850){
+ if(window.innerWidth<=900){
   $("sidebar").classList.remove("open");
  }
+});
+
+/* Corregir dimensiones del mapa después de cargar la interfaz. */
+setTimeout(()=>{
+ map.invalidateSize();
+},300);
+
+window.addEventListener("resize",()=>{
+ map.invalidateSize();
 });
 </script>
 </body>
