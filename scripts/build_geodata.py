@@ -6,6 +6,8 @@ import time
 import unicodedata
 from datetime import datetime, timezone
 from pathlib import Path
+from tempfile import TemporaryDirectory
+from collections import Counter
 
 import requests
 from shapely.geometry import (
@@ -13,7 +15,9 @@ from shapely.geometry import (
     mapping,
     LineString,
     MultiLineString,
-    box
+    Polygon,
+    MultiPolygon,
+    GeometryCollection
 )
 from shapely.ops import unary_union
 
@@ -22,26 +26,43 @@ ROOT = Path(__file__).resolve().parents[1]
 DATA = ROOT / "data" / "magallanes"
 META = ROOT / "data" / "metadata"
 
-DATA.mkdir(parents=True, exist_ok=True)
-META.mkdir(parents=True, exist_ok=True)
-
 BASE = "https://rest-sit.mop.gob.cl/arcgis/rest/services"
 
-URL_CAUCE = BASE + "/SNIA/SNIA_CAUCES/MapServer/0"
-URL_COMUNA = BASE + "/MAPA_BASE/LIMITES/MapServer/2"
-URL_PROVINCIA = BASE + "/MAPA_BASE/LIMITES/MapServer/1"
-URL_LAGOS = BASE + "/MAPA_BASE/RED_HIDROGRAFICA/MapServer/17"
+URL_COMMUNES = BASE + "/MAPA_BASE/LIMITES/MapServer/2"
+URL_PROVINCES = BASE + "/MAPA_BASE/LIMITES/MapServer/1"
 
-# Cobertura continental utilizada en esta primera etapa.
-# La comuna Antártica queda pendiente de una consulta geográfica específica.
-REGION_BOUNDS = box(-76.5, -56.2, -65.5, -48.0)
+URL_IGM = BASE + "/MAPA_BASE/IGM50/MapServer"
+URL_IGM_NAMES = URL_IGM + "/2"
+URL_IGM_RIVERS = URL_IGM + "/15"
+URL_IGM_WATERS = URL_IGM + "/18"
 
-BATCH_SIZE = 10
+URL_MOP_HYDRO = BASE + "/MAPA_BASE/RED_HIDROGRAFICA/MapServer"
+URL_MOP_RIVERS = URL_MOP_HYDRO + "/16"
+URL_MOP_LAKES = URL_MOP_HYDRO + "/17"
+
+URL_DGA_STATIONS = (
+    BASE + "/DGA/Red_Hidrometrica/MapServer/0"
+)
+
+TARGET_COMMUNES = {
+    "punta arenas": "Punta Arenas",
+    "laguna blanca": "Laguna Blanca",
+    "rio verde": "Río Verde",
+    "san gregorio": "San Gregorio",
+    "natales": "Natales",
+    "torres del paine": "Torres del Paine",
+    "porvenir": "Porvenir",
+    "primavera": "Primavera",
+    "timaukel": "Timaukel",
+    "cabo de hornos": "Cabo de Hornos"
+}
+
+BATCH_SIZE = 20
 MAX_RETRIES = 4
 
 SESSION = requests.Session()
 SESSION.headers.update({
-    "User-Agent": "AnglerMap-Geodata/1.1"
+    "User-Agent": "AnglerMap-Geodata/2.0"
 })
 
 
@@ -53,21 +74,24 @@ def normalize(value):
     value = str(value or "").strip().lower()
     value = unicodedata.normalize("NFD", value)
     value = "".join(
-        char for char in value
-        if unicodedata.category(char) != "Mn"
+        c for c in value
+        if unicodedata.category(c) != "Mn"
     )
     return re.sub(r"\s+", " ", value)
 
 
-def arcgis_request(url, params):
+def request_json(url, params=None):
+    params = dict(params or {})
+    params.setdefault("f", "json")
+
     last_error = None
 
     for attempt in range(MAX_RETRIES):
         try:
             response = SESSION.get(
-                url + "/query",
+                url,
                 params=params,
-                timeout=(20, 120)
+                timeout=(25, 150)
             )
 
             if response.status_code == 429 or response.status_code >= 500:
@@ -79,21 +103,16 @@ def arcgis_request(url, params):
             data = response.json()
 
             if "error" in data:
-                error = data["error"]
                 raise RuntimeError(
-                    "ArcGIS "
-                    + str(error.get("code"))
-                    + ": "
-                    + json.dumps(error, ensure_ascii=False)
+                    json.dumps(
+                        data["error"],
+                        ensure_ascii=False
+                    )
                 )
 
             return data
 
-        except (
-            requests.RequestException,
-            ValueError,
-            RuntimeError
-        ) as error:
+        except Exception as error:
             last_error = error
 
             if attempt < MAX_RETRIES - 1:
@@ -101,164 +120,67 @@ def arcgis_request(url, params):
                 log(
                     "Consulta fallida. Reintento "
                     + str(attempt + 1)
-                    + "/"
-                    + str(MAX_RETRIES - 1)
                     + " en "
                     + str(wait)
-                    + " segundos. Motivo: "
+                    + " segundos: "
                     + str(error)
                 )
                 time.sleep(wait)
 
     raise RuntimeError(
-        "No fue posible consultar ArcGIS después de "
-        + str(MAX_RETRIES)
-        + " intentos: "
+        "Falló la consulta: "
+        + url
+        + " · "
         + str(last_error)
     )
 
 
-def fetch_batch(layer_url, object_ids):
-    """
-    Descarga un grupo pequeño de IDs.
-    Si el servidor sigue fallando, divide el grupo
-    en dos y vuelve a intentarlo.
-    """
+def layer_metadata(layer_url):
+    data = request_json(layer_url)
+    fields = data.get("fields", [])
 
-    if not object_ids:
-        return []
+    if not fields:
+        raise RuntimeError(
+            "La capa no informa campos consultables: "
+            + layer_url
+        )
 
-    params = {
-        "objectIds": ",".join(map(str, object_ids)),
-        "outFields": "*",
-        "returnGeometry": "true",
-        "outSR": "4326",
-        "f": "json"
+    oid = data.get("objectIdField")
+
+    if not oid:
+        for field in fields:
+            if field.get("type") == "esriFieldTypeOID":
+                oid = field.get("name")
+                break
+
+    if not oid:
+        raise RuntimeError(
+            "No se identificó OBJECTID en "
+            + layer_url
+        )
+
+    return data, oid, [
+        field.get("name")
+        for field in fields
+        if field.get("name")
+    ]
+
+
+def find_field(fields, candidates):
+    lookup = {
+        normalize(field): field
+        for field in fields
     }
 
-    try:
-        data = arcgis_request(layer_url, params)
+    for candidate in candidates:
+        found = lookup.get(normalize(candidate))
+        if found:
+            return found
 
-        if data.get("exceededTransferLimit"):
-            raise RuntimeError(
-                "ArcGIS indicó exceededTransferLimit"
-            )
-
-        features = data.get("features", [])
-
-        received_ids = {
-            str(
-                feature.get("attributes", {}).get("OBJECTID")
-            )
-            for feature in features
-        }
-
-        expected_ids = set(map(str, object_ids))
-
-        missing_ids = expected_ids - received_ids
-
-        if missing_ids:
-            raise RuntimeError(
-                "ArcGIS no devolvió todos los registros. "
-                "IDs pendientes: "
-                + ", ".join(sorted(missing_ids))
-            )
-
-        return features
-
-    except Exception as error:
-        if len(object_ids) == 1:
-            raise RuntimeError(
-                "No se pudo descargar el registro "
-                + str(object_ids[0])
-                + " desde "
-                + layer_url
-                + ". Motivo: "
-                + str(error)
-            )
-
-        middle = len(object_ids) // 2
-
-        first_half = object_ids[:middle]
-        second_half = object_ids[middle:]
-
-        log(
-            "Dividiendo grupo de "
-            + str(len(object_ids))
-            + " registros por error del servidor."
-        )
-
-        first_features = fetch_batch(
-            layer_url,
-            first_half
-        )
-
-        second_features = fetch_batch(
-            layer_url,
-            second_half
-        )
-
-        return first_features + second_features
+    return None
 
 
-def fetch_features(layer_url, where="1=1"):
-    log("Consultando capa: " + layer_url)
-    log("Filtro: " + where)
-
-    ids_data = arcgis_request(layer_url, {
-        "where": where,
-        "returnIdsOnly": "true",
-        "f": "json"
-    })
-
-    object_ids = ids_data.get("objectIds") or []
-
-    if not object_ids:
-        log("No se encontraron registros.")
-        return []
-
-    object_ids = sorted(set(object_ids))
-
-    log(
-        "Registros identificados: "
-        + str(len(object_ids))
-    )
-
-    features = []
-
-    for start in range(0, len(object_ids), BATCH_SIZE):
-        batch = object_ids[start:start + BATCH_SIZE]
-
-        batch_features = fetch_batch(
-            layer_url,
-            batch
-        )
-
-        features.extend(batch_features)
-
-        log(
-            "Descargados "
-            + str(len(features))
-            + " de "
-            + str(len(object_ids))
-        )
-
-        time.sleep(0.15)
-
-    if len(features) != len(object_ids):
-        raise RuntimeError(
-            "Descarga incompleta en "
-            + layer_url
-            + ". Esperados: "
-            + str(len(object_ids))
-            + ", recibidos: "
-            + str(len(features))
-        )
-
-    return features
-
-
-def esri_geometry_to_shape(geometry):
+def esri_to_shape(geometry):
     if not geometry:
         return None
 
@@ -269,56 +191,184 @@ def esri_geometry_to_shape(geometry):
             return None
 
         if len(paths) == 1:
-            geom = LineString(paths[0])
+            result = LineString(paths[0])
         else:
-            geom = MultiLineString(paths)
+            result = MultiLineString(paths)
 
     elif "rings" in geometry:
-        geom = shape({
-            "type": "Polygon",
-            "coordinates": geometry["rings"]
-        })
+        rings = geometry["rings"]
 
-        if not geom.is_valid:
-            geom = geom.buffer(0)
+        if not rings:
+            return None
+
+        result = Polygon(
+            rings[0],
+            rings[1:]
+        )
+
+        if not result.is_valid:
+            result = result.buffer(0)
+
+    elif "x" in geometry and "y" in geometry:
+        from shapely.geometry import Point
+        result = Point(
+            geometry["x"],
+            geometry["y"]
+        )
 
     else:
         return None
 
-    if geom.is_empty:
+    if result.is_empty:
         return None
 
-    return geom
+    if not result.is_valid:
+        result = result.buffer(0)
+
+    return result
 
 
-def feature_records(features):
-    result = []
+def fetch_ids(layer_url, where="1=1", geometry=None):
+    params = {
+        "where": where,
+        "returnIdsOnly": "true"
+    }
+
+    if geometry is not None:
+        params.update({
+            "geometry": json.dumps(geometry),
+            "geometryType": "esriGeometryPolygon",
+            "inSR": "4326",
+            "spatialRel": "esriSpatialRelIntersects"
+        })
+
+    data = request_json(
+        layer_url + "/query",
+        params
+    )
+
+    return data.get("objectIds") or []
+
+
+def fetch_batch(layer_url, ids, oid_field):
+    if not ids:
+        return []
+
+    data = request_json(
+        layer_url + "/query",
+        {
+            "objectIds": ",".join(map(str, ids)),
+            "outFields": "*",
+            "returnGeometry": "true",
+            "outSR": "4326"
+        }
+    )
+
+    if data.get("exceededTransferLimit"):
+        raise RuntimeError(
+            "ArcGIS excedió el límite de transferencia."
+        )
+
+    features = data.get("features", [])
+
+    received = {
+        str(
+            feature.get("attributes", {}).get(oid_field)
+        )
+        for feature in features
+    }
+
+    missing = set(map(str, ids)) - received
+
+    if missing:
+        raise RuntimeError(
+            "Faltan registros en la descarga: "
+            + ", ".join(sorted(missing))
+        )
+
+    return features
+
+
+def fetch_features(layer_url, where="1=1", geometry=None):
+    metadata, oid_field, fields = layer_metadata(layer_url)
+
+    ids = fetch_ids(
+        layer_url,
+        where,
+        geometry
+    )
+
+    ids = sorted(set(ids))
+
+    log(
+        layer_url
+        + " · registros identificados: "
+        + str(len(ids))
+    )
+
+    output = []
+
+    for start in range(0, len(ids), BATCH_SIZE):
+        batch = ids[start:start + BATCH_SIZE]
+
+        output.extend(
+            fetch_batch(
+                layer_url,
+                batch,
+                oid_field
+            )
+        )
+
+        log(
+            "Descargados "
+            + str(len(output))
+            + " / "
+            + str(len(ids))
+        )
+
+        time.sleep(0.15)
+
+    if len(output) != len(ids):
+        raise RuntimeError(
+            "Descarga incompleta: "
+            + layer_url
+        )
+
+    return output, fields, metadata
+
+
+def records_from_features(features):
+    output = []
 
     for feature in features:
-        attributes = feature.get("attributes") or {}
-
-        geometry = esri_geometry_to_shape(
+        geometry = esri_to_shape(
             feature.get("geometry")
         )
 
         if geometry is None or geometry.is_empty:
             continue
 
-        result.append({
-            "properties": attributes,
-            "geometry": geometry
+        output.append({
+            "geometry": geometry,
+            "properties": feature.get("attributes") or {}
         })
 
-    return result
+    return output
 
 
-def save_geojson(filename, features):
+def geojson_feature(geometry, properties):
+    return {
+        "type": "Feature",
+        "geometry": mapping(geometry),
+        "properties": properties
+    }
+
+
+def write_geojson(path, features):
     document = {
         "type": "FeatureCollection",
         "features": features
     }
-
-    path = DATA / filename
 
     with path.open("w", encoding="utf-8") as file:
         json.dump(
@@ -328,66 +378,12 @@ def save_geojson(filename, features):
             separators=(",", ":")
         )
 
-    log(
-        "Guardado "
-        + str(path.relative_to(ROOT))
-        + " · "
-        + str(len(features))
-        + " elementos"
-    )
-
-
-def bounds_filter(records):
-    return [
-        record
-        for record in records
-        if record["geometry"].intersects(REGION_BOUNDS)
-    ]
-
-
-def build_admin_layer(url, name_field, output):
-    records = feature_records(
-        fetch_features(url)
-    )
-
-    records = bounds_filter(records)
-
-    features = []
-
-    for record in records:
-        geom = record["geometry"].simplify(
-            0.00002,
-            preserve_topology=True
-        )
-
-        props = record["properties"]
-
-        features.append({
-            "type": "Feature",
-            "geometry": mapping(geom),
-            "properties": {
-                "name": props.get(name_field),
-                "official_id": props.get("OBJECTID"),
-                "source": "MOP · Límites administrativos"
-            }
-        })
-
-    save_geojson(output, features)
-
-    return records
-
-
-def water_type_from_river(props):
-    value = normalize(props.get("TIPO"))
-
-    if "estero" in value or "quebrada" in value:
-        return "stream"
-
-    return "river"
-
 
 def representative_point(geometry):
-    if isinstance(geometry, (LineString, MultiLineString)):
+    if isinstance(
+        geometry,
+        (LineString, MultiLineString)
+    ):
         point = geometry.interpolate(
             geometry.length / 2
         )
@@ -400,307 +396,637 @@ def representative_point(geometry):
     }
 
 
-def build_water_records(records, source, water_type, communes):
-    grouped = {}
+def get_communes():
+    features, fields, metadata = fetch_features(
+        URL_COMMUNES
+    )
 
-    for record in records:
-        props = record["properties"]
-        geom = record["geometry"]
+    name_field = find_field(
+        fields,
+        [
+            "NOM_COM",
+            "COMUNA",
+            "NOMBRE_COMUNA",
+            "NOM_COMUNA"
+        ]
+    )
 
-        primary_name = (
-            props.get("NOMBRE")
-            or props.get("NOMBRESS")
-            or ""
-        ).strip()
-
-        alternate_name = (
-            props.get("NOMBRESS")
-            or props.get("NOMBRE")
-            or ""
-        ).strip()
-
-        official_id = props.get("OBJECTID")
-
-        name = primary_name or "Cauce sin nombre"
-
-        if source == "DGA/SNIA":
-            kind = water_type_from_river(props)
-            basin = str(props.get("CODCUEN") or "")
-            subtype = str(props.get("TIPO") or "")
-        else:
-            kind = water_type
-            basin = ""
-            subtype = str(props.get("TIPO") or "")
-
-        group_key = (
-            normalize(name),
-            basin,
-            kind
+    if not name_field:
+        raise RuntimeError(
+            "No se encontró el campo de nombre comunal "
+            "en la capa MOP."
         )
 
-        if name == "Cauce sin nombre":
-            group_key += (str(official_id),)
+    records = records_from_features(features)
 
-        if group_key not in grouped:
-            grouped[group_key] = {
-                "name": name,
-                "alternates": set(),
-                "geometries": [],
-                "official_ids": [],
-                "basin": basin,
-                "kind": kind,
-                "subtype": subtype
-            }
+    selected = {}
+    all_names = []
 
-        group = grouped[group_key]
+    for record in records:
+        name = record["properties"].get(name_field)
+        normalized = normalize(name)
 
-        if alternate_name and alternate_name != name:
-            group["alternates"].add(alternate_name)
+        all_names.append(normalized)
 
-        group["geometries"].append(geom)
-        group["official_ids"].append(official_id)
+        if normalized in TARGET_COMMUNES:
+            selected[TARGET_COMMUNES[normalized]] = record
+
+    missing = sorted(
+        set(TARGET_COMMUNES.values()) - set(selected.keys())
+    )
+
+    if missing:
+        raise RuntimeError(
+            "La fuente MOP no permitió verificar todas "
+            "las comunas objetivo. Faltan: "
+            + ", ".join(missing)
+            + ". No se publicarán datos parciales."
+        )
 
     output = []
 
-    for key, group in grouped.items():
-        geometry = unary_union(group["geometries"])
+    for display_name, record in selected.items():
+        geometry = record["geometry"]
 
-        if geometry.is_empty:
-            continue
+        if geometry.is_empty or not geometry.is_valid:
+            raise RuntimeError(
+                "Geometría comunal inválida: "
+                + display_name
+            )
 
-        geometry = geometry.simplify(
-            0.000015,
-            preserve_topology=True
-        )
+        props = record["properties"]
 
-        if geometry.is_empty:
-            continue
-
-        water_communes = []
-
-        for commune in communes:
-            if geometry.intersects(commune["geometry"]):
-                commune_name = (
-                    commune["properties"].get("NOM_COM")
-                )
-
-                if commune_name:
-                    water_communes.append(commune_name)
-
-        water_communes = sorted(set(water_communes))
-
-        source_ids = sorted(
-            set(
-                str(value)
-                for value in group["official_ids"]
-                if value is not None
+        output.append(
+            geojson_feature(
+                geometry,
+                {
+                    "name": display_name,
+                    "official_id": props.get("OBJECTID"),
+                    "commune_code": props.get("COD_COM"),
+                    "province_code": props.get("CODMOP_PROV"),
+                    "source": "MOP · Límites administrativos"
+                }
             )
         )
 
-        stable_key = (
-            source
+    return output, records, metadata
+
+
+def get_provinces(commune_records):
+    features, fields, metadata = fetch_features(
+        URL_PROVINCES
+    )
+
+    records = records_from_features(features)
+
+    commune_union = unary_union([
+        record["geometry"]
+        for record in commune_records
+    ])
+
+    name_field = find_field(
+        fields,
+        [
+            "NOM_PROV",
+            "PROVINCIA",
+            "NOMBRE_PROVINCIA"
+        ]
+    )
+
+    output = []
+
+    for record in records:
+        geometry = record["geometry"]
+
+        if not geometry.intersects(commune_union):
+            continue
+
+        clipped = geometry.intersection(commune_union)
+
+        if clipped.is_empty:
+            continue
+
+        props = record["properties"]
+
+        output.append(
+            geojson_feature(
+                clipped,
+                {
+                    "name": (
+                        props.get(name_field)
+                        if name_field else "Provincia"
+                    ),
+                    "official_id": props.get("OBJECTID"),
+                    "source": "MOP · Límites administrativos"
+                }
+            )
+        )
+
+    if not output:
+        raise RuntimeError(
+            "No se pudieron construir las provincias."
+        )
+
+    return output, metadata
+
+
+def query_water_layer(
+    layer_url,
+    source_name,
+    water_type,
+    commune_union
+):
+    geometry = json.loads(
+        json.dumps(mapping(commune_union))
+    )
+
+    features, fields, metadata = fetch_features(
+        layer_url,
+        geometry=geometry
+    )
+
+    name_field = find_field(
+        fields,
+        [
+            "NOMBRE",
+            "NOMBRESS",
+            "NOM_RIO",
+            "NOM_CUERPO",
+            "TOPONIMO",
+            "TEXTO",
+            "NOM"
+        ]
+    )
+
+    type_field = find_field(
+        fields,
+        [
+            "TIPO",
+            "TIPO_ENT",
+            "CLASE",
+            "CATEGORIA"
+        ]
+    )
+
+    records = records_from_features(features)
+    output = []
+
+    for record in records:
+        geom = record["geometry"]
+
+        if not geom.intersects(commune_union):
+            continue
+
+        clipped = geom.intersection(commune_union)
+
+        if clipped.is_empty:
+            continue
+
+        props = record["properties"]
+
+        name = (
+            props.get(name_field)
+            if name_field else None
+        )
+
+        if not name:
+            name = "Cuerpo de agua sin nombre"
+
+        subtype = (
+            props.get(type_field)
+            if type_field else None
+        )
+
+        official_id = props.get("OBJECTID")
+
+        stable = (
+            source_name
             + "|"
-            + "|".join(map(str, key))
+            + str(official_id)
+            + "|"
+            + normalize(name)
         )
 
         water_id = hashlib.sha1(
-            stable_key.encode("utf-8")
+            stable.encode("utf-8")
         ).hexdigest()[:16]
 
-        output.append({
-            "type": "Feature",
-            "geometry": mapping(geometry),
-            "properties": {
-                "waterbody_id": water_id,
-                "name": group["name"],
-                "alternate_names": sorted(
-                    group["alternates"]
-                ),
-                "water_type": group["kind"],
-                "subtype": group["subtype"],
-                "official_source": source,
-                "official_ids": source_ids,
-                "basin_code": group["basin"],
-                "communes": water_communes,
-                "representative_point": representative_point(
-                    geometry
-                ),
-                "geometry_status": "official_geometry",
-                "source_confidence": "official"
-            }
-        })
+        communes = []
 
-    return output
+        for commune in COMMUNE_GEOMETRIES:
+            if clipped.intersects(commune["geometry"]):
+                communes.append(commune["name"])
+
+        output.append(
+            geojson_feature(
+                clipped,
+                {
+                    "waterbody_id": water_id,
+                    "name": str(name).strip(),
+                    "water_type": water_type,
+                    "subtype": subtype,
+                    "official_source": source_name,
+                    "official_id": official_id,
+                    "communes": sorted(set(communes)),
+                    "representative_point": representative_point(
+                        clipped
+                    ),
+                    "geometry_status": "official_geometry",
+                    "source_confidence": "official"
+                }
+            )
+        )
+
+    return output, metadata
 
 
-def main():
-    log("Inicio de construcción cartográfica")
-
-    # 1. Comunas
-    log("Descargando límites comunales")
-
-    communes = feature_records(
-        fetch_features(URL_COMUNA)
+def get_dga_stations(commune_union):
+    geometry = json.loads(
+        json.dumps(mapping(commune_union))
     )
 
-    communes = bounds_filter(communes)
+    features, fields, metadata = fetch_features(
+        URL_DGA_STATIONS,
+        geometry=geometry
+    )
 
-    commune_features = []
+    records = records_from_features(features)
+    output = []
 
-    for record in communes:
+    for record in records:
+        geom = record["geometry"]
+
+        if not geom.intersects(commune_union):
+            continue
+
         props = record["properties"]
 
-        geom = record["geometry"].simplify(
-            0.00002,
-            preserve_topology=True
+        output.append(
+            geojson_feature(
+                geom,
+                {
+                    "official_source": "DGA · Red Hidrométrica Nacional",
+                    "official_id": props.get("OBJECTID"),
+                    "attributes": props
+                }
+            )
         )
 
-        commune_features.append({
-            "type": "Feature",
-            "geometry": mapping(geom),
-            "properties": {
-                "name": props.get("NOM_COM"),
-                "commune_code": props.get("COD_COM"),
-                "province_code": props.get("CODMOP_PROV"),
-                "province_cine": props.get("CINE_PROV"),
-                "official_id": props.get("OBJECTID"),
-                "source": "MOP · Límites administrativos"
-            }
-        })
+    return output, metadata
 
-    # 2. Provincias
-    log("Descargando límites provinciales")
 
-    provinces = build_admin_layer(
-        URL_PROVINCIA,
-        "NOM_PROV",
-        "provinces.geojson"
-    )
-
-    save_geojson(
-        "communes.geojson",
-        commune_features
-    )
-
-    # 3. Ríos, esteros y quebradas
-    log("Descargando cauces DGA/SNIA")
-
-    river_records = feature_records(
-        fetch_features(
-            URL_CAUCE,
-            "REGION = 12"
-        )
-    )
-
-    river_records = bounds_filter(river_records)
-
-    river_features = build_water_records(
-        river_records,
-        "DGA/SNIA",
-        "river",
-        communes
-    )
-
-    # 4. Lagos y sistemas lacustres
-    log("Descargando sistemas lacustres MOP")
-
-    lake_records = feature_records(
-        fetch_features(
-            URL_LAGOS,
-            "COD_REG = '12'"
-        )
-    )
-
-    lake_records = bounds_filter(lake_records)
-
-    lake_features = build_water_records(
-        lake_records,
-        "MOP/RED_HIDROGRAFICA",
-        "lake",
-        communes
-    )
-
-    all_waters = river_features + lake_features
-
-    all_waters.sort(
-        key=lambda item: (
-            item["properties"]["name"].lower(),
-            item["properties"]["water_type"]
-        )
-    )
-
-    # 5. Archivos finales
-    save_geojson(
-        "waterbodies.geojson",
-        all_waters
-    )
-
-    metadata = {
-        "application": "AnglerMap",
-        "region": "Magallanes y de la Antártica Chilena",
-        "generated_at": datetime.now(
-            timezone.utc
-        ).isoformat(),
-        "sources": [
-            {
-                "name": "DGA / SNIA · Cauces de Chile",
-                "url": URL_CAUCE,
-                "use": "Ríos, esteros y quebradas",
-                "filter": "REGION = 12"
-            },
-            {
-                "name": "MOP · Red Hidrográfica",
-                "url": URL_LAGOS,
-                "use": "Lagos, lagunas y sistemas lacustres",
-                "filter": "COD_REG = '12'"
-            },
-            {
-                "name": "MOP · Límites administrativos",
-                "url": URL_COMUNA,
-                "use": "Geometrías comunales"
-            },
-            {
-                "name": "MOP · Límites administrativos",
-                "url": URL_PROVINCIA,
-                "use": "Geometrías provinciales"
-            }
-        ],
-        "counts": {
-            "communes": len(commune_features),
-            "provinces": len(provinces),
-            "rivers_and_streams": len(river_features),
-            "lakes_and_lagoons": len(lake_features),
-            "waterbodies": len(all_waters)
-        },
-        "limitations": [
-            "La cobertura depende de las capas oficiales consultadas.",
-            "La comuna Antártica requiere una consulta geográfica específica y no se considera cubierta por el recorte continental actual.",
-            "La geometría oficial no acredita acceso público ni permiso de pesca.",
-            "Los cauces sin nombre se mantienen identificados por su ID oficial.",
-            "La agrupación de tramos por nombre y cuenca requiere validación cartográfica."
-        ]
-    }
-
-    metadata_path = META / "sources.json"
-
-    with metadata_path.open(
-        "w",
-        encoding="utf-8"
-    ) as file:
+def write_json(path, data):
+    with path.open("w", encoding="utf-8") as file:
         json.dump(
-            metadata,
+            data,
             file,
             ensure_ascii=False,
             indent=2
         )
 
-    log("Construcción finalizada correctamente")
-    log(
-        json.dumps(
-            metadata["counts"],
-            ensure_ascii=False
+
+def validate_geojson(path, minimum=1):
+    with path.open("r", encoding="utf-8") as file:
+        data = json.load(file)
+
+    if data.get("type") != "FeatureCollection":
+        raise RuntimeError(
+            "GeoJSON inválido: " + path.name
         )
+
+    features = data.get("features", [])
+
+    if len(features) < minimum:
+        raise RuntimeError(
+            "Cantidad insuficiente de elementos en "
+            + path.name
+        )
+
+    for feature in features:
+        if not feature.get("geometry"):
+            raise RuntimeError(
+                "Geometría vacía en " + path.name
+            )
+
+    return len(features)
+
+
+def publish_atomically(temp_dir):
+    DATA.mkdir(parents=True, exist_ok=True)
+    META.mkdir(parents=True, exist_ok=True)
+
+    files = [
+        "communes.geojson",
+        "provinces.geojson",
+        "waterbodies.geojson",
+        "dga_stations.geojson"
+    ]
+
+    for filename in files:
+        source = temp_dir / filename
+
+        if not source.exists():
+            raise RuntimeError(
+                "Falta archivo requerido: " + filename
+            )
+
+    for filename in files:
+        destination = DATA / filename
+        source = temp_dir / filename
+
+        destination.write_bytes(
+            source.read_bytes()
+        )
+
+    metadata_source = temp_dir / "sources.json"
+    metadata_destination = META / "sources.json"
+
+    metadata_destination.write_bytes(
+        metadata_source.read_bytes()
     )
+
+
+def main():
+    global COMMUNE_GEOMETRIES
+
+    log("Inicio de AnglerMap Geodata 2.0")
+    log("Fuentes: MOP, IGM y DGA. SNIA excluido.")
+
+    with TemporaryDirectory(
+        prefix="anglermap-geodata-"
+    ) as temporary:
+        temp_dir = Path(temporary)
+
+        # 1. Límites administrativos MOP
+        log("Descargando comunas MOP")
+
+        commune_features, commune_records, commune_meta = (
+            get_communes()
+        )
+
+        COMMUNE_GEOMETRIES = []
+
+        for feature in commune_features:
+            COMMUNE_GEOMETRIES.append({
+                "name": feature["properties"]["name"],
+                "geometry": shape(feature["geometry"])
+            })
+
+        commune_union = unary_union([
+            item["geometry"]
+            for item in COMMUNE_GEOMETRIES
+        ])
+
+        write_geojson(
+            temp_dir / "communes.geojson",
+            commune_features
+        )
+
+        # 2. Provincias MOP
+        log("Construyendo provincias")
+
+        province_features, province_meta = get_provinces(
+            commune_records
+        )
+
+        write_geojson(
+            temp_dir / "provinces.geojson",
+            province_features
+        )
+
+        # 3. Hidrografía IGM
+        log("Consultando hidrografía lineal IGM")
+
+        igm_rivers, igm_rivers_meta = query_water_layer(
+            URL_IGM_RIVERS,
+            "IGM · Cartografía 1:50.000 · Hidrografía lineal",
+            "river_or_stream",
+            commune_union
+        )
+
+        log("Consultando hidrografía de áreas IGM")
+
+        igm_lakes, igm_lakes_meta = query_water_layer(
+            URL_IGM_WATERS,
+            "IGM · Cartografía 1:50.000 · Hidrografía de áreas",
+            "lake_or_lagoon",
+            commune_union
+        )
+
+        # 4. Complemento hidrográfico MOP
+        mop_rivers = []
+        mop_lakes = []
+        mop_status = {}
+
+        try:
+            log("Consultando ríos MOP")
+
+            mop_rivers, mop_rivers_meta = query_water_layer(
+                URL_MOP_RIVERS,
+                "MOP · Red Hidrográfica · Ríos",
+                "river",
+                commune_union
+            )
+
+            mop_status["rivers"] = {
+                "status": "available",
+                "features": len(mop_rivers)
+            }
+
+        except Exception as error:
+            log(
+                "Fuente complementaria MOP ríos no disponible: "
+                + str(error)
+            )
+
+            mop_status["rivers"] = {
+                "status": "unavailable",
+                "reason": str(error)
+            }
+
+        try:
+            log("Consultando sistemas lacustres MOP")
+
+            mop_lakes, mop_lakes_meta = query_water_layer(
+                URL_MOP_LAKES,
+                "MOP · Red Hidrográfica · Sistemas lacustres",
+                "lake",
+                commune_union
+            )
+
+            mop_status["lakes"] = {
+                "status": "available",
+                "features": len(mop_lakes)
+            }
+
+        except Exception as error:
+            log(
+                "Fuente complementaria MOP lagos no disponible: "
+                + str(error)
+            )
+
+            mop_status["lakes"] = {
+                "status": "unavailable",
+                "reason": str(error)
+            }
+
+        # IGM es la fuente principal de geometría detallada.
+        # MOP se conserva como capa complementaria separada
+        # para evitar duplicar entidades sin una conciliación
+        # de identificadores oficiales.
+        all_waters = (
+            igm_rivers
+            + igm_lakes
+            + mop_rivers
+            + mop_lakes
+        )
+
+        if not igm_rivers and not igm_lakes:
+            raise RuntimeError(
+                "IGM no entregó geometrías hidrográficas. "
+                "No se publicarán archivos."
+            )
+
+        all_waters.sort(
+            key=lambda item: (
+                normalize(item["properties"]["name"]),
+                item["properties"]["official_source"]
+            )
+        )
+
+        write_geojson(
+            temp_dir / "waterbodies.geojson",
+            all_waters
+        )
+
+        # 5. Estaciones DGA
+        log("Descargando estaciones DGA")
+
+        stations, dga_meta = get_dga_stations(
+            commune_union
+        )
+
+        write_geojson(
+            temp_dir / "dga_stations.geojson",
+            stations
+        )
+
+        # 6. Validación de archivos
+        counts = {
+            "communes": validate_geojson(
+                temp_dir / "communes.geojson",
+                10
+            ),
+            "provinces": validate_geojson(
+                temp_dir / "provinces.geojson",
+                1
+            ),
+            "waterbodies": validate_geojson(
+                temp_dir / "waterbodies.geojson",
+                1
+            ),
+            "dga_stations": validate_geojson(
+                temp_dir / "dga_stations.geojson",
+                1
+            )
+        }
+
+        if counts["communes"] != 10:
+            raise RuntimeError(
+                "La cobertura comunal no contiene exactamente "
+                "las diez comunas objetivo."
+            )
+
+        commune_names = sorted(
+            feature["properties"]["name"]
+            for feature in commune_features
+        )
+
+        if set(commune_names) != set(
+            TARGET_COMMUNES.values()
+        ):
+            raise RuntimeError(
+                "La cobertura comunal no coincide con "
+                "el territorio definido."
+            )
+
+        metadata = {
+            "application": "AnglerMap",
+            "version": "2.0",
+            "generated_at": datetime.now(
+                timezone.utc
+            ).isoformat(),
+            "geographic_scope": {
+                "region": "Magallanes y de la Antártica Chilena",
+                "communes": commune_names,
+                "antarctica_commune_included": False,
+                "cape_horn_commune_included": True
+            },
+            "sources": {
+                "administrative_boundaries": {
+                    "institution": "MOP",
+                    "url": URL_COMMUNES,
+                    "status": "required"
+                },
+                "provinces": {
+                    "institution": "MOP",
+                    "url": URL_PROVINCES,
+                    "status": "required"
+                },
+                "igm_rivers": {
+                    "institution": "IGM",
+                    "url": URL_IGM_RIVERS,
+                    "status": "required"
+                },
+                "igm_water_areas": {
+                    "institution": "IGM",
+                    "url": URL_IGM_WATERS,
+                    "status": "required"
+                },
+                "mop_rivers": {
+                    "institution": "MOP",
+                    "url": URL_MOP_RIVERS,
+                    "status": mop_status.get("rivers")
+                },
+                "mop_lakes": {
+                    "institution": "MOP",
+                    "url": URL_MOP_LAKES,
+                    "status": mop_status.get("lakes")
+                },
+                "dga_stations": {
+                    "institution": "DGA",
+                    "url": URL_DGA_STATIONS,
+                    "status": "required"
+                }
+            },
+            "counts": counts,
+            "limitations": [
+                "La presencia de una geometría oficial no acredita acceso público ni permiso de pesca.",
+                "Las capas hidrográficas pueden no contener todos los cuerpos de agua existentes.",
+                "Las geometrías de fuentes diferentes se conservan identificadas por separado hasta realizar conciliación de entidades.",
+                "La cobertura administrativa de Cabo de Hornos se exige en la descarga; la cobertura hidrográfica austral debe evaluarse según las geometrías efectivamente entregadas.",
+                "La comuna Antártica queda excluida.",
+                "Las estaciones DGA son puntos de monitoreo; este archivo no representa por sí solo mediciones hidrométricas en tiempo real."
+            ]
+        }
+
+        write_json(
+            temp_dir / "sources.json",
+            metadata
+        )
+
+        # Validación final de metadata
+        with (temp_dir / "sources.json").open(
+            "r",
+            encoding="utf-8"
+        ) as file:
+            json.load(file)
+
+        # 7. Publicación
+        publish_atomically(temp_dir)
+
+        log("Publicación de archivos completada.")
+        log(json.dumps(counts, ensure_ascii=False))
 
 
 if __name__ == "__main__":
