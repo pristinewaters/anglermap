@@ -60,8 +60,8 @@ TARGET_COMMUNES = {
 
 EXPECTED_COMMUNES = 9
 
-BATCH_SIZE = 20
-MAX_RETRIES = 4
+BATCH_SIZE = 100
+MAX_RETRIES = 3
 
 SESSION = requests.Session()
 SESSION.headers.update({
@@ -98,7 +98,7 @@ def request_json(url, params=None):
             response = SESSION.get(
                 url,
                 params=params,
-                timeout=(25, 150)
+                timeout=(15, 60)
             )
 
             if response.status_code == 429 or response.status_code >= 500:
@@ -368,13 +368,28 @@ def fetch_batch(layer_url, ids, oid_field):
 def fetch_features(layer_url, where="1=1", geometry=None):
     metadata, oid_field, fields = layer_metadata(layer_url)
 
-    ids = fetch_ids(
-        layer_url,
-        where,
-        geometry
-    )
+    # Consultar por comuna evita que el bounding box conjunto
+    # abarque grandes superficies ajenas al territorio objetivo.
+    if geometry is not None and COMMUNE_GEOMETRIES:
+        candidate_ids = set()
 
-    ids = sorted(set(ids))
+        for commune in COMMUNE_GEOMETRIES:
+            commune_ids = fetch_ids(
+                layer_url,
+                where,
+                commune["geometry"]
+            )
+            candidate_ids.update(commune_ids)
+            log(
+                "Candidatos "
+                + commune["name"]
+                + ": "
+                + str(len(commune_ids))
+            )
+
+        ids = sorted(candidate_ids)
+    else:
+        ids = sorted(set(fetch_ids(layer_url, where, geometry)))
 
     log(
         layer_url
@@ -395,14 +410,15 @@ def fetch_features(layer_url, where="1=1", geometry=None):
             )
         )
 
-        log(
-            "Descargados "
-            + str(len(output))
-            + " / "
-            + str(len(ids))
-        )
+        if (start // BATCH_SIZE) % 10 == 0 or start + len(batch) == len(ids):
+            log(
+                "Descargados "
+                + str(len(output))
+                + " / "
+                + str(len(ids))
+            )
 
-        time.sleep(0.15)
+        time.sleep(0.05)
 
     if len(output) != len(ids):
         raise RuntimeError(
@@ -552,16 +568,17 @@ def get_communes():
 
 
 def get_provinces(commune_records):
-    features, fields, metadata = fetch_features(
-        URL_PROVINCES
-    )
-
-    records = records_from_features(features)
-
     commune_union = unary_union([
         record["geometry"]
         for record in commune_records
     ])
+
+    features, fields, metadata = fetch_features(
+        URL_PROVINCES,
+        geometry=commune_union
+    )
+
+    records = records_from_features(features)
 
     name_field = find_field(
         fields,
@@ -1048,7 +1065,7 @@ def main():
             ),
             "dga_stations": validate_geojson(
                 temp_dir / "dga_stations.geojson",
-                1
+                0
             )
         }
 
