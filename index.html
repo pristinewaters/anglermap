@@ -407,7 +407,7 @@ function amCatalogNormalize(value) {
 
 function amWaterCategory(props) {
  const declared = String(props.water_category || "").toLowerCase();
- if (declared === "river" || declared === "lake" || declared === "lagoon") return declared;
+ if (declared === "river" || declared === "lake" || declared === "lagoon" || declared === "reservoir") return declared;
  const label = amCatalogNormalize([props.name,props.subtype,props.water_type].join(" "));
  if (label.includes("laguna")) return "lagoon";
  if (label.includes("lago") || label.includes("lake")) return "lake";
@@ -439,7 +439,7 @@ async function loadHydroCatalog() {
    let item = grouped.get(key);
 
    if (!item) {
-    const labels = {river:"Río / estero",lake:"Lago",lagoon:"Laguna"};
+    const labels = {river:"Río / estero",lake:"Lago",lagoon:"Laguna",reservoir:"Embalse"};
     item = {
      id:key,
      name,
