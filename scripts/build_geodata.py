@@ -51,6 +51,14 @@ URL_DGA_STATIONS = (
     BASE + "/DGA/Red_Hidrometrica/MapServer/0"
 )
 
+# Capas DGA/Banco Nacional de Aguas publicadas en la IDE de la SMA.
+URL_DGA_IDE = "https://ideserver.sma.gob.cl/arcgis/rest/services/IDE/Recursos_hidricos_glaciares/MapServer"
+URL_DGA_DRAINAGE = URL_DGA_IDE + "/2"
+URL_DGA_LAKES = URL_DGA_IDE + "/5"
+URL_DGA_BASINS = URL_DGA_IDE + "/10"
+URL_DGA_SUBBASINS = URL_DGA_IDE + "/9"
+URL_DGA_SUBSUBBASINS = URL_DGA_IDE + "/8"
+
 
 # Cabo de Hornos y Antártica quedan fuera del alcance.
 TARGET_COMMUNES = {
@@ -78,6 +86,7 @@ SESSION.headers.update({
 COMMUNE_GEOMETRIES = []
 COMMUNE_TREE = None
 COMMUNE_TREE_LOOKUP = {}
+PROVINCE_GEOMETRIES = []
 
 
 def log(message):
@@ -557,6 +566,14 @@ def build_commune_spatial_index():
     }
 
 
+def intersecting_provinces(geometry):
+    return [
+        item["name"]
+        for item in PROVINCE_GEOMETRIES
+        if geometry.intersects(item["geometry"])
+    ]
+
+
 def intersecting_communes(geometry):
     if COMMUNE_TREE is None:
         return [
@@ -826,9 +843,13 @@ def query_water_layer(
             "TIPO",
             "TIPO_ENT",
             "CLASE",
-            "CATEGORIA"
+            "CATEGORIA",
+            "CATEGORÍA"
         ]
     )
+    basin_code_field = find_field(fields, ["COD_CUEN"])
+    subbasin_code_field = find_field(fields, ["COD_SUBC"])
+    subsubbasin_code_field = find_field(fields, ["COD_SSUBC"])
 
     records = records_from_features(features, source_name)
     output = []
@@ -847,13 +868,28 @@ def query_water_layer(
 
         props = record["properties"]
 
-        name = (
+        source_feature_name = (
             props.get(name_field)
             if name_field else None
         )
+        if not source_feature_name:
+            source_feature_name = "Cuerpo de agua sin nombre"
 
-        if not name:
-            name = "Cuerpo de agua sin nombre"
+        name = str(source_feature_name).strip()
+        communes = sorted(set(
+            commune["name"]
+            for commune in intersecting_communes(clipped)
+        ))
+
+        # Corrección toponímica local para Tierra del Fuego:
+        # el tramo rotulado "Río Serrano" dentro de Primavera corresponde
+        # al Río del Oro. Se conserva el nombre de origen como alias.
+        toponymy_status = "source_name"
+        aliases = []
+        if normalize(name) == "rio serrano" and "Primavera" in communes:
+            aliases = [name]
+            name = "Río del Oro"
+            toponymy_status = "locally_corrected"
 
         subtype = (
             props.get(type_field)
@@ -884,12 +920,27 @@ def query_water_layer(
                 clipped,
                 {
                     "waterbody_id": water_id,
-                    "name": str(name).strip(),
+                    "name": name,
+                    "source_name": str(source_feature_name).strip(),
+                    "aliases": aliases,
+                    "toponymy_status": toponymy_status,
                     "water_type": water_type,
+                    "water_category": (
+                        "river" if water_type in ("river", "river_or_stream")
+                        else "lagoon" if (
+                            "laguna" in normalize(name)
+                            or "laguna" in normalize(subtype)
+                        )
+                        else "lake"
+                    ),
                     "subtype": subtype,
                     "official_source": source_name,
                     "official_id": official_id,
-                    "communes": sorted(set(communes)),
+                    "communes": communes,
+                    "provinces": sorted(set(intersecting_provinces(clipped))),
+                    "basin_code": props.get(basin_code_field) if basin_code_field else None,
+                    "subbasin_code": props.get(subbasin_code_field) if subbasin_code_field else None,
+                    "subsubbasin_code": props.get(subsubbasin_code_field) if subsubbasin_code_field else None,
                     "representative_point": representative_point(
                         clipped
                     ),
@@ -900,6 +951,78 @@ def query_water_layer(
         )
 
     return output, metadata
+
+
+def query_dga_hydro_units(layer_url, level, name_field_name, commune_union):
+    """Descarga unidades BNA DGA y las recorta a las nueve comunas objetivo."""
+    features, fields, metadata = fetch_features(layer_url, geometry=commune_union)
+    name_field = find_field(fields, [name_field_name])
+    code_field = find_field(fields, {
+        "basin": ["COD_CUEN"],
+        "subbasin": ["COD_SUBC"],
+        "subsubbasin": ["COD_SSUBC"]
+    }[level])
+    records = records_from_features(features, "unidades hidrográficas DGA")
+    output = []
+
+    for record in records:
+        geometry = record["geometry"]
+        if not geometry.intersects(commune_union):
+            continue
+        clipped = geometry.intersection(commune_union)
+        if clipped.is_empty:
+            continue
+        props = record["properties"]
+        communes = sorted(set(
+            item["name"] for item in intersecting_communes(clipped)
+        ))
+        output.append(geojson_feature(clipped, {
+            "unit_id": level + "|" + str(props.get(code_field) or props.get("OBJECTID")),
+            "unit_level": level,
+            "name": str(props.get(name_field) or "Unidad hidrográfica sin nombre"),
+            "code": props.get(code_field) if code_field else None,
+            "basin_code": props.get("COD_CUEN"),
+            "subbasin_code": props.get("COD_SUBC"),
+            "subsubbasin_code": props.get("COD_SSUBC"),
+            "communes": communes,
+            "provinces": sorted(set(intersecting_provinces(clipped))),
+            "official_source": "DGA · Banco Nacional de Aguas (capa IDE publicada por SMA)",
+            "source_url": layer_url,
+            "official_id": props.get("OBJECTID")
+        }))
+    return output, metadata
+
+
+def enrich_waterbodies_with_hydro_units(water_features, hydro_units):
+    """Asocia cuencas y subunidades BNA mediante intersección espacial."""
+    prepared = [
+        (shape(feature["geometry"]), feature["properties"])
+        for feature in hydro_units
+    ]
+    for feature in water_features:
+        geometry = shape(feature["geometry"])
+        matches = []
+        for unit_geometry, props in prepared:
+            if geometry.intersects(unit_geometry):
+                matches.append({
+                    "level": props.get("unit_level"),
+                    "name": props.get("name"),
+                    "code": props.get("code"),
+                    "basin_code": props.get("basin_code"),
+                    "subbasin_code": props.get("subbasin_code"),
+                    "subsubbasin_code": props.get("subsubbasin_code")
+                })
+        feature["properties"]["hydro_units"] = matches
+        for level, key in (
+            ("basin", "basins"),
+            ("subbasin", "subbasins"),
+            ("subsubbasin", "subsubbasins")
+        ):
+            feature["properties"][key] = sorted({
+                item["name"] for item in matches
+                if item["level"] == level and item.get("name")
+            })
+    return water_features
 
 
 def get_dga_stations(commune_union):
@@ -996,7 +1119,9 @@ def publish_atomically(temp_dir):
 
     files = [
         "communes.geojson",
+        "provinces.geojson",
         "waterbodies.geojson",
+        "dga_hydro_units.geojson",
         "dga_stations.geojson"
     ]
 
@@ -1050,9 +1175,9 @@ def publish_atomically(temp_dir):
 def main():
     global COMMUNE_GEOMETRIES
 
-    log("Inicio de AnglerMap Geodata 3.3")
+    log("Inicio de AnglerMap Geodata 4.0")
     log("Territorio: nueve comunas de Magallanes.")
-    log("Fuentes: MOP, IGM y DGA. SNIA excluido.")
+    log("Fuentes: MOP, IGM y DGA (drenajes, lagos y unidades BNA).")
     log("Cabo de Hornos y Antártica excluidos.")
 
     with TemporaryDirectory(
@@ -1087,9 +1212,23 @@ def main():
             commune_features
         )
 
-        # 2. Provincias temporalmente fuera del proceso.
-        # No son necesarias para la cobertura geográfica inicial.
-        log("Se omite temporalmente la capa provincial MOP.")
+        # 2. Provincias MOP para clasificar las aguas por provincia.
+        global PROVINCE_GEOMETRIES
+        try:
+            province_features, province_meta = get_provinces(commune_records)
+            PROVINCE_GEOMETRIES = [{
+                "name": item["properties"]["name"],
+                "geometry": shape(item["geometry"])
+            } for item in province_features]
+            write_geojson(temp_dir / "provinces.geojson", province_features)
+            province_status = {"status": "available", "features": len(province_features)}
+        except Exception as error:
+            log("Capa provincial MOP no disponible: " + str(error))
+            PROVINCE_GEOMETRIES = []
+            province_meta = None
+            province_features = []
+            province_status = {"status": "unavailable", "reason": str(error)}
+            write_geojson(temp_dir / "provinces.geojson", [])
 
         # 3. Hidrografía IGM
         log("Consultando hidrografía lineal IGM")
@@ -1167,13 +1306,53 @@ def main():
                 "reason": str(error)
             }
 
-        # IGM se conserva como fuente principal de geometría
-        # detallada. MOP queda como complemento separado.
+        # 4. Hidrografía DGA: drenajes, lagos y unidades BNA.
+        dga_status = {}
+        dga_rivers = []
+        dga_lakes = []
+        dga_hydro_units = []
+
+        for key, url, label, water_type in (
+            ("drainage", URL_DGA_DRAINAGE, "DGA · Red de drenajes", "river_or_stream"),
+            ("lakes", URL_DGA_LAKES, "DGA · Inventario de lagos", "lake_or_lagoon")
+        ):
+            try:
+                records, _metadata = query_water_layer(
+                    url, label, water_type, commune_union
+                )
+                if key == "drainage":
+                    dga_rivers = records
+                else:
+                    dga_lakes = records
+                dga_status[key] = {"status": "available", "features": len(records)}
+            except Exception as error:
+                log("Fuente DGA " + key + " no disponible: " + str(error))
+                dga_status[key] = {"status": "unavailable", "reason": str(error)}
+
+        for level, url, field_name in (
+            ("basin", URL_DGA_BASINS, "NOM_CUEN"),
+            ("subbasin", URL_DGA_SUBBASINS, "NOM_SUBC"),
+            ("subsubbasin", URL_DGA_SUBSUBBASINS, "NOM_SSUBC")
+        ):
+            try:
+                records, _metadata = query_dga_hydro_units(
+                    url, level, field_name, commune_union
+                )
+                dga_hydro_units.extend(records)
+                dga_status[level] = {"status": "available", "features": len(records)}
+            except Exception as error:
+                log("Unidad BNA DGA " + level + " no disponible: " + str(error))
+                dga_status[level] = {"status": "unavailable", "reason": str(error)}
+
+        # IGM aporta detalle cartográfico; MOP y DGA complementan
+        # geometría, nombres e inventario de unidades hidrográficas.
         all_waters = (
-            igm_rivers
-            + igm_lakes
-            + mop_rivers
-            + mop_lakes
+            igm_rivers + igm_lakes
+            + mop_rivers + mop_lakes
+            + dga_rivers + dga_lakes
+        )
+        all_waters = enrich_waterbodies_with_hydro_units(
+            all_waters, dga_hydro_units
         )
 
         if not igm_rivers and not igm_lakes:
@@ -1192,6 +1371,10 @@ def main():
         write_geojson(
             temp_dir / "waterbodies.geojson",
             all_waters
+        )
+        write_geojson(
+            temp_dir / "dga_hydro_units.geojson",
+            dga_hydro_units
         )
 
         # 5. Estaciones DGA
@@ -1214,9 +1397,14 @@ def main():
                 temp_dir / "communes.geojson",
                 EXPECTED_COMMUNES
             ),
+            "provinces": validate_geojson(temp_dir / "provinces.geojson", 0),
             "waterbodies": validate_geojson(
                 temp_dir / "waterbodies.geojson",
                 1
+            ),
+            "dga_hydro_units": validate_geojson(
+                temp_dir / "dga_hydro_units.geojson",
+                0
             ),
             "dga_stations": validate_geojson(
                 temp_dir / "dga_stations.geojson",
@@ -1268,8 +1456,8 @@ def main():
                 "provinces": {
                     "institution": "MOP",
                     "url": URL_PROVINCES,
-                    "status": "deferred",
-                    "reason": "Capa administrativa complementaria; excluida temporalmente del proceso de generación."
+                    "status": province_status,
+                    "metadata_available": province_meta is not None
                 },
                 "igm_rivers": {
                     "institution": "IGM",
@@ -1291,6 +1479,31 @@ def main():
                     "url": URL_MOP_LAKES,
                     "status": mop_status.get("lakes")
                 },
+                "dga_drainage": {
+                    "institution": "DGA",
+                    "url": URL_DGA_DRAINAGE,
+                    "copyright": "DGA 2012 / MOP",
+                    "status": dga_status.get("drainage")
+                },
+                "dga_lakes": {
+                    "institution": "DGA",
+                    "url": URL_DGA_LAKES,
+                    "copyright": "DGA 2017",
+                    "status": dga_status.get("lakes")
+                },
+                "dga_basin_units": {
+                    "institution": "DGA / Banco Nacional de Aguas",
+                    "urls": {
+                        "basins": URL_DGA_BASINS,
+                        "subbasins": URL_DGA_SUBBASINS,
+                        "subsubbasins": URL_DGA_SUBSUBBASINS
+                    },
+                    "status": {
+                        "basin": dga_status.get("basin"),
+                        "subbasin": dga_status.get("subbasin"),
+                        "subsubbasin": dga_status.get("subsubbasin")
+                    }
+                },
                 "dga_stations": {
                     "institution": "DGA",
                     "url": URL_DGA_STATIONS,
@@ -1301,7 +1514,9 @@ def main():
             "limitations": [
                 "La presencia de una geometría oficial no acredita acceso público ni permiso de pesca.",
                 "Las capas hidrográficas pueden no contener todos los cuerpos de agua existentes.",
-                "Las geometrías de fuentes diferentes se conservan identificadas por separado hasta realizar conciliación de entidades.",
+                "Las fuentes hidrográficas se conservan identificadas por procedencia; nombres homónimos no se fusionan si sus geometrías difieren.",
+                "La asociación de cuencas, subcuencas y subsubcuencas se calcula por intersección espacial con unidades BNA DGA.",
+                "La asociación a provincia depende de la disponibilidad de la capa provincial MOP.",
                 "La comuna Antártica queda excluida.",
                 "La comuna de Cabo de Hornos queda excluida del alcance inicial.",
                 "Las estaciones DGA son puntos de monitoreo; este archivo no representa por sí solo mediciones hidrométricas en tiempo real."
