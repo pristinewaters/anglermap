@@ -1408,7 +1408,6 @@ const amOriginalOpenRiver = window.openRiver;
 
 window.openRiver = function(river) {
   amOriginalOpenRiver(river);
-  amLocateRiver(river);
 };
 
 /* Botón para volver a consultar la cartografía desde la ficha. */
@@ -1525,29 +1524,19 @@ console.info(
   workspace.classList.toggle("menu-open",open);
   sidebar.classList.toggle("open",open);
   menu.setAttribute("aria-expanded",String(open));
-  window.setTimeout(()=>{ if(window.map) map.invalidateSize({pan:false}); },230);
+  window.setTimeout(()=>map.invalidateSize({pan:false}),230);
  }
  menu.addEventListener("click",()=>setMenu(!workspace.classList.contains("menu-open")));
  document.addEventListener("keydown",e=>{if(e.key==="Escape")setMenu(false)});
  const zones=document.getElementById("zones");
  zones.addEventListener("click",e=>{if(e.target.closest(".water-item"))setMenu(false)});
+ map.on("click",()=>{if(workspace.classList.contains("menu-open"))setMenu(false)});
  const dock=document.getElementById("weatherDock");
  const min=document.getElementById("weatherMinimize");
- dock.classList.add("minimized");
- min.textContent="+";
- min.setAttribute("aria-label","Mostrar meteorología");
- min.addEventListener("click",e=>{
-  e.stopPropagation();
-  const collapsed=dock.classList.toggle("minimized");
-  min.textContent=collapsed?"+":"−";
-  min.setAttribute("aria-label",collapsed?"Mostrar meteorología":"Minimizar meteorología");
- });
+ setWeatherMinimized(true);
  document.getElementById("weatherDragHandle").addEventListener("click",e=>{
   if(e.target===min)return;
-  if(dock.classList.contains("minimized")){
-   dock.classList.remove("minimized");min.textContent="−";
-   min.setAttribute("aria-label","Minimizar meteorología");
-  }
+  if(dock.classList.contains("minimized"))setWeatherMinimized(false);
  });
  const catalog=document.getElementById("catalogLayers");
  if(catalog)catalog.remove();
