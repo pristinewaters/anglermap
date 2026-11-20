@@ -177,6 +177,40 @@
   }
   `;
 
+
+  /* Territory Manager · sistema visual claro y coherente con el explorador */
+  #tm-shell{background:#f5f7fa!important;color:#172b3d!important;backdrop-filter:none!important}
+  #tm-shell .tm-head{background:#fff!important;border-bottom:1px solid #dce4ec!important;color:#172b3d!important}
+  #tm-shell .tm-brand{color:#17334a!important}.tm-brand span{color:#1683b8!important}
+  #tm-shell .tm-head small{color:#718397!important}
+  #tm-shell .tm-nav{background:#fff!important;border-bottom:1px solid #dce4ec!important}
+  #tm-shell .tm-nav button{color:#526a7d!important;background:transparent!important;border-color:transparent!important}
+  #tm-shell .tm-nav button:hover,#tm-shell .tm-nav button.active{background:#edf6fb!important;border-color:#d7e8f3!important;color:#145d8b!important;box-shadow:inset 0 -2px #1683b8!important}
+  #tm-shell .tm-main{color:#172b3d!important}
+  #tm-shell .tm-kicker{color:#1683b8!important}
+  #tm-shell .tm-title,#tm-shell .tm-section h3,#tm-shell .tm-pilot-panel h3{color:#172b3d!important}
+  #tm-shell .tm-desc,#tm-shell .tm-pilot-muted,#tm-shell .tm-row p,#tm-shell .tm-card p{color:#64788a!important}
+  #tm-shell .tm-card,#tm-shell .tm-pilot-panel,#tm-shell .tm-row,#tm-shell .tm-import,#tm-shell .tm-import-item,#tm-shell .tm-pilot-item{background:#fff!important;border-color:#dce4ec!important;color:#172b3d!important;box-shadow:0 2px 8px #1d355008!important}
+  #tm-shell .tm-card small,#tm-shell .tm-import-item small,#tm-shell .tm-pilot-item small{color:#718397!important}
+  #tm-shell .tm-value,#tm-shell .tm-pilot-metric,#tm-shell .tm-row strong,#tm-shell .tm-pilot-item strong{color:#172b3d!important}
+  #tm-shell .tm-hero{background:#edf6fb!important;border-color:#d7e8f3!important;color:#172b3d!important}
+  #tm-shell .tm-hero h2{color:#17334a!important}#tm-shell .tm-hero p{color:#526a7d!important}
+  #tm-shell .tm-btn,#tm-shell .tm-close{background:#f4f8fb!important;border-color:#dce4ec!important;color:#31536d!important}
+  #tm-shell .tm-btn.primary{background:#176eaa!important;border-color:#176eaa!important;color:#fff!important}
+  #tm-shell .tm-btn.subtle{background:#fff!important;color:#526a7d!important}
+  #tm-shell .tm-icon-btn{background:#f4f8fb!important;border-color:#dce4ec!important;color:#31536d!important}
+  #tm-shell .tm-tag{background:#f5f8fb!important;border-color:#dce4ec!important;color:#526a7d!important}
+  #tm-shell .tm-empty{background:#fff!important;border-color:#dce4ec!important;color:#718397!important}
+  #tm-shell .tm-note{background:#fff8eb!important;border-color:#f0dfbd!important;color:#765a2c!important}
+  #tm-shell .tm-field label,#tm-shell .tm-pilot-checks label{color:#526a7d!important}
+  #tm-shell .tm-field input,#tm-shell .tm-field select,#tm-shell .tm-field textarea,#tm-shell .tm-import input{background:#fff!important;border-color:#dce4ec!important;color:#172b3d!important}
+  #tm-shell .tm-day,#tm-shell .tm-slot{background:#fff!important;border-color:#dce4ec!important;color:#31536d!important}
+  #tm-shell .tm-day.selected{outline-color:#1683b8!important;background:#edf6fb!important}
+  #tm-shell .tm-modal{background:#edf6fb!important;border-color:#d7e8f3!important;color:#31536d!important}
+  #tm-shell .tm-status{background:#29966b!important}
+  #tm-shell button:focus-visible,#tm-shell input:focus-visible,#tm-shell select:focus-visible{outline:3px solid #1683b8!important;outline-offset:2px!important}
+  @media(max-width:760px){#tm-shell .tm-nav{background:#fff!important}#tm-shell .tm-nav button.active{box-shadow:inset 0 -3px #1683b8!important}}
+
   document.head.appendChild(style);
 
   const shell = document.createElement("section");
