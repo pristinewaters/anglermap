@@ -149,7 +149,7 @@
       root.querySelectorAll("[data-dashboard-date]").forEach(b=>b.onclick=()=>{window.tmSelectedDate=b.dataset.dashboardDate;render();});
       root.querySelectorAll("[data-dashboard-section]").forEach(b=>b.onclick=()=>{tab="rio-medio";render();});
       root.querySelectorAll("[data-go]").forEach(b=>b.onclick=()=>{tab=b.dataset.go;render();});
-      $("tm-dashboard-map").onclick=()=>{showAvailabilityMap(selectedDate);close();};
+      $("tm-dashboard-map").onclick=()=>{close();showAvailabilityMap(selectedDate);};
     } else if (tab === "territories") {
       root.innerHTML = heading("DELIMITACIÓN Y FICHAS", "Territorios", "Crea borradores de áreas de gestión y organiza sus sectores. La geometría que dibujes aquí es privada y no reemplaza límites ni capas oficiales.") +
         `<div class="tm-actions"><button class="tm-btn primary" id="tm-draw">＋ Delimitar en el mapa</button><button class="tm-btn" id="tm-manual">Crear ficha sin polígono</button></div>
@@ -283,7 +283,7 @@
     if(matches.length){pilotLayers();pilotRiverLayer.clearLayers();matches.forEach(w=>L.geoJSON({type:"FeatureCollection",features:w.features},{style:{color:"#55d9e8",weight:5,opacity:.95}}).addTo(pilotRiverLayer));}
     pilotLayers();pilotSectionLayer.clearLayers();
     p.sections.forEach(sec=>{const used=pilotCount(p,sec.id,date),left=Math.max(0,4-used),color=left===0?"#e66c6c":used?"#e8bd70":"#48c78e";if(sec.coordinates?.length>1)L.polyline(sec.coordinates,{color,weight:8,opacity:.95}).bindPopup("<b>"+esc(sec.name)+"</b><br>"+left+" de 4 cupos disponibles · "+date).addTo(pilotSectionLayer);});
-    const bounds=pilotSectionLayer.getBounds();if(bounds.isValid())map.fitBounds(bounds,{padding:[60,60],maxZoom:14});else if(pilotRiverLayer.getBounds().isValid())map.fitBounds(pilotRiverLayer.getBounds(),{padding:[60,60],maxZoom:13});
+    const bounds=L.featureGroup(pilotSectionLayer.getLayers()).getBounds();const riverBounds=L.featureGroup(pilotRiverLayer.getLayers()).getBounds();if(bounds.isValid())map.fitBounds(bounds,{padding:[60,60],maxZoom:14});else if(riverBounds.isValid())map.fitBounds(riverBounds,{padding:[60,60],maxZoom:13});
   }
   function drawPilotRecords() {
     pilotLayers();pilotSectionLayer.clearLayers();pilotAccessLayer.clearLayers();
