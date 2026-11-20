@@ -9,7 +9,7 @@
       "name": "Límites comunales",
       "file": "magallanes/communes.geojson",
       "group": "administrative",
-      "source": "Fuente oficial pendiente de consolidación",
+      "source": "MOP · límites comunales; respaldo DPA 2020 IDE MINVU identificado en metadata",
       "status": "pending",
       "visible_by_default": false,
       "style": {
