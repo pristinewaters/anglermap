@@ -367,7 +367,7 @@
   }
 
   function open() { shell.classList.add("open"); $("adminSection").hidden=false; refreshImportedLayers(); render(); }
-  function close() { shell.classList.remove("open"); if(importedLayer)importedLayer.clearLayers(); if(pilotRiverLayer)pilotRiverLayer.clearLayers(); if(pilotSectionLayer)pilotSectionLayer.clearLayers(); if(pilotAccessLayer)pilotAccessLayer.clearLayers(); cancelPilotMapAction(); if(draft){draft=null; if(draftLayer){map.removeLayer(draftLayer);draftLayer=null;}} }
+  function close() { shell.classList.remove("open"); pilotMapAction=null; const controls=$("tm-rm-draw-controls");if(controls)controls.remove(); if(importedLayer)importedLayer.clearLayers(); if(pilotRiverLayer)pilotRiverLayer.clearLayers(); if(pilotSectionLayer)pilotSectionLayer.clearLayers(); if(pilotAccessLayer)pilotAccessLayer.clearLayers(); if(draft){draft=null; if(draftLayer){map.removeLayer(draftLayer);draftLayer=null;}} }
   function createTerritory(points) {
     const name=prompt("Nombre del territorio o sector:");
     if(!name || !name.trim()) return;
