@@ -1537,6 +1537,15 @@ def main():
                 }
             },
             "counts": counts,
+            "toponymy_overrides": [
+                {
+                    "source_name": "Río Serrano",
+                    "canonical_name": "Río del Oro",
+                    "communes": ["Primavera"],
+                    "status": "local_override_pending_independent_cartographic_confirmation",
+                    "note": "Se conserva el rótulo de origen como alias y no se atribuye esta corrección a la DGA."
+                }
+            ],
             "limitations": [
                 "La presencia de una geometría oficial no acredita acceso público ni permiso de pesca.",
                 "Las capas hidrográficas pueden no contener todos los cuerpos de agua existentes.",
