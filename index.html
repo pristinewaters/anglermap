@@ -543,7 +543,7 @@ function renderZones(filter=""){
   return;
  }
  zoneOrder.forEach((zone,index)=>{
-  const waters=RIVERS.filter(r=>r.communes.includes(zone)&&r.name.toLowerCase().includes(filter.toLowerCase()));
+  const searchTerm=amCatalogNormalize(filter);\n  const waters=RIVERS.filter(r=>r.communes.includes(zone)&&(!searchTerm||amCatalogNormalize([r.name,...r.aliases].join(" ")).includes(searchTerm)));
   if(!waters.length)return;
   const section=document.createElement("section");
   section.className="zone"+(index===0||filter?" open":"");
@@ -657,7 +657,7 @@ function setView(view){
  if(view==="logbook")openGeneral("Bitácora","Registro personal de pesca",'<div class="empty-state">▤<br>Tu bitácora será el espacio para registrar jornadas, especies, capturas, técnicas, condiciones y fotografías.<br><br><strong>Módulo en desarrollo.</strong><br>Esta versión todavía no almacena jornadas ni fotografías.</div><div class="panel-row"><strong>Próxima etapa</strong><p>Registro de salidas, datos de captura, observaciones, fotografías y exportación de jornadas.</p></div>');
 }
 document.querySelectorAll(".nav-item[data-view]").forEach(b=>b.addEventListener("click",()=>setView(b.dataset.view)));
-window.openRiverByName=name=>{const river=RIVERS.find(r=>r.name===name);if(river)openRiver(river);};
+window.openRiverByName=name=>{const river=RIVERS.find(r=>r.name===name||r.aliases.includes(name));if(river)openRiver(river);};
 window.openRiverById=id=>{const river=RIVERS.find(r=>r.id===id);if(river)openRiver(river);};
 $("globalSearch").addEventListener("input",e=>renderZones(e.target.value));
 $("globalSearch").addEventListener("keydown",e=>{
