@@ -5,71 +5,63 @@
 La aplicación consume capas GeoJSON desde un catálogo único: `data/metadata/layers.json`.
 El visor no depende de una fuente concreta. Una capa nueva se incorpora publicando su archivo y agregando una entrada al catálogo; no es necesario modificar el código del mapa.
 
-## Estructura de datos
+## Arquitectura de las dos capas temáticas
+
+AnglerMap utiliza dos fuentes institucionales separadas y dos productos GeoJSON normalizados:
 
 ```
 data/
-  magallanes/                 # productos listos para consumo del visor
-    communes.geojson
-    provinces.geojson
-    waterbodies.geojson
-    dga_hydro_units.geojson
-    dga_stations.geojson
-  sources/                    # archivos organizados por fuente
-    mop/
-      boundaries/
-      hydrography/
-    igm/
-      hydrography/
-    dga/
-      stations/
+  magallanes/
+    roads.geojson          # MOP · caminos y accesos
+    waterbodies.geojson    # DGA · ríos, esteros, lagos y lagunas
   metadata/
-    layers.json               # catálogo que consume la aplicación
-    sources.json              # procedencia y trazabilidad de datos
+    layers.json
+    sources.json
 ```
 
-Los directorios de fuentes son repositorios de origen/procesamiento. Los GeoJSON publicados en `data/magallanes/` son productos normalizados para la aplicación. Se pueden mantener ambos cuando sea necesario conservar el original y el producto depurado.
+### 1. Caminos y accesos — MOP
 
-## Productos hidrográficos
+- Servicio: [Red Vial Chile Base Gris, capa 3](https://rest-sit.mop.gob.cl/arcgis/rest/services/VIALIDAD/Red_Vial_Chile_Base_gris/MapServer/3).
+- Responsable: Dirección de Vialidad, Ministerio de Obras Públicas.
+- Incluye caminos nacionales, regionales, comunales y caminos regionales de acceso según la descripción de la capa.
+- El servicio describe datos disponibles a enero de 2021. Se debe mostrar como cartografía vial oficial, no como confirmación de transitabilidad, permiso de paso, servidumbre o acceso a predios privados.
+- Producto: `roads.geojson`, recortado y segmentado por las nueve comunas.
 
-- `waterbodies.geojson`: geometrías lineales y poligonales de ríos/esteros, lagos, lagunas y embalses. Conserva nombre original, alias, tipo, atributos de origen, fuente, identificadores, comunas y provincias.
-- `dga_hydro_units.geojson`: unidades BNA DGA separadas por nivel (cuenca, subcuenca y subsubcuenca), con códigos y nombres oficiales.
-- `dga_stations.geojson`: estaciones de monitoreo DGA. Son puntos de observación y no sustituyen la geometría de un curso de agua.
-- `communes.geojson` y `provinces.geojson`: límites administrativos usados para recortar y clasificar las geometrías.
+### 2. Cuerpos de agua — DGA
 
-La asociación de cada agua con unidades hidrográficas se calcula por intersección espacial entre geometrías. No se infiere un río a partir del nombre de una estación ni se asigna una comuna por la cuenca completa. Los cursos compartidos pueden figurar en más de una comuna cuando la geometría intersecta sus límites.
-Las geometrías de los cuerpos de agua se recortan por comuna. Así, al seleccionar un curso desde la lista de una comuna, el visor enfoca el segmento de ese territorio y no necesariamente la extensión completa del curso en varias comunas.
+- Servicio: [IDE Recursos Hídricos y Glaciares](https://ideserver.sma.gob.cl/arcgis/rest/services/IDE/Recursos_hidricos_glaciares/MapServer).
+- Red de drenajes DGA, subcapa 2: geometrías lineales de ríos, esteros y expresiones de drenaje.
+- Lagos DGA, subcapa 5: geometrías poligonales con nombre, tipo, uso y área. Cuando el atributo `TIPO` identifica una laguna, se conserva la categoría Laguna.
+- Las dos subcapas se consolidan en un único producto `waterbodies.geojson`, con categorías de interfaz río/estero, lago y laguna.
+- Se preservan nombre de origen, alias cuando existan, atributos originales, ID de fuente, comuna y procedencia.
+- La red de drenajes DGA representa la mayoría, no necesariamente la totalidad, de las expresiones espaciales de drenaje. El inventario de lagos DGA publicado informa datos de 2017; puede no contener todas las lagunas menores.
 
-La capa DGA de red de drenaje y las unidades BNA se publican en la IDE de la SMA con atribución explícita a DGA/Banco Nacional de Aguas. La procedencia y fecha de extracción se conservan en `sources.json` y en los atributos de cada entidad.
+### Reglas de normalización
 
-La capa MOP `sistema_lacustre` (ID 17) es mixta: además de lagos y lagunas contiene polígonos de ríos, esteros, embalses, salares, campos de hielo, glaciares y ventisqueros. El catálogo retiene Río, Estero, Embalse, Lago y Laguna como categorías diferenciadas; no clasifica salares ni elementos glaciares como lagos.
+- La geometría se intersecta con los límites comunales MOP para recortar los trazados y organizar el catálogo territorial. Los límites son auxiliares de recorte, no una tercera capa temática.
+- Un curso que atraviesa varias comunas se divide en segmentos comunales; la interfaz agrupa los segmentos del mismo nombre y categoría.
+- No se agregan nombres manualmente ni se infieren ríos desde estaciones de monitoreo.
+- No se descargan ni publican capas IGM, estaciones DGA, cuencas, subcuencas o subsubcuencas en este alcance.
+- La corrección toponímica Río Serrano/Río del Oro en Primavera se conserva como antecedente para revisión de nombres; no se utiliza como una regla general para reasignar cuerpos de agua.
+- Una geometría no acredita acceso público ni autorización de pesca.
 
-La capa DGA `Cuencas` (ID 10) informa actualización hasta 2004 y datum desconocido, asumido WGS84 por su publicador. Se utiliza como referencia hidrográfica y no como deslinde parcelario de alta precisión. La red de drenaje DGA (ID 2) indica que representa la mayoría, no necesariamente la totalidad, de las expresiones espaciales de drenaje.
+### Diccionario mínimo de atributos
 
-## Diccionario de atributos
+`waterbodies.geojson`:
+- `waterbody_id`: identificador estable del registro.
+- `name`: nombre que muestra el catálogo.
+- `source_name`: nombre original de la fuente.
+- `aliases`, `toponymy_status`, `toponymy_note`: trazabilidad toponímica cuando aplique.
+- `water_category`: `river`, `lake` o `lagoon`.
+- `official_source`, `official_id`, `source_attributes`: procedencia e identificación.
+- `communes`: comuna(s) intersectada(s).
+- `representative_point`: referencia cartográfica, no acceso de pesca.
 
-### `waterbodies.geojson`
-
-- `waterbody_id`: identificador estable por registro y fuente.
-- `name`: nombre normalizado que usa el catálogo; `source_name` conserva el rótulo original.
-- `aliases` y `toponymy_status`: nombres alternativos y estado de conciliación toponímica.
-- `water_type` / `water_category`: tipo de geometría y categoría de interfaz (`river`, `lake`, `lagoon`, `reservoir`).
-- `official_source`, `official_id`, `source_attributes`: trazabilidad y atributos originales.
-- `communes`, `provinces`: unidades administrativas intersectadas por la geometría.
-- `hydro_units`, `basins`, `subbasins`, `subsubbasins`: unidades BNA intersectadas y sus nombres/códigos.
-- `representative_point`: punto de referencia cartográfico; no es acceso de pesca.
-- `source_confidence`: distingue geometría de fuente oficial de correcciones toponímicas locales.
-
-### `dga_hydro_units.geojson`
-
-- `unit_level`: `basin`, `subbasin` o `subsubbasin`.
-- `name`, `code`, `basin_code`, `subbasin_code`, `subsubbasin_code`: nomenclatura y códigos BNA.
-- `communes`, `provinces`: comunas y provincias intersectadas.
-- `source_url`, `source_attributes`: servicio de origen y atributos originales.
-
-### `dga_stations.geojson`
-
-Conserva el identificador y los atributos de la estación DGA. La estación no se transforma en un río ni se asigna a un curso solo por proximidad.
+`roads.geojson`:
+- `road_id`, `name`, `route_code`: identificación del tramo.
+- `classification`, `surface`, `status`: atributos viales informados por MOP.
+- `communes`: comuna del segmento.
+- `official_source`, `source_url`, `source_attributes`: procedencia y trazabilidad.
 
 ## Incorporar una capa
 
