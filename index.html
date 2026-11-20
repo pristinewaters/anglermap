@@ -433,8 +433,8 @@ async function loadHydroCatalog() {
    const normalizedSubtype=amCatalogNormalize(p.subtype||"");
    // El inventario poligonal DGA puede incluir islas/islotes.
    // No son aguas pescables ni deben contaminar el catálogo de ríos y lagos.
-   const isIsland=/(^|\\b)(isla|islas|islote|islotes)(\\b|$)/.test(normalizedName)||
-    /(^|\\b)(isla|islas|islote|islotes)(\\b|$)/.test(normalizedSubtype);
+   const isIsland=/(^|\b)(isla|islas|islote|islotes)(\b|$)/.test(normalizedName)||
+    /(^|\b)(isla|islas|islote|islotes)(\b|$)/.test(normalizedSubtype);
    if(isIsland)return;
    const labels={river:"Río / estero",lake:"Lago",lagoon:"Laguna"};
    // Una entrada por nombre, categoría y comuna. Los OBJECTID DGA
