@@ -404,7 +404,7 @@ let RIVERS = [];
 let hydroCatalogState = "loading";
 
 function amCatalogNormalize(value) {
- return String(value ?? "").normalize("NFD").replace(/[\\u0300-\\u036f]/g,"").toLowerCase().replace(/\\s+/g," ").trim();
+ return String(value ?? "").normalize("NFD").replace(/[\u0300-\u036f]/g,"").toLowerCase().replace(/\s+/g," ").trim();
 }
 
 function amWaterCategory(props) {
@@ -490,7 +490,6 @@ async function loadHydroCatalog() {
  if (typeof renderZones === "function") renderZones(document.getElementById("globalSearch")?.value || "");
 }
 
-const zoneOrder=["Punta Arenas","Laguna Blanca","Río Verde","San Gregorio","Natales","Torres del Paine","Porvenir","Primavera","Timaukel"];
 
 
 const $=id=>document.getElementById(id);
