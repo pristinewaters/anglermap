@@ -166,13 +166,11 @@ create policy "territory owners update" on public.territories
   with check (owner_user_id = (select auth.uid()));
 
 drop policy if exists "members read memberships" on public.territory_memberships;
-create policy "members read memberships" on public.territory_memberships
-  for select to authenticated using (
-    user_id = (select auth.uid()) or exists (
-      select 1 from public.territories t
-      where t.id = territory_id and t.owner_user_id = (select auth.uid())
-    )
-  );
+-- A user can read their own membership rows. Team-wide administration
+-- is intentionally reserved for a trusted server-side endpoint to avoid
+-- recursive RLS policy evaluation between territories and memberships.
+create policy "users read own memberships" on public.territory_memberships
+  for select to authenticated using (user_id = (select auth.uid()));
 
 drop policy if exists "sector read access" on public.territory_sectors;
 create policy "sector read access" on public.territory_sectors
