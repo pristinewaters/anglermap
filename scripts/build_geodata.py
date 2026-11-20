@@ -1191,7 +1191,10 @@ def main():
                     "status": "available",
                     "data_vintage_note": "La ficha del servicio describe datos disponibles a enero de 2021; no equivale a confirmación en terreno de transitabilidad actual.",
                     "attributes_used": ["NOMBRE_CAMINO", "ROL", "CLASIFICACION", "CARPETA", "RVO"],
-                    "coverage_note": "La capa incluye caminos nacionales, internacionales, regionales principales, provinciales, comunales, regionales de acceso y caminos en proceso de enrolamiento. La cobertura se somete a contraste adicional antes de considerarla exhaustiva."
+                    "coverage_note": "La capa incluye caminos nacionales, internacionales, regionales principales, provinciales, comunales, regionales de acceso y caminos en proceso de enrolamiento. La cobertura se somete a contraste adicional antes de considerarla exhaustiva.",
+                    "official_statistical_crosscheck": "https://vialidad.mop.gob.cl/uploads/sites/9/2025/08/Red-Vial-Nacional-Dimensionamiento-y-Caracteristicas-Ano-2025.pdf",
+                    "regional_dataset_crosscheck": "https://idemagallanes.cl/magallanes/catalog/79/Red%20Vial%20Regi%C3%B3n%20de%20Magallanes",
+                    "crosscheck_note": "El informe MOP 2025 reporta 1.678,203 km para caminos regionales comunales y de acceso de Magallanes a diciembre de 2024, desglosados por carpeta de rodadura. Esta longitud sirve como control de consistencia; no equivale al total de todas las categorías viales ni al número de features cartográficos."
                 },
                 "waterbodies": {
                     "institution": "DGA",
