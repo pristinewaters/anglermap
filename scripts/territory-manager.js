@@ -72,6 +72,24 @@
   .tm-pilot-checks label{display:flex;gap:8px;align-items:flex-start;color:#c6d8e1;font-size:11px}
   .tm-pilot-form{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
   .tm-pilot-form .full{grid-column:1/-1}
+  .tm-toolbar{display:flex;align-items:center;justify-content:space-between;gap:12px;margin:8px 0 18px}
+  .tm-toolbar-actions{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+  .tm-icon-btn{width:40px;height:40px;border:1px solid #35566a;border-radius:11px;background:#173448;color:#eaf5f8;font-size:19px;cursor:pointer}
+  .tm-hero{padding:20px;border:1px solid #2b596b;border-radius:16px;background:linear-gradient(120deg,#12374a,#102638 65%,#142d40);display:flex;justify-content:space-between;gap:16px;align-items:center}
+  .tm-hero h2{font-size:20px;margin:5px 0}.tm-hero p{color:#b2c7d1;margin:0;line-height:1.5;font-size:11px}
+  .tm-metric{border-left:3px solid #55d9e8}.tm-metric.good{border-left-color:#48c78e}.tm-metric.warn{border-left-color:#e8bd70}.tm-metric.full{border-left-color:#e66c6c}
+  .tm-calendar{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:6px}
+  .tm-day{border:1px solid #29485b;border-radius:9px;background:#102638;color:#dceaf0;padding:9px 4px;text-align:center;cursor:pointer;min-height:62px}
+  .tm-day small{display:block;color:#91a9b8;font-size:9px;margin-top:5px}.tm-day.selected{outline:2px solid #55d9e8;background:#15384b}
+  .tm-day.busy{border-bottom:3px solid #e8bd70}.tm-day.full{border-bottom:3px solid #e66c6c}.tm-day.free{border-bottom:3px solid #48c78e}
+  .tm-availability{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:9px}
+  .tm-slot{padding:12px;border:1px solid #29485b;border-radius:10px;background:#102638;cursor:pointer;text-align:left;color:#edf5f8}
+  .tm-slot strong{display:block;font-size:12px}.tm-slot small{display:block;color:#a9bdc8;margin-top:5px}
+  .tm-status{display:inline-block;width:8px;height:8px;border-radius:50%;margin-right:6px;background:#48c78e}.tm-status.warn{background:#e8bd70}.tm-status.full{background:#e66c6c}
+  .tm-modal{padding:16px;background:#132f42;border:1px solid #55d9e8;border-radius:13px;margin:14px 0}
+  .tm-operator-card{display:grid;grid-template-columns:1fr auto;gap:12px;align-items:center}
+  .tm-legend{display:flex;gap:14px;flex-wrap:wrap;color:#a9bdc8;font-size:10px}
+  @media(max-width:760px){.tm-hero{align-items:flex-start;flex-direction:column}.tm-calendar{gap:3px}.tm-day{padding:7px 2px}.tm-availability{grid-template-columns:1fr}}
   @media(max-width:760px){.tm-pilot-grid{grid-template-columns:1fr}.tm-pilot-checks{grid-template-columns:1fr}}
 
   @media(max-width:760px){.tm-layout{grid-template-columns:1fr}.tm-nav{display:flex;overflow-x:auto;gap:4px;padding:8px;border-right:0;border-bottom:1px solid #294456}.tm-nav-label{display:none}.tm-nav button{width:auto;white-space:nowrap;padding:9px}.tm-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.tm-main{padding:18px 13px}.tm-head{height:52px;padding:0 12px}.tm-head small{display:none}.tm-title{font-size:21px}}
@@ -82,7 +100,7 @@
   const shell = document.createElement("section");
   shell.id = "tm-shell";
   shell.innerHTML = `
-    <header class="tm-head"><div class="tm-brand">ANGLER<span>MAP</span></div><small>· TERRITORY MANAGER</small><button class="tm-close" id="tm-close">Volver al mapa ×</button></header>
+    <header class="tm-head"><div class="tm-brand">ANGLER<span>MAP</span></div><small>· TERRITORY MANAGER</small><button class="tm-icon-btn" id="tm-settings" title="Configuración del territorio" aria-label="Configuración">⚙</button><button class="tm-close" id="tm-close">Volver al mapa ×</button></header>
     <div class="tm-layout">
       <nav class="tm-nav" aria-label="Administración territorial">
         <div class="tm-nav-label">GESTIÓN TERRITORIAL</div>
@@ -96,6 +114,7 @@
         <button data-tm-tab="angler-portal">⌖ Portal pescador</button>
         <button data-tm-tab="operator-portal">▣ Portal operador</button>
         <button data-tm-tab="content">▤ Información</button>
+        <button data-tm-tab="settings">⚙ Configuración</button>
       </nav>
       <main class="tm-main" id="tm-content" tabindex="-1"></main>
     </div>`;
@@ -112,16 +131,25 @@
     document.querySelectorAll("[data-tm-tab]").forEach(b => b.classList.toggle("active", b.dataset.tmTab === tab));
     const root = $("tm-content");
     if (tab === "overview") {
-      root.innerHTML = heading("CENTRO DE CONTROL", "Tu territorio, bajo control.", "Administra sectores, condiciones de acceso e información compartida desde una vista conectada al mapa.") +
-        `<div class="tm-grid">
-          <div class="tm-card"><small>Territorios registrados</small><div class="tm-value">${data.territories.length}</div><p>Áreas incorporadas a este espacio.</p></div>
-          <div class="tm-card"><small>Reglas de acceso</small><div class="tm-value">${data.rules.length}</div><p>Condiciones guardadas localmente.</p></div>
-          <div class="tm-card"><small>Solicitudes</small><div class="tm-value">${data.requests.length}</div><p>Registros de prueba recibidos.</p></div>
-          <div class="tm-card"><small>Estado de cuenta</small><div class="tm-value" style="font-size:17px">Local</div><p>Sin autenticación ni sincronización.</p></div>
-        </div>
-        <div class="tm-note">MODO DE DEMOSTRACIÓN: los datos se guardan solo en este navegador. Aún no existe verificación de titularidad, usuarios, backend ni validez jurídica. Los datos de esta vista no modifican la cartografía oficial.</div>
-        <div class="tm-section"><h3>Actividad reciente</h3><button class="tm-btn subtle" data-go="territories">Ver territorios →</button></div>
-        ${data.territories.length ? data.territories.slice(-3).reverse().map(t=>row(t.name, t.waterbody+" · "+t.commune+" · "+t.points.length+" vértices", "Borrador local")).join("") : empty("⌂","Todavía no hay territorios incorporados. Comienza creando un borrador desde el mapa.")}`;
+      const p=pilotData(), bookings=p.bookings||[], today=new Date().toISOString().slice(0,10);
+      const confirmed=bookings.filter(b=>b.status==="confirmed"), pending=bookings.filter(b=>b.status==="pending");
+      const revenue=confirmed.reduce((n,b)=>n+Number(b.totalAmount||0),0);
+      const selectedDate=window.tmSelectedDate||today;
+      const week=Array.from({length:7},(_,i)=>{const d=new Date();d.setDate(d.getDate()+i);return d.toISOString().slice(0,10);});
+      const occupancyFor=date=>p.sections.reduce((n,sec)=>n+pilotCount(p,sec.id,date),0);
+      const calendar=week.map(date=>{const used=occupancyFor(date),cap=p.sections.length*4,cls=!cap||!used?"free":used>=cap?"full":"busy";return '<button class="tm-day '+cls+' '+(date===selectedDate?'selected':'')+'" data-dashboard-date="'+date+'"><strong>'+date.slice(8,10)+'</strong><small>'+date.slice(5,7)+' · '+(cap?used+'/'+cap:'Sin sectores')+'</small></button>';}).join("");
+      const slots=p.sections.map(sec=>{const used=pilotCount(p,sec.id,selectedDate),left=Math.max(0,4-used),cls=left===0?"full":used?"warn":"";return '<button class="tm-slot" data-dashboard-section="'+esc(sec.id)+'"><strong><span class="tm-status '+cls+'"></span>'+esc(sec.name)+'</strong><small>'+left+' de 4 cupos disponibles · '+used+' reservados</small></button>';}).join("");
+      root.innerHTML=heading("PANEL DE CONTROL","La operación de tu territorio","Una vista rápida de reservas, ocupación y actividad. Entra solo cuando haya algo que gestionar.")+
+      '<div class="tm-toolbar"><div class="tm-pilot-muted">RESUMEN OPERATIVO · '+new Date().toLocaleDateString("es-CL")+'</div><div class="tm-toolbar-actions"><button class="tm-btn" data-go="requests">Ver reservas</button><button class="tm-icon-btn" data-go="settings" title="Configuración">⚙</button></div></div>'+
+      '<div class="tm-hero"><div><div class="tm-kicker">TERRITORIO ACTIVO</div><h2>Río del Medio</h2><p>'+p.sections.length+' sectores configurados · '+p.operators.length+' operadores con convenio · temporada '+esc(p.seasonStart)+' a '+esc(p.seasonEnd)+'</p></div><button class="tm-btn primary" id="tm-dashboard-map">Ver territorio en el mapa ↗</button></div>'+
+      '<div class="tm-grid"><div class="tm-card tm-metric warn"><small>Solicitudes por revisar</small><div class="tm-value">'+pending.length+'</div><p>Requieren una decisión.</p></div><div class="tm-card tm-metric good"><small>Reservas confirmadas</small><div class="tm-value">'+confirmed.length+'</div><p>Reservas aprobadas.</p></div><div class="tm-card tm-metric"><small>Operadores activos</small><div class="tm-value">'+p.operators.length+'</div><p>Convenios registrados.</p></div><div class="tm-card tm-metric"><small>Ingresos comprometidos</small><div class="tm-value">$'+revenue.toLocaleString("es-CL")+'</div><p>Estimación de reservas confirmadas.</p></div></div>'+
+      '<div class="tm-pilot-grid"><div class="tm-pilot-panel"><div class="tm-section" style="margin-top:0"><h3>Disponibilidad · próximos 7 días</h3><span class="tm-pilot-muted">Selecciona una fecha</span></div><div class="tm-calendar">'+calendar+'</div><div class="tm-section"><h3>Sectores · '+selectedDate+'</h3></div><div class="tm-availability">'+(slots||empty("〰","Agrega sectores para ver su disponibilidad."))+'</div><div class="tm-legend" style="margin-top:13px"><span><i class="tm-status"></i>Disponible</span><span><i class="tm-status warn"></i>Con reservas</span><span><i class="tm-status full"></i>Completo</span></div></div>'+
+      '<div class="tm-pilot-panel"><h3>Atención requerida</h3>'+(pending.length?pending.slice(0,4).map(b=>'<div class="tm-pilot-item"><strong>'+esc(b.operator||b.anglerName||"Solicitud")+'</strong><small>'+esc(b.date)+' · '+esc(b.sectionName)+' · '+b.anglers+' pescador(es)</small><button class="tm-btn primary" data-go="requests">Revisar solicitud</button></div>').join(""):empty("✓","No tienes solicitudes pendientes."))+'<div class="tm-section"><h3>Accesos rápidos</h3></div><div class="tm-actions"><button class="tm-btn" data-go="operators">＋ Nuevo operador</button><button class="tm-btn" data-go="team">Gestionar equipo</button><button class="tm-btn" data-go="rio-medio">Administrar sectores</button></div></div></div>'+
+      '<div class="tm-note">DEMO LOCAL: los indicadores se calculan con los registros de este navegador. Los ingresos son estimaciones, no pagos recibidos. La disponibilidad real compartida requiere backend.</div>';
+      root.querySelectorAll("[data-dashboard-date]").forEach(b=>b.onclick=()=>{window.tmSelectedDate=b.dataset.dashboardDate;render();});
+      root.querySelectorAll("[data-dashboard-section]").forEach(b=>b.onclick=()=>{tab="rio-medio";render();});
+      root.querySelectorAll("[data-go]").forEach(b=>b.onclick=()=>{tab=b.dataset.go;render();});
+      $("tm-dashboard-map").onclick=()=>{showAvailabilityMap(selectedDate);close();};
     } else if (tab === "territories") {
       root.innerHTML = heading("DELIMITACIÓN Y FICHAS", "Territorios", "Crea borradores de áreas de gestión y organiza sus sectores. La geometría que dibujes aquí es privada y no reemplaza límites ni capas oficiales.") +
         `<div class="tm-actions"><button class="tm-btn primary" id="tm-draw">＋ Delimitar en el mapa</button><button class="tm-btn" id="tm-manual">Crear ficha sin polígono</button></div>
@@ -165,10 +193,14 @@
       root.querySelectorAll("[data-unified-reject]").forEach(b=>b.onclick=()=>{const booking=p.bookings[Number(b.dataset.unifiedReject)];if(booking){booking.status="rejected";booking.reviewedAt=new Date().toISOString();data.pilot=p;save(data);render();}});
     } else if (tab === "operators") {
       const p=pilotData();
-      root.innerHTML=heading("RELACIONES COMERCIALES","Operadores turísticos","Registra operadores con convenio, vigencia y sectores autorizados.")+
-      '<form id="tm-operator-form" class="tm-form"><div class="tm-field"><label>Empresa / operador</label><input id="tm-op-name" required maxlength="100"></div><div class="tm-field"><label>Contacto responsable</label><input id="tm-op-contact" required maxlength="100"></div><div class="tm-field"><label>Correo</label><input id="tm-op-email" type="email" required></div><div class="tm-field"><label>Teléfono / WhatsApp</label><input id="tm-op-phone" required></div><div class="tm-field"><label>Convenio vigente hasta</label><input id="tm-op-until" type="date"></div><div class="tm-field"><label>Sectores autorizados</label><input id="tm-op-sections" placeholder="Sector 1, Sector 3 o Todos"></div><div class="tm-field full"><label>Condiciones comerciales</label><textarea id="tm-op-terms" rows="2" maxlength="500"></textarea></div><div class="tm-field full"><button class="tm-btn primary">Registrar operador</button></div></form><div class="tm-section"><h3>Operadores registrados</h3>'+tag(p.operators.length+" acuerdos")+'</div><div class="tm-list">'+(p.operators.length?p.operators.map((o,i)=>'<div class="tm-row"><div class="tm-row-main"><strong>'+esc(o.name)+'</strong><p>'+esc(o.contact)+' · '+esc(o.email)+' · '+esc(o.phone)+'</p><p>Vigencia: '+esc(o.until||"No definida")+' · Sectores: '+esc(o.sections||"Por definir")+'</p><p>'+esc(o.terms||"Sin condiciones comerciales")+'</p></div>'+tag(o.status||"Pendiente de validar")+'<button class="tm-btn subtle" data-op-delete="'+i+'">Eliminar</button></div>').join(""):empty("♧","Todavía no hay operadores registrados."))+'</div>';
-      $("tm-operator-form").onsubmit=e=>{e.preventDefault();p.operators.push({id:"op-"+Date.now(),name:$("tm-op-name").value.trim(),contact:$("tm-op-contact").value.trim(),email:$("tm-op-email").value.trim(),phone:$("tm-op-phone").value.trim(),until:$("tm-op-until").value,sections:$("tm-op-sections").value.trim(),terms:$("tm-op-terms").value.trim(),status:"Pendiente de validar"});data.pilot=p;if(save(data))render();};
-      root.querySelectorAll("[data-op-delete]").forEach(b=>b.onclick=()=>{p.operators.splice(Number(b.dataset.opDelete),1);data.pilot=p;save(data);render();});
+      root.innerHTML=heading("RELACIONES COMERCIALES","Operadores turísticos","Crea convenios de acceso, define sus condiciones y mantén a la vista su vigencia.")+
+      '<div class="tm-hero"><div><div class="tm-kicker">CONVENIOS Y COLABORADORES</div><h2>'+p.operators.length+' operadores registrados</h2><p>Registra una empresa una sola vez y luego podrá solicitar cupos dentro de los sectores autorizados.</p></div><button class="tm-btn primary" id="tm-new-operator">＋ <span aria-hidden="true">♙</span> Nuevo operador</button></div>'+
+      '<div id="tm-operator-create" class="tm-modal" hidden><div class="tm-section" style="margin-top:0"><h3>Nuevo convenio con operador turístico</h3><button class="tm-btn subtle" id="tm-cancel-operator">Cerrar ×</button></div><form id="tm-operator-form" class="tm-form"><div class="tm-field"><label>Razón social / nombre comercial</label><input id="tm-op-name" required maxlength="100" placeholder="Empresa de turismo"></div><div class="tm-field"><label>RUT / identificación tributaria (opcional)</label><input id="tm-op-tax" maxlength="30" placeholder="Identificación"></div><div class="tm-field"><label>Representante / contacto responsable</label><input id="tm-op-contact" required maxlength="100"></div><div class="tm-field"><label>Correo de contacto</label><input id="tm-op-email" type="email" required></div><div class="tm-field"><label>Teléfono / WhatsApp</label><input id="tm-op-phone" required></div><div class="tm-field"><label>Convenio vigente hasta</label><input id="tm-op-until" type="date"></div><div class="tm-field"><label>Sectores autorizados</label><input id="tm-op-sections" placeholder="Sector 1, Sector 3 o Todos"></div><div class="tm-field"><label>Tarifa / comisión acordada (CLP por pescador)</label><input id="tm-op-rate" type="number" min="0" step="1000" placeholder="Opcional"></div><div class="tm-field full"><label>Condiciones comerciales y operativas</label><textarea id="tm-op-terms" rows="3" maxlength="700" placeholder="Tarifas, forma de pago, responsabilidades, cancelaciones…"></textarea></div><div class="tm-field full"><label><input type="checkbox" id="tm-op-accept" required> Confirmo que las condiciones del convenio fueron acordadas con el operador.</label></div><div class="tm-field full"><button class="tm-btn primary" type="submit">Guardar convenio</button></div></form></div>'+
+      '<div class="tm-section"><h3>Convenios registrados</h3>'+tag(p.operators.length+" operadores")+'</div><div class="tm-list">'+(p.operators.length?p.operators.map((o,i)=>'<div class="tm-row tm-operator-card"><div class="tm-row-main"><strong>♙ '+esc(o.name)+'</strong><p>'+esc(o.contact)+' · '+esc(o.email)+' · '+esc(o.phone)+'</p><p>Vigencia: '+esc(o.until||"No definida")+' · Sectores: '+esc(o.sections||"Por definir")+'</p><p>'+esc(o.terms||"Sin condiciones comerciales")+'</p></div>'+tag(o.status||"Convenio en borrador")+'<button class="tm-btn subtle" data-op-delete="'+i+'">Eliminar</button></div>').join(""):empty("♙","Aún no hay operadores. Usa «Nuevo operador» para crear el primer convenio."))+'</div>';
+      $("tm-new-operator").onclick=()=>{$("tm-operator-create").hidden=false;$("tm-op-name").focus();};
+      $("tm-cancel-operator").onclick=()=>{$("tm-operator-create").hidden=true;};
+      $("tm-operator-form").onsubmit=e=>{e.preventDefault();p.operators.push({id:"op-"+Date.now(),name:$("tm-op-name").value.trim(),taxId:$("tm-op-tax").value.trim(),contact:$("tm-op-contact").value.trim(),email:$("tm-op-email").value.trim(),phone:$("tm-op-phone").value.trim(),until:$("tm-op-until").value,sections:$("tm-op-sections").value.trim(),rate:$("tm-op-rate").value,terms:$("tm-op-terms").value.trim(),status:"Convenio registrado · pendiente de validación documental"});data.pilot=p;if(save(data))render();};
+      root.querySelectorAll("[data-op-delete]").forEach(b=>b.onclick=()=>{if(confirm("¿Eliminar este operador del registro local?")){p.operators.splice(Number(b.dataset.opDelete),1);data.pilot=p;save(data);render();}});
     } else if (tab === "team") {
       const p=pilotData();
       root.innerHTML=heading("USUARIOS Y PERMISOS","Equipo administrativo","Registra responsables y distribuye tareas. En producción cada miembro tendrá cuenta autenticada y permisos aplicados en servidor.")+
@@ -179,6 +211,13 @@
       renderAnglerPortal(root);
     } else if (tab === "operator-portal") {
       renderOperatorPortal(root);
+    } else if (tab === "settings") {
+      const p=pilotData();
+      root.innerHTML=heading("PREFERENCIAS DEL TERRITORIO","Configuración","Ajusta reglas generales, temporada y condiciones comerciales. Estos controles no estarán mezclados con la operación diaria.")+
+      '<div class="tm-pilot-panel"><h3>Temporada y capacidad</h3><form id="tm-settings-form" class="tm-pilot-form"><div class="tm-field"><label>Inicio de temporada</label><input id="tm-set-start" type="date" value="'+esc(p.seasonStart)+'"></div><div class="tm-field"><label>Término de temporada</label><input id="tm-set-end" type="date" value="'+esc(p.seasonEnd)+'"></div><div class="tm-field"><label>Tarifa base por pescador (CLP)</label><input id="tm-set-price" type="number" min="0" step="1000" value="'+esc(p.price)+'"></div><div class="tm-field"><label>Capacidad máxima por sector / día</label><input value="4" disabled></div><div class="tm-field"><label>Medio de pago preferente</label><select id="tm-set-payment">'+["Transferencia bancaria","Pago en línea","Efectivo al ingreso","Acuerdo directo con administrador"].map(x=>'<option '+(p.paymentMethod===x?"selected":"")+'>'+x+'</option>').join("")+'</select></div><div class="tm-field"><label>Modalidad de cobro</label><select id="tm-set-mode">'+["Pago total al confirmar","Abono para reservar + saldo previo al ingreso","Pago al llegar","Facturación a operador"].map(x=>'<option '+(p.paymentMode===x?"selected":"")+'>'+x+'</option>').join("")+'</select></div><div class="tm-field full"><label>Condiciones de pago</label><textarea id="tm-set-terms" rows="3">'+esc(p.paymentTerms)+'</textarea></div><div class="tm-field full"><button class="tm-btn primary">Guardar configuración</button></div></form></div>'+
+      '<div class="tm-pilot-panel"><h3>Preferencias de operación</h3><p class="tm-pilot-muted">Las reglas de conservación, accesos y sectores se administran en sus respectivas secciones. En producción se podrán definir alertas, aprobaciones automáticas y responsables del equipo.</p><div class="tm-actions"><button class="tm-btn" data-go="access">Editar accesos y reglas</button><button class="tm-btn" data-go="team">Administrar equipo</button><button class="tm-btn" data-go="operators">Convenios de operadores</button></div></div>';
+      $("tm-settings-form").onsubmit=e=>{e.preventDefault();p.seasonStart=$("tm-set-start").value;p.seasonEnd=$("tm-set-end").value;p.price=$("tm-set-price").value;p.paymentMethod=$("tm-set-payment").value;p.paymentMode=$("tm-set-mode").value;p.paymentTerms=$("tm-set-terms").value.trim();if(p.seasonStart&&p.seasonEnd&&p.seasonEnd<p.seasonStart){alert("El término de temporada debe ser posterior al inicio.");return;}data.pilot=p;if(save(data))alert("Configuración guardada en este navegador.");};
+      root.querySelectorAll("[data-go]").forEach(b=>b.onclick=()=>{tab=b.dataset.go;render();});
     } else {
       root.innerHTML = heading("CONTENIDO TERRITORIAL", "Información y validación", "Mantén información útil para visitantes y guías: instrucciones, observaciones de terreno, condiciones y referencias verificables.") +
         `<div class="tm-grid">
@@ -238,6 +277,13 @@
     pilotLayers();pilotRiverLayer.clearLayers();
     matches.forEach(w=>L.geoJSON({type:"FeatureCollection",features:w.features},{style:{color:"#39b9d2",weight:5,opacity:.95}}).bindPopup("<b>Río del Medio</b><br>Geometría hidrográfica de referencia · DGA").addTo(pilotRiverLayer));
     const bounds=pilotRiverLayer.getBounds();if(bounds.isValid())map.fitBounds(bounds,{padding:[55,55],maxZoom:13});
+  }
+  function showAvailabilityMap(date) {
+    const matches=pilotRiverMatches(),p=pilotData();
+    if(matches.length){pilotLayers();pilotRiverLayer.clearLayers();matches.forEach(w=>L.geoJSON({type:"FeatureCollection",features:w.features},{style:{color:"#55d9e8",weight:5,opacity:.95}}).addTo(pilotRiverLayer));}
+    pilotLayers();pilotSectionLayer.clearLayers();
+    p.sections.forEach(sec=>{const used=pilotCount(p,sec.id,date),left=Math.max(0,4-used),color=left===0?"#e66c6c":used?"#e8bd70":"#48c78e";if(sec.coordinates?.length>1)L.polyline(sec.coordinates,{color,weight:8,opacity:.95}).bindPopup("<b>"+esc(sec.name)+"</b><br>"+left+" de 4 cupos disponibles · "+date).addTo(pilotSectionLayer);});
+    const bounds=pilotSectionLayer.getBounds();if(bounds.isValid())map.fitBounds(bounds,{padding:[60,60],maxZoom:14});else if(pilotRiverLayer.getBounds().isValid())map.fitBounds(pilotRiverLayer.getBounds(),{padding:[60,60],maxZoom:13});
   }
   function drawPilotRecords() {
     pilotLayers();pilotSectionLayer.clearLayers();pilotAccessLayer.clearLayers();
@@ -448,6 +494,7 @@
 
   shell.querySelectorAll("[data-tm-tab]").forEach(b=>b.addEventListener("click",()=>{tab=b.dataset.tmTab;render();}));
   $("tm-close").onclick=close;
+  $("tm-settings").onclick=()=>{tab="settings";render();};
   $("profileSelect").onchange=e=>{
     if(e.target.value==="admin"){tab="overview";open();} else if(e.target.value==="operator"){tab="operator-portal";open();} else if(e.target.value==="angler"){tab="angler-portal";open();} else close();
   };
