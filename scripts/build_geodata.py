@@ -650,9 +650,12 @@ def get_provinces(commune_records):
         for record in commune_records
     ])
 
+    # La capa provincial contiene pocos registros. Descargarla completa
+    # evita enviar polígonos comunales extensos al servicio MOP, cuyo
+    # endpoint ha agotado el tiempo de espera al recibir consultas POST.
+    # El recorte exacto al territorio de las nueve comunas se realiza abajo.
     features, fields, metadata = fetch_features(
-        URL_PROVINCES,
-        geometry=commune_union
+        URL_PROVINCES
     )
 
     records = records_from_features(features, "límites comunales")
