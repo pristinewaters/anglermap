@@ -50,7 +50,9 @@ jobs:
 
           required = [
               "data/magallanes/communes.geojson",
+              "data/magallanes/provinces.geojson",
               "data/magallanes/waterbodies.geojson",
+              "data/magallanes/dga_hydro_units.geojson",
               "data/magallanes/dga_stations.geojson",
               "data/metadata/sources.json"
           ]
@@ -77,9 +79,12 @@ jobs:
                       f"Invalid GeoJSON: {filename}"
                   )
 
-              if filename != "data/magallanes/dga_stations.geojson" and not data.get("features"):
+              if filename in (
+                  "data/magallanes/communes.geojson",
+                  "data/magallanes/waterbodies.geojson"
+              ) and not data.get("features"):
                   raise SystemExit(
-                      f"No features in: {filename}"
+                      f"No features in required layer: {filename}"
                   )
 
           with open(
