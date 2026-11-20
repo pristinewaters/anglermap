@@ -10,6 +10,7 @@
     try {
       const value = JSON.parse(localStorage.getItem(STORE)) || {};
       return { territories: [], rules: [], requests: [], imports: [], ...value,
+        territories: Array.isArray(value.territories) ? value.territories.map((t,i)=>({...t,id:t.id||"legacy-"+i})) : [],
         imports: Array.isArray(value.imports) ? value.imports : [] };
     } catch (_) { return { territories: [], rules: [], requests: [], imports: [] }; }
   };
