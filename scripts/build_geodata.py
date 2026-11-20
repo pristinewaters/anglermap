@@ -1216,7 +1216,7 @@ def main():
         # 2. Provincias MOP para clasificar las aguas por provincia.
         global PROVINCE_GEOMETRIES
         try:
-            province_features, province_meta = get_provinces(commune_records)
+            province_features, province_meta = get_provinces([{"geometry": shape(item["geometry"])} for item in commune_features])
             PROVINCE_GEOMETRIES = [{
                 "name": item["properties"]["name"],
                 "geometry": shape(item["geometry"])
