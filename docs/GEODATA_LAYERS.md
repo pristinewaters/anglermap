@@ -41,6 +41,10 @@ La asociación de cada agua con unidades hidrográficas se calcula por intersecc
 
 La capa DGA de red de drenaje y las unidades BNA se publican en la IDE de la SMA con atribución explícita a DGA/Banco Nacional de Aguas. La procedencia y fecha de extracción se conservan en `sources.json` y en los atributos de cada entidad.
 
+La capa MOP `sistema_lacustre` (ID 17) es mixta: además de lagos y lagunas contiene polígonos de ríos, esteros, embalses, salares, campos de hielo, glaciares y ventisqueros. El catálogo retiene Río, Estero, Embalse, Lago y Laguna como categorías diferenciadas; no clasifica salares ni elementos glaciares como lagos.
+
+La capa DGA `Cuencas` (ID 10) informa actualización hasta 2004 y datum desconocido, asumido WGS84 por su publicador. Se utiliza como referencia hidrográfica y no como deslinde parcelario de alta precisión. La red de drenaje DGA (ID 2) indica que representa la mayoría, no necesariamente la totalidad, de las expresiones espaciales de drenaje.
+
 ## Diccionario de atributos
 
 ### `waterbodies.geojson`
