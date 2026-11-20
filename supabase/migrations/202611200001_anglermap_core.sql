@@ -216,6 +216,11 @@ drop policy if exists "angler creates own booking request" on public.bookings;
 create policy "angler creates own booking request" on public.bookings
   for insert to authenticated with check (
     user_id = (select auth.uid()) and status = 'requested'
+    and exists (
+      select 1 from public.territory_sectors s
+      join public.territories t on t.id = s.territory_id
+      where s.id = sector_id and s.status = 'open' and t.status = 'published'
+    )
   );
 
 drop policy if exists "access events visible to booking parties" on public.access_events;
