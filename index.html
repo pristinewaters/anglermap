@@ -264,6 +264,17 @@ button:focus-visible,input:focus-visible,select:focus-visible{outline:2px solid 
  .detail-panel{bottom:78px;max-height:58%}
 }
 
+
+/* Profile dialog layout fix: auth controls remain in their own rows and never cover profile fields. */
+.profile-dialog{display:flex;flex-direction:column;max-height:92dvh;overflow:hidden}
+.profile-dialog-body{min-height:0;overflow-y:auto;overscroll-behavior:contain}
+.profile-dialog-body #amAuthPanel{position:relative;display:grid;grid-template-columns:minmax(0,1fr);gap:10px;width:100%;margin:0 0 18px!important;padding:14px!important;clear:both}
+.profile-dialog-body #amAuthPanel .am-auth-credentials{display:grid;grid-template-columns:minmax(0,1fr);gap:8px;width:100%}
+.profile-dialog-body #amAuthPanel input{display:block;width:100%;min-width:0;max-width:100%;height:42px;margin:0}
+.profile-dialog-body #amAuthPanel .am-auth-actions{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;width:100%}
+.profile-dialog-body #amAuthPanel .am-auth-secondary{display:flex;gap:8px;flex-wrap:wrap;width:100%}
+.profile-dialog-body #amAuthPanel button{min-width:0;white-space:normal;margin:0}
+@media(max-width:520px){.profile-modal{padding:8px}.profile-dialog{max-height:96dvh}.profile-dialog-body{padding:12px}.profile-dialog-body #amAuthPanel .am-auth-actions{grid-template-columns:1fr}}
 </style>
 </head>
 <body>
