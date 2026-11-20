@@ -3,8 +3,8 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<meta name="theme-color" content="#081521">
-<title>AnglerMap | Explore Patagonia</title>
+<meta name="theme-color" content="#ffffff">
+<title>AnglerMap | Explora ríos de Patagonia</title>
 <link rel="preconnect" href="https://unpkg.com">
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
 <style>
@@ -457,6 +457,41 @@ button:focus-visible,input:focus-visible,select:focus-visible{outline:2px solid 
  .role-switch .profile-select{max-width:87px;font-size:9px}
  .side-intro{padding-right:38px}
 }
+
+/* AnglerMap 2026 · experiencia principal clara, mapa primero y navegación simple */
+:root{--bg:#f5f7fa;--panel:#fff;--panel2:#f1f5f9;--panel3:#e8eef5;--line:#dce4ec;--text:#172b3d;--muted:#64788a;--cyan:#1683b8;--blue:#176eaa;--gold:#b7812d;--danger:#b84e43;--radius:12px;--am-focus:#1683b8}
+html,body{background:#f5f7fa;color:#172b3d}body{font-size:13px}.app{grid-template-rows:62px minmax(0,1fr)}
+.topbar{background:#fff;color:#172b3d;border-bottom:1px solid #dce4ec;box-shadow:0 1px 5px #1d355008;padding:0 18px;gap:13px}
+.brand-name{color:#142b40}.brand-name span{color:#1683b8}.brand-sub{color:#718397}
+.logo path:first-child{stroke:#1683b8}.logo path:nth-child(2){stroke:#b7812d}.logo path:nth-child(3){stroke:#1683b8}
+.menu-btn,.icon-btn{background:#f5f8fb;color:#25435a;border-color:#dce4ec}.search-wrap input{background:#f5f8fb;color:#172b3d;border-color:#dce4ec}.search-wrap input::placeholder{color:#8293a3}.search-icon{color:#718397}
+.role-switch{background:#f6f9fc;border-color:#dce4ec}.role-switch>span{color:#718397}.role-switch .profile-select{color:#1b354a}.profile-select{background:#fff;color:#1b354a;border-color:#dce4ec}
+.help-btn{background:#f3f8fc;color:#176eaa;border-color:#dce4ec}
+.workspace{grid-template-columns:278px minmax(0,1fr)}.sidebar{visibility:visible;width:auto;position:relative;inset:auto;transform:none;background:#fff;border-right:1px solid #dce4ec;box-shadow:none}
+.side-scroll{padding:15px 13px 24px;scrollbar-color:#c8d5e0 transparent}.side-intro{color:#1a3449}.side-intro small{color:#718397}
+.side-heading{color:#718397}.side-heading small{color:#1683b8}.nav-item{color:#40586c}.nav-item:hover,.nav-item.active{background:#edf6fb;border-color:#d8eaf5;color:#145d8b}.nav-item.active .nav-icon{color:#1683b8}
+.nav-icon{color:#8294a4}.nav-hint,.nav-count{color:#718397}.section-rule{background:#e6ebf0}
+.zone{background:#fff;border-color:#e2e8ef}.zone-head{background:#f7f9fb;color:#263f54}.zone-head:hover{background:#eef5fa}.zone-head small{color:#718397}.zone-arrow{color:#1683b8}
+.water-item{color:#40586c}.water-item:hover,.water-item.selected{background:#edf6fb;color:#145d8b}.water-dot{background:#1683b8}.water-item small{color:#8293a3}
+.map-area{background:#e8eef3}#map{background:#e8eef3}.map-controls{background:#fff;border-color:#dce4ec;box-shadow:0 3px 14px #1d355018}.map-control{color:#526a7d}.map-control.active{background:#eaf5fb;color:#126b9e}
+.map-tool{background:#fff;border-color:#dce4ec;color:#29465c;box-shadow:0 2px 8px #1d355014}.map-tool:hover,.map-tool.active{border-color:#1683b8;color:#1683b8}.map-chip{background:#fff;border-color:#dce4ec;color:#526a7d}.map-chip b{color:#1683b8}
+.detail-panel{background:#fff;border-color:#dce4ec;color:#172b3d;box-shadow:0 12px 40px #1d355022}.detail-top{border-bottom-color:#e6ebf0}.detail-kicker{color:#1683b8}.detail-sub,.detail-description{color:#5c7184}
+.close-btn{background:#f2f6f9;color:#38536a;border-color:#dce4ec}.detail-tab{color:#64788a}.detail-tab.active{background:#edf6fb;color:#126b9e}.detail-warning{background:#fff8eb;border-color:#f0dfbd;color:#765a2c}
+.action-btn{background:#f4f8fb;color:#31536d;border-color:#dce4ec}.action-btn.primary{background:#176eaa;border-color:#176eaa;color:#fff}.info-card,.panel-row{background:#f8fafc;border-color:#e2e8ef}.info-card p,.panel-row p{color:#64788a}
+.panel-content{color:#172b3d}.panel-subtitle{color:#718397}.empty-state{color:#718397}
+.weather-dock{background:#fff;border-color:#dce4ec;box-shadow:0 5px 22px #1d355020;color:#172b3d}.weather-dock-head{border-bottom-color:#e6ebf0}
+.weather-brand{color:#24455f}.weather-brand span{color:#1683b8}.weather-location,.weather-updated{color:#718397}.weather-dock-btn{background:#f3f7fa;border-color:#dce4ec;color:#36546c}
+.weather-current{border-right-color:#e6ebf0}.weather-current-desc{color:#64788a}.weather-current-desc b{color:#172b3d}.weather-metric{border-right-color:#e6ebf0}.weather-metric span{color:#718397}.weather-metric b{color:#29465c}
+.weather-hour{background:#f7f9fb;border-color:#e2e8ef}.weather-hour small{color:#718397}.weather-hour span{color:#1683b8}.weather-foot{border-top-color:#e6ebf0;color:#8293a3}.weather-loading{color:#718397}
+.leaflet-popup-content-wrapper,.leaflet-popup-tip{background:#fff;color:#172b3d}.leaflet-bar a{background:#fff!important;color:#29465c!important;border-color:#dce4ec!important}.leaflet-control-scale-line{background:#ffffffeb;color:#29465c;border-color:#9aabba}.leaflet-control-attribution{color:#64788a!important}
+.profile-modal{background:#172b3d66}.profile-dialog{background:#fff;border-color:#dce4ec;box-shadow:0 20px 70px #172b3d30;color:#172b3d}.profile-dialog-head{border-bottom-color:#e6ebf0}
+.profile-field label,.profile-group-title{color:#64788a}.profile-field input,.profile-field select{background:#f8fafc;color:#172b3d;border-color:#dce4ec}.profile-option{background:#f5f8fb;border-color:#dce4ec;color:#38536a}
+.profile-footnote{background:#f5f8fb;border-color:#dce4ec;color:#64788a}.profile-dialog-body #amAuthPanel{background:#f5f8fb!important;border-color:#dce4ec!important}.profile-dialog-body #amAuthPanel input{background:#fff;color:#172b3d;border-color:#dce4ec}
+.am-guide{background:#172b3d66}.am-guide-card{background:#fff;border-color:#dce4ec;color:#172b3d}.am-guide-head,.am-guide-foot{border-color:#e6ebf0}.am-guide-kicker{color:#1683b8}.side-footer{color:#8293a3}
+@media(min-width:901px){.workspace{grid-template-columns:278px minmax(0,1fr)}.workspace.menu-open{grid-template-columns:278px minmax(0,1fr)}.sidebar{visibility:visible}.menu-btn{display:grid!important}}
+@media(max-width:900px){.workspace{grid-template-columns:1fr}.sidebar{position:absolute;z-index:900;top:62px;bottom:0;left:0;width:min(320px,88vw);transform:translateX(-103%);visibility:visible;background:#fff;box-shadow:12px 0 35px #172b3d22}.sidebar.open{transform:translateX(0)}.workspace.menu-open{grid-template-columns:1fr}}
+@media(max-width:600px){.app{grid-template-rows:54px minmax(0,1fr)}.topbar{height:54px;background:#fff}.sidebar{top:54px}.map-controls{background:#fff}.detail-panel{background:#fff}.weather-dock{background:#fff}}
+
 </style>
 </head>
 <body>
@@ -580,7 +615,7 @@ button:focus-visible,input:focus-visible,select:focus-visible{outline:2px solid 
    <div class="detail-title" id="detailTitle">Nombre del río</div><div class="detail-sub" id="detailZone">Zona</div>
   </div>
   <div class="detail-content">
-   <div class="detail-tabs"><button class="detail-tab active" data-tab="overview">Resumen</button><button class="detail-tab" data-tab="conditions">Condiciones</button><button class="detail-tab" data-tab="access">Territorio</button></div>
+   <div class="detail-tabs"><button class="detail-tab active" data-tab="overview">Resumen</button><button class="detail-tab" data-tab="conditions">Pesca Premium</button><button class="detail-tab" data-tab="access">Territorio</button></div>
    <div id="tabOverview">
     <p class="detail-description" id="detailDescription"></p>
     <div class="detail-warning" id="detailWarning"></div>
@@ -588,7 +623,7 @@ button:focus-visible,input:focus-visible,select:focus-visible{outline:2px solid 
    <div id="tabConditions" hidden>
     <div class="info-card"><b>Condiciones meteorológicas</b><p id="riverWeather">Consulta las condiciones del mapa.</p></div>
     <div class="info-card"><b>Datos hidrológicos DGA</b><p id="riverDga">Activa la capa de estaciones DGA para consultar mediciones disponibles.</p></div>
-    <div class="info-card"><b>Pesca y especies</b><p>Las especies, temporadas y técnicas deberán incorporarse con fuentes oficiales y validación local para cada tramo.</p></div>
+    <div class="info-card"><b>AnglerMap Premium · Información específica del río</b><p>Contenido previsto: especies, temporadas, características de cada tramo, técnicas, condiciones de pesca y puntos de interés validados. Esta ficha aún no contiene información técnica verificada para este río.</p><p style="margin-top:8px"><strong>Acceso Premium:</strong> función comercial en desarrollo. No se realizan cobros ni se activa una suscripción en esta demostración.</p></div>
    </div>
    <div id="tabAccess" hidden>
     <div class="info-card"><b>Cartografía y ubicación</b><p id="detailGeometry"></p></div>
@@ -676,9 +711,21 @@ async function loadHydroCatalog() {
    });
   });
   RIVERS=[...grouped.values()].sort((x,y)=>x.name.localeCompare(y.name,"es"));
+  // Dibuja el inventario hidrográfico oficial ya cargado y permite abrir cada ficha desde el mapa.
+  if(window.anglerHydroMapLayer){map.removeLayer(window.anglerHydroMapLayer);}
+  const mapFeatures=[...new Map(RIVERS.flatMap(r=>r.features).map(feature=>[feature.properties.waterbody_id+"|"+JSON.stringify(feature.geometry),feature])).values()];
+  window.anglerHydroMapLayer=L.geoJSON({type:"FeatureCollection",features:mapFeatures},{
+    style:feature=>({color:feature.properties.water_category==="river"?"#1683b8":"#54a6c8",weight:feature.properties.water_category==="river"?2.1:1.5,opacity:.86,fillColor:"#58a9cf",fillOpacity:.09}),
+    onEachFeature:(feature,layer)=>{
+      const water=RIVERS.find(r=>r.id===feature.properties.waterbody_id);
+      if(!water)return;
+      layer.bindTooltip(water.name,{sticky:true,direction:"top",opacity:.92});
+      layer.on("click",()=>openRiver(water,(feature.properties.communes||[])[0]||null));
+    }
+  }).addTo(map);
   hydroCatalogState="ready";
   const count=document.getElementById("waterCount");
-  if(count)count.textContent=RIVERS.length+" AGUAS";
+  if(count)count.textContent=RIVERS.length.toLocaleString("es-CL")+" aguas";
  }catch(error){
   console.error("AnglerMap: no se pudo cargar el inventario DGA.",error);
   RIVERS=[];hydroCatalogState="unavailable";
@@ -935,8 +982,8 @@ function openRiver(r,focusCommune=null){
  $("detailKicker").textContent="Ficha de agua · "+r.categoryLabel;
  $("detailTitle").textContent=r.name;
  $("detailZone").textContent=(focusCommune?"Enfoque: "+focusCommune+" · ":"")+r.communes.join(" · ")+" · Magallanes";
- $("detailDescription").textContent=[r.categoryLabel,focusCommune?"Tramo seleccionado en "+focusCommune:""].filter(Boolean).join(" · ")+".";
- $("detailWarning").textContent="La geometría DGA identifica el cuerpo de agua, pero no acredita acceso público, permiso de pesca ni condiciones actuales del cauce.";
+ $("detailDescription").textContent=[r.categoryLabel,focusCommune?"Tramo seleccionado en "+focusCommune:"","Ficha básica incluida en el explorador gratuito"].filter(Boolean).join(" · ")+".";
+ $("detailWarning").textContent="La cartografía identifica el cuerpo de agua, pero no acredita acceso público, permiso de pesca ni condiciones actuales del cauce.";
  $("detailGeometry").textContent="Fuente: "+(r.sources.join("; ")||"DGA")+". Geometrías disponibles: "+r.features.length+". "+(r.aliases.length?"Nombre alternativo registrado: "+r.aliases.join(", ")+". ":"")+(r.toponymyNotes.length?r.toponymyNotes.join(" "):"");
  $("riverWeather").textContent="La meteorología corresponde al centro actual del mapa y no necesariamente a este cuerpo de agua. Mueve el mapa hasta el sector de interés para consultar el pronóstico local.";
  $("riverDga").textContent="Las estaciones DGA se muestran en una capa independiente. La estación más cercana no se atribuye automáticamente a este río o lago; abre su marcador para consultar tipo, ubicación y, cuando exista, medición operacional.";
@@ -1212,7 +1259,7 @@ setInterval(()=>loadWeather(),30*60*1000);
 /* Barra meteorológica: minimizar y restaurar */
 const weatherDock=$("weatherDock");
 const weatherMinimize=$("weatherMinimize");
-let weatherMinimized=readStore("anglerMapWeatherMinimized",false);
+let weatherMinimized=readStore("anglerMapWeatherMinimized",true);
 function setWeatherMinimized(value){
  weatherMinimized=value;
  weatherDock.classList.toggle("minimized",value);
