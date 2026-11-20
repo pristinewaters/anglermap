@@ -19,7 +19,8 @@ from shapely.geometry import (
     MultiPolygon,
     GeometryCollection,
     Point,
-    LinearRing
+    LinearRing,
+    box
 )
 from shapely.ops import unary_union
 from shapely.geometry.polygon import orient
@@ -110,7 +111,7 @@ def request_json(url, params=None, method="GET"):
                 response = SESSION.get(
                     url,
                     params=params,
-                    timeout=(15, 60)
+                    timeout=(20, 120)
                 )
 
             if response.status_code == 429 or response.status_code >= 500:
@@ -330,14 +331,8 @@ def arcgis_polygon_geometry(geometry):
     }
 
 
-def fetch_ids(layer_url, where="1=1", geometry=None):
-    """
-    Recupera IDs usando una envolvente por comuna (GET liviano).
-    La envolvente reduce candidatos; el recorte/intersección exactos
-    se realizan localmente con Shapely después de descargar geometrías.
-    Evita enviar polígonos administrativos complejos al endpoint ArcGIS,
-    que ha respondido con payloads no JSON ante consultas POST extensas.
-    """
+def fetch_ids_single(layer_url, where="1=1", geometry=None):
+    """Consulta ArcGIS para un único rectángulo espacial."""
     params = {
         "where": where,
         "returnIdsOnly": "true"
@@ -356,10 +351,7 @@ def fetch_ids(layer_url, where="1=1", geometry=None):
             "spatialReference": {"wkid": 4326}
         }
         params.update({
-            "geometry": json.dumps(
-                envelope,
-                separators=(",", ":")
-            ),
+            "geometry": json.dumps(envelope, separators=(",", ":")),
             "geometryType": "esriGeometryEnvelope",
             "inSR": "4326",
             "spatialRel": "esriSpatialRelIntersects"
@@ -370,8 +362,52 @@ def fetch_ids(layer_url, where="1=1", geometry=None):
         params,
         method="GET"
     )
-
     return data.get("objectIds") or []
+
+
+def fetch_ids(layer_url, where="1=1", geometry=None):
+    """
+    Consulta por teselas espaciales pequeñas. Los servicios ArcGIS del MOP
+    fallan o agotan tiempo con envolventes extensas de comunas australes.
+    Cada tesela reduce el coste de la consulta remota; los IDs se deduplican
+    y la geometría se filtra exactamente después de descargar los features.
+    """
+    if geometry is None or geometry.is_empty:
+        return fetch_ids_single(layer_url, where, geometry)
+
+    xmin, ymin, xmax, ymax = geometry.bounds
+    tile_size = 0.5  # grados; aproximadamente 55 km en latitudes australes
+    x = xmin
+    tile_count = 0
+    ids = set()
+
+    while x < xmax:
+        y = ymin
+        x2 = min(x + tile_size, xmax)
+        while y < ymax:
+            y2 = min(y + tile_size, ymax)
+            tile = box(x, y, x2, y2)
+
+            if geometry.intersects(tile):
+                tile_count += 1
+                tile_ids = fetch_ids_single(layer_url, where, tile)
+                ids.update(tile_ids)
+
+                if tile_count % 10 == 0:
+                    log(
+                        "Teselas consultadas: " + str(tile_count)
+                        + " · IDs únicos: " + str(len(ids))
+                    )
+
+            y = y2
+        x = x2
+
+    log(
+        "Consulta espacial por teselas completada: "
+        + str(tile_count) + " teselas · "
+        + str(len(ids)) + " IDs únicos"
+    )
+    return sorted(ids)
 
 
 def fetch_batch(layer_url, ids, oid_field):
