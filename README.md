@@ -9,7 +9,7 @@ https://pristinewaters.github.io/anglermap/
 ## Funciones disponibles
 
 - Mapa interactivo con cartografía satelital, topográfica y OpenStreetMap.
-- Catálogo DGA de todos los registros nombrados de ríos, esteros, lagos y lagunas disponibles en las capas seleccionadas, agrupado por las nueve comunas.
+- Catálogo DGA de cuerpos de agua con nombre (ríos, esteros, lagos y lagunas) disponibles en las capas seleccionadas, agrupado por las nueve comunas.
 - Cuerpos que atraviesan más de una comuna conservan una identidad común y se muestran en cada comuna correspondiente.
 - Búsqueda de aguas y fichas con procedencia y comuna.
 - Selección de un cuerpo de agua con zoom a la geometría cartográfica DGA disponible.
