@@ -39,30 +39,18 @@ URL_COMMUNES = BASE + "/MAPA_BASE/LIMITES/MapServer/2"
 URL_COMMUNES_FALLBACK = "https://geoide.minvu.cl/server/rest/services/Hosted/DS19/FeatureServer/3"
 URL_PROVINCES = BASE + "/MAPA_BASE/LIMITES/MapServer/1"
 
-URL_IGM = BASE + "/MAPA_BASE/IGM50/MapServer"
-URL_IGM_RIVERS = URL_IGM + "/15"
-URL_IGM_WATERS = URL_IGM + "/18"
-
-URL_MOP_HYDRO = BASE + "/MAPA_BASE/RED_HIDROGRAFICA/MapServer"
-URL_MOP_RIVERS = URL_MOP_HYDRO + "/16"
-URL_MOP_LAKES = URL_MOP_HYDRO + "/17"
-
-URL_DGA_STATIONS = (
-    BASE + "/DGA/Red_Hidrometrica/MapServer/0"
+# Una fuente institucional por temática: MOP para caminos y DGA para aguas.
+# MOP Dirección de Vialidad: red vial nacional (incluye caminos regionales
+# comunales y caminos regionales de acceso). La capa 3 es la de mayor detalle.
+URL_MOP_ROADS = (
+    BASE + "/VIALIDAD/Red_Vial_Chile_Base_gris/MapServer/3"
 )
 
-# Capas DGA/Banco Nacional de Aguas publicadas en la IDE de la SMA.
+# Servicio hidrográfico DGA publicado en IDE SMA: dos subcapas que se
+# consolidan en un único GeoJSON de cuerpos de agua.
 URL_DGA_IDE = "https://ideserver.sma.gob.cl/arcgis/rest/services/IDE/Recursos_hidricos_glaciares/MapServer"
 URL_DGA_DRAINAGE = URL_DGA_IDE + "/2"
 URL_DGA_LAKES = URL_DGA_IDE + "/5"
-URL_DGA_BASINS = URL_DGA_IDE + "/10"
-URL_DGA_SUBBASINS = URL_DGA_IDE + "/9"
-URL_DGA_SUBSUBBASINS = URL_DGA_IDE + "/8"
-URL_DGA_INVENTORY_PAGE = "https://dga.mop.gob.cl/servicios-de-informacion/catastro-publico-de-aguas/inventario-publico-de-cuencas-hidrograficas-y-lagos/"
-URL_DGA_BNA_DOWNLOAD = "https://dga.mop.gob.cl/uploads/sites/13/2025/02/Cuencas_BNA.zip"
-URL_DGA_BNA_INVENTORY_XLS = "https://dga.mop.gob.cl/uploads/sites/13/2023/07/Inventario_Publico_de_Cuencas.xls"
-URL_DGA_LAKES_DOWNLOAD = "https://dga.mop.gob.cl/uploads/sites/13/2023/07/Lagos.zip"
-URL_DGA_LAKES_INVENTORY_XLS = "https://dga.mop.gob.cl/uploads/sites/13/2023/07/Inventario_Publico_de_Lagos.xls"
 
 
 # Cabo de Hornos y Antártica quedan fuera del alcance.
@@ -844,230 +832,138 @@ def get_provinces(commune_records):
     return output, metadata
 
 
-def query_water_layer(
-    layer_url,
-    source_name,
-    water_type,
-    commune_union
-):
-    # La consulta remota usa intersección poligonal exacta por comuna.
+def query_water_layer(layer_url, source_name, water_type, commune_union):
+    """Descarga y recorta una subcapa DGA de drenajes o lagos."""
     features, fields, metadata = fetch_features(
         layer_url,
         geometry=commune_union
     )
-
-    name_field = find_field(
-        fields,
-        [
-            "NOMBRE",
-            "NOMBRESS",
-            "NOM_RIO",
-            "NOM_CUERPO",
-            "TOPONIMO",
-            "TEXTO",
-            "NOM"
-        ]
-    )
-
-    type_field = find_field(
-        fields,
-        [
-            "TIPO",
-            "TIPO_ENT",
-            "CLASE",
-            "CATEGORIA",
-            "CATEGORÍA"
-        ]
-    )
-    basin_code_field = find_field(fields, ["COD_CUEN"])
-    subbasin_code_field = find_field(fields, ["COD_SUBC"])
-    subsubbasin_code_field = find_field(fields, ["COD_SSUBC"])
-
+    name_field = find_field(fields, ["NOMBRE", "NOM", "TOPONIMO"])
+    type_field = find_field(fields, ["TIPO", "CATEGORIA", "CLASIFICAC"])
     records = records_from_features(features, source_name)
     output = []
 
     for record in records:
-        geom = record["geometry"]
-
-        # Filtro espacial exacto contra los límites comunales.
-        if not geom.intersects(commune_union):
+        geometry = record["geometry"]
+        if not geometry.intersects(commune_union):
             continue
-
-        clipped = geom.intersection(commune_union)
-
+        clipped = geometry.intersection(commune_union)
         if clipped.is_empty:
             continue
 
         props = record["properties"]
+        raw_name = props.get(name_field) if name_field else None
+        name = str(raw_name or "").strip()
+        if not name:
+            # No inventar topónimos. La geometría anónima permanece en el
+            # GeoJSON para representación, pero no se convierte en entrada
+            # nominal del catálogo.
+            name = "Cuerpo de agua sin nombre"
 
-        source_feature_name = (
-            props.get(name_field)
-            if name_field else None
-        )
-        if not source_feature_name:
-            source_feature_name = "Cuerpo de agua sin nombre"
+        communes = sorted({
+            item["name"] for item in intersecting_communes(clipped)
+        })
+        subtype = props.get(type_field) if type_field else None
+        subtype_text = str(subtype or "").strip()
+        subtype_normalized = normalize(subtype_text)
 
-        name = str(source_feature_name).strip()
-        communes = sorted(set(
-            commune["name"]
-            for commune in intersecting_communes(clipped)
-        ))
+        if water_type == "river":
+            category = "river"
+            category_label = "Río / estero"
+        else:
+            # La capa DGA 5 es el inventario poligonal nacional de lagos.
+            # Distingue lagunas por el campo TIPO cuando está informado;
+            # no se reclasifican por nombre sin respaldo del atributo.
+            category = "lagoon" if "laguna" in subtype_normalized else "lake"
+            category_label = "Laguna" if category == "lagoon" else "Lago"
 
-        # Corrección toponímica local para Tierra del Fuego:
-        # el tramo rotulado "Río Serrano" dentro de Primavera corresponde
-        # al Río del Oro. Se conserva el nombre de origen como alias.
+        source_feature_name = name
+        aliases = []
         toponymy_status = "source_name"
         toponymy_note = None
-        aliases = []
+
+        # Corrección toponímica local corroborada: solo aplica al elemento
+        # que DGA entrega como Río Serrano dentro de Primavera.
         if normalize(name) == "rio serrano" and "Primavera" in communes:
             aliases = [name]
             name = "Río del Oro"
-            toponymy_status = "locally_corrected"
+            toponymy_status = "corroborated_local_correction"
             toponymy_note = (
-                "Corrección toponímica corroborada: la carta IGM Bahía Felipe "
-                "(L-070, escala 1:50.000) incluye Río del Oro y cubre Primavera; "
-                "SIMBIO identifica la subsubcuenca Río del Oro, código BNA 12806, "
-                "con 13.907 ha dentro de Primavera. Se conserva el rótulo "
-                "cartográfico de origen como alias de trazabilidad."
+                "Nombre canónico Río del Oro, corroborado por carta IGM "
+                "Bahía Felipe (L-070, 1:50.000) y SIMBIO BNA 12806. "
+                "El nombre de origen se conserva como alias."
             )
-
-        subtype = (
-            props.get(type_field)
-            if type_field else None
-        )
-
-        subtype_normalized = normalize(subtype)
-        name_normalized = normalize(name)
-        effective_water_type = water_type
-        subtype_label = str(subtype).strip() if subtype is not None else None
-
-        if layer_url == URL_IGM_RIVERS:
-            # IGM 1:50.000, capa 15: el código 10 es Río - Estero.
-            # Se excluyen acueductos, canales, quebradas secas,
-            # rompeolas y otras entidades que no son ríos/esteros.
-            if subtype_normalized not in ("10", "rio - estero"):
-                continue
-            water_category = "river"
-            effective_water_type = "river"
-            subtype_label = "Río - Estero"
-
-        elif layer_url == URL_IGM_WATERS:
-            # IGM 1:50.000, capa 18. Códigos oficiales TIPO:
-            # 1 Embalse, 4 Lago permanente, 5 Lago seco,
-            # 6 Lago temporal, 8 Represa, 9 Río - Estero, 11 Laguna.
-            # Se excluyen aluviones, islas, océano y zonas inundables.
-            igm_area_types = {
-                "1": ("reservoir", "reservoir", "Embalse"),
-                "4": ("lake", "lake", "Lago permanente"),
-                "5": ("lake", "lake", "Lago seco"),
-                "6": ("lake", "lake", "Lago temporal"),
-                "8": ("reservoir", "reservoir", "Represa"),
-                "9": ("river", "river", "Río - Estero"),
-                "11": ("lagoon", "lagoon", "Laguna"),
-                "embalse": ("reservoir", "reservoir", "Embalse"),
-                "lago permanente": ("lake", "lake", "Lago permanente"),
-                "lago seco": ("lake", "lake", "Lago seco"),
-                "lago temporal": ("lake", "lake", "Lago temporal"),
-                "represa": ("reservoir", "reservoir", "Represa"),
-                "rio - estero": ("river", "river", "Río - Estero"),
-                "laguna": ("lagoon", "lagoon", "Laguna")
-            }
-            mapped_type = igm_area_types.get(subtype_normalized)
-            if mapped_type is None:
-                continue
-            water_category, effective_water_type, subtype_label = mapped_type
-
-        elif water_type == "lake" and source_name.startswith("MOP"):
-            # La capa MOP 17 es mixta. Se conservan solo ríos/esteros,
-            # embalses, lagos y lagunas; se excluyen salares y glaciares.
-            if subtype_normalized in ("rio", "estero", "rio - estero"):
-                water_category = "river"
-                effective_water_type = "river_or_stream"
-            elif subtype_normalized == "embalse":
-                water_category = "reservoir"
-                effective_water_type = "reservoir"
-            elif subtype_normalized == "lago":
-                water_category = "lake"
-                effective_water_type = "lake"
-            elif subtype_normalized == "laguna":
-                water_category = "lagoon"
-                effective_water_type = "lagoon"
-            else:
-                continue
-
-        elif water_type in ("river", "river_or_stream"):
-            water_category = "river"
-        elif subtype_normalized == "embalse":
-            water_category = "reservoir"
-            effective_water_type = "reservoir"
-        elif "laguna" in name_normalized or "laguna" in subtype_normalized:
-            water_category = "lagoon"
-            effective_water_type = "lagoon"
-        else:
-            water_category = "lake" if water_type in ("lake", "lake_or_lagoon") else "river"
-            if water_category == "lake":
-                effective_water_type = "lake"
 
         official_id = props.get("OBJECTID")
+        stable = source_name + "|" + str(official_id) + "|" + normalize(name)
+        water_id = hashlib.sha1(stable.encode("utf-8")).hexdigest()[:16]
 
-        stable = (
-            source_name
-            + "|"
-            + str(official_id)
-            + "|"
-            + normalize(name)
-        )
-
-        water_id = hashlib.sha1(
-            stable.encode("utf-8")
-        ).hexdigest()[:16]
-
-        # Publicar un segmento por comuna. Así, al seleccionar un río
-        # desde la lista de una comuna, el mapa puede enfocar ese tramo
-        # y no el trazado completo de varias comunas.
         for commune in COMMUNE_GEOMETRIES:
-            commune_geometry = commune["geometry"]
-            if not clipped.intersects(commune_geometry):
+            if commune["name"] not in communes:
                 continue
-            commune_clipped = clipped.intersection(commune_geometry)
-            if commune_clipped.is_empty:
+            segment = clipped.intersection(commune["geometry"])
+            if segment.is_empty:
                 continue
+            output.append(geojson_feature(segment, {
+                "waterbody_id": water_id,
+                "name": name,
+                "source_name": source_feature_name,
+                "aliases": aliases,
+                "toponymy_status": toponymy_status,
+                "toponymy_note": toponymy_note,
+                "water_type": category,
+                "water_category": category,
+                "category_label": category_label,
+                "subtype": subtype_text or None,
+                "official_source": "DGA · " + source_name,
+                "official_id": official_id,
+                "source_attributes": props,
+                "communes": [commune["name"]],
+                "representative_point": representative_point(segment),
+                "geometry_status": "official_geometry",
+                "source_confidence": "official"
+            }))
 
-            output.append(
-                geojson_feature(
-                    commune_clipped,
-                    {
-                        "waterbody_id": water_id,
-                        "name": name,
-                        "source_name": str(source_feature_name).strip(),
-                        "aliases": aliases,
-                        "toponymy_status": toponymy_status,
-                        "toponymy_note": toponymy_note,
-                        "water_type": effective_water_type,
-                        "water_category": water_category,
-                        "subtype": subtype,
-                        "subtype_label": subtype_label,
-                        "official_source": source_name,
-                        "official_id": official_id,
-                        "source_attributes": props,
-                        "communes": [commune["name"]],
-                        "provinces": sorted(set(intersecting_provinces(commune_clipped))),
-                        "basin_code": props.get(basin_code_field) if basin_code_field else None,
-                        "subbasin_code": props.get(subbasin_code_field) if subbasin_code_field else None,
-                        "subsubbasin_code": props.get(subsubbasin_code_field) if subsubbasin_code_field else None,
-                        "representative_point": representative_point(
-                            commune_clipped
-                        ),
-                        "geometry_status": "official_geometry",
-                        "source_confidence": (
-                            "local_toponymy_correction"
-                            if toponymy_status == "locally_corrected"
-                            else "official"
-                        )
-                    }
-                )
-            )
+    return output, metadata
 
+
+def query_mop_roads(commune_union):
+    """Descarga caminos MOP y genera una única capa GeoJSON de accesos."""
+    features, fields, metadata = fetch_features(
+        URL_MOP_ROADS,
+        geometry=commune_union
+    )
+    records = records_from_features(features, "MOP · Red vial")
+    output = []
+    for record in records:
+        geometry = record["geometry"]
+        if not geometry.intersects(commune_union):
+            continue
+        clipped = geometry.intersection(commune_union)
+        if clipped.is_empty:
+            continue
+        props = record["properties"]
+        communes = sorted({
+            item["name"] for item in intersecting_communes(clipped)
+        })
+        for commune in COMMUNE_GEOMETRIES:
+            if commune["name"] not in communes:
+                continue
+            segment = clipped.intersection(commune["geometry"])
+            if segment.is_empty:
+                continue
+            output.append(geojson_feature(segment, {
+                "road_id": str(props.get("OBJECTID") or props.get("GlobalID") or ""),
+                "name": props.get("NOMBRE_CAMINO") or props.get("ROL_LABEL") or props.get("ROL") or "Camino sin nombre",
+                "route_code": props.get("ROL"),
+                "classification": props.get("CLASIFICACION"),
+                "surface": props.get("CARPETA"),
+                "status": props.get("RVO"),
+                "communes": [commune["name"]],
+                "official_source": "MOP · Dirección de Vialidad · Red Vial Chile Base Gris",
+                "source_url": URL_MOP_ROADS,
+                "source_attributes": props
+            }))
     return output, metadata
 
 
@@ -1237,11 +1133,8 @@ def publish_atomically(temp_dir):
     META.mkdir(parents=True, exist_ok=True)
 
     files = [
-        "communes.geojson",
-        "provinces.geojson",
-        "waterbodies.geojson",
-        "dga_hydro_units.geojson",
-        "dga_stations.geojson"
+        "roads.geojson",
+        "waterbodies.geojson"
     ]
 
     for filename in files:
@@ -1294,280 +1187,85 @@ def publish_atomically(temp_dir):
 def main():
     global COMMUNE_GEOMETRIES
 
-    log("Inicio de AnglerMap Geodata 4.0 · catálogo hidrográfico DGA consolidado")
-    log("Territorio: nueve comunas de Magallanes.")
-    log("Fuentes: MOP, IGM y DGA (drenajes, lagos y unidades BNA).")
-    log("Cabo de Hornos y Antártica excluidos.")
+    log("AnglerMap Geodata · arquitectura de dos capas")
+    log("MOP: caminos y accesos · DGA: ríos, esteros, lagos y lagunas.")
+    log("Territorio: nueve comunas de Magallanes; Antártica y Cabo de Hornos excluidos.")
 
-    with TemporaryDirectory(
-        prefix="anglermap-geodata-"
-    ) as temporary:
-
+    with TemporaryDirectory(prefix="anglermap-geodata-") as temporary:
         temp_dir = Path(temporary)
 
-        # 1. Límites administrativos MOP
-        log("Descargando límites comunales MOP")
-
-        commune_features, commune_records, commune_meta, commune_source_info = (
-            get_communes()
-        )
-
-        COMMUNE_GEOMETRIES = []
-
-        for feature in commune_features:
-            COMMUNE_GEOMETRIES.append({
-                "name": feature["properties"]["name"],
-                "geometry": shape(feature["geometry"])
-            })
-
-        commune_union = unary_union([
-            item["geometry"]
-            for item in COMMUNE_GEOMETRIES
-        ])
+        # Los límites comunales MOP se utilizan solo para recortar y agrupar
+        # las dos capas temáticas; no se publican como inventario adicional.
+        log("Descargando límites comunales MOP para el recorte territorial")
+        commune_features, commune_records, commune_meta, commune_source_info = get_communes()
+        COMMUNE_GEOMETRIES = [{
+            "name": feature["properties"]["name"],
+            "geometry": shape(feature["geometry"])
+        } for feature in commune_features]
+        commune_union = unary_union([item["geometry"] for item in COMMUNE_GEOMETRIES])
         build_commune_spatial_index()
 
-        write_geojson(
-            temp_dir / "communes.geojson",
-            commune_features
-        )
+        commune_names = sorted(item["name"] for item in COMMUNE_GEOMETRIES)
+        if len(commune_names) != EXPECTED_COMMUNES or set(commune_names) != set(TARGET_COMMUNES.values()):
+            raise RuntimeError("Los límites MOP no coinciden con las nueve comunas objetivo.")
 
-        # 2. Provincias MOP para clasificar las aguas por provincia.
-        global PROVINCE_GEOMETRIES
-        try:
-            province_features, province_meta = get_provinces([{"geometry": shape(item["geometry"])} for item in commune_features])
-            PROVINCE_GEOMETRIES = [{
-                "name": item["properties"]["name"],
-                "geometry": shape(item["geometry"])
-            } for item in province_features]
-            write_geojson(temp_dir / "provinces.geojson", province_features)
-            province_status = {"status": "available", "features": len(province_features)}
-        except Exception as error:
-            log("Capa provincial MOP no disponible: " + str(error))
-            PROVINCE_GEOMETRIES = []
-            province_meta = None
-            province_features = []
-            province_status = {"status": "unavailable", "reason": str(error)}
-            write_geojson(temp_dir / "provinces.geojson", [])
+        # Capa 1: caminos y accesos MOP.
+        log("Descargando caminos y accesos MOP")
+        roads, roads_meta = query_mop_roads(commune_union)
+        write_geojson(temp_dir / "roads.geojson", roads)
 
-        # 3. Hidrografía IGM
-        log("Consultando hidrografía lineal IGM")
-
-        igm_rivers, igm_rivers_meta = query_water_layer(
-            URL_IGM_RIVERS,
-            "IGM · Cartografía 1:50.000 · Hidrografía lineal",
-            "river_or_stream",
+        # Capa 2: cuerpos de agua DGA. Dos subcapas del mismo servicio
+        # oficial se consolidan en un único inventario homogéneo.
+        log("Descargando red de drenajes DGA")
+        dga_rivers, drainage_meta = query_water_layer(
+            URL_DGA_DRAINAGE,
+            "Red de drenajes",
+            "river",
             commune_union
         )
-
-        log("Consultando hidrografía de áreas IGM")
-
-        igm_lakes, igm_lakes_meta = query_water_layer(
-            URL_IGM_WATERS,
-            "IGM · Cartografía 1:50.000 · Hidrografía de áreas",
-            "lake_or_lagoon",
+        log("Descargando inventario de lagos DGA")
+        dga_lakes, lakes_meta = query_water_layer(
+            URL_DGA_LAKES,
+            "Inventario de lagos",
+            "lake",
             commune_union
         )
-
-        # 4. Complemento hidrográfico MOP
-        mop_rivers = []
-        mop_lakes = []
-        mop_status = {}
-
-        try:
-            log("Consultando ríos MOP")
-
-            mop_rivers, mop_rivers_meta = query_water_layer(
-                URL_MOP_RIVERS,
-                "MOP · Red Hidrográfica · Ríos",
-                "river",
-                commune_union
-            )
-
-            mop_status["rivers"] = {
-                "status": "available",
-                "features": len(mop_rivers)
-            }
-
-        except Exception as error:
-            log(
-                "Fuente complementaria MOP ríos no disponible: "
-                + str(error)
-            )
-
-            mop_status["rivers"] = {
-                "status": "unavailable",
-                "reason": str(error)
-            }
-
-        try:
-            log("Consultando sistemas lacustres MOP")
-
-            mop_lakes, mop_lakes_meta = query_water_layer(
-                URL_MOP_LAKES,
-                "MOP · Red Hidrográfica · Sistemas lacustres",
-                "lake",
-                commune_union
-            )
-
-            mop_status["lakes"] = {
-                "status": "available",
-                "features": len(mop_lakes)
-            }
-
-        except Exception as error:
-            log(
-                "Fuente complementaria MOP lagos no disponible: "
-                + str(error)
-            )
-
-            mop_status["lakes"] = {
-                "status": "unavailable",
-                "reason": str(error)
-            }
-
-        # 4. Hidrografía DGA: drenajes, lagos y unidades BNA.
-        dga_status = {}
-        dga_rivers = []
-        dga_lakes = []
-        dga_hydro_units = []
-
-        for key, url, label, water_type in (
-            ("drainage", URL_DGA_DRAINAGE, "DGA · Red de drenajes", "river_or_stream"),
-            ("lakes", URL_DGA_LAKES, "DGA · Inventario de lagos", "lake_or_lagoon")
-        ):
-            try:
-                records, _metadata = query_water_layer(
-                    url, label, water_type, commune_union
-                )
-                if key == "drainage":
-                    dga_rivers = records
-                else:
-                    dga_lakes = records
-                dga_status[key] = {"status": "available", "features": len(records)}
-            except Exception as error:
-                log("Fuente DGA " + key + " no disponible: " + str(error))
-                dga_status[key] = {"status": "unavailable", "reason": str(error)}
-
-        for level, url, field_name in (
-            ("basin", URL_DGA_BASINS, "NOM_CUEN"),
-            ("subbasin", URL_DGA_SUBBASINS, "NOM_SUBC"),
-            ("subsubbasin", URL_DGA_SUBSUBBASINS, "NOM_SSUBC")
-        ):
-            try:
-                records, _metadata = query_dga_hydro_units(
-                    url, level, field_name, commune_union
-                )
-                dga_hydro_units.extend(records)
-                dga_status[level] = {"status": "available", "features": len(records)}
-            except Exception as error:
-                log("Unidad BNA DGA " + level + " no disponible: " + str(error))
-                dga_status[level] = {"status": "unavailable", "reason": str(error)}
-
-        # IGM aporta detalle cartográfico; MOP y DGA complementan
-        # geometría, nombres e inventario de unidades hidrográficas.
-        required_hydro_levels = ("basin", "subbasin", "subsubbasin")
-        missing_hydro_levels = [
-            level for level in required_hydro_levels
-            if dga_status.get(level, {}).get("features", 0) < 1
-        ]
-        if missing_hydro_levels:
-            raise RuntimeError(
-                "No se publicará el catálogo sin las tres jerarquías "
-                "hidrográficas BNA DGA. Niveles sin datos: "
-                + ", ".join(missing_hydro_levels)
-            )
-
-        all_waters = (
-            igm_rivers + igm_lakes
-            + mop_rivers + mop_lakes
-            + dga_rivers + dga_lakes
-        )
-        all_waters = enrich_waterbodies_with_hydro_units(
-            all_waters, dga_hydro_units
-        )
-
-        if not igm_rivers and not igm_lakes:
-            raise RuntimeError(
-                "IGM no entregó geometrías hidrográficas. "
-                "No se publicarán archivos."
-            )
-
-        all_waters.sort(
-            key=lambda item: (
-                normalize(item["properties"]["name"]),
-                item["properties"]["official_source"]
-            )
-        )
-
-        write_geojson(
-            temp_dir / "waterbodies.geojson",
-            all_waters
-        )
-        write_geojson(
-            temp_dir / "dga_hydro_units.geojson",
-            dga_hydro_units
-        )
-
-        # 5. Estaciones DGA
-        log("Descargando estaciones DGA")
-
-        stations, dga_meta = get_dga_stations(
-            commune_union
-        )
-
-        write_geojson(
-            temp_dir / "dga_stations.geojson",
-            stations
-        )
-
-        # 6. Validación
-        log("Validando archivos generados")
+        waters = dga_rivers + dga_lakes
+        waters.sort(key=lambda feature: (
+            normalize(feature["properties"]["name"]),
+            feature["properties"]["water_category"],
+            feature["properties"]["communes"][0]
+        ))
+        write_geojson(temp_dir / "waterbodies.geojson", waters)
 
         counts = {
-            "communes": validate_geojson(
-                temp_dir / "communes.geojson",
-                EXPECTED_COMMUNES
-            ),
-            "provinces": validate_geojson(temp_dir / "provinces.geojson", 0),
-            "waterbodies": validate_geojson(
-                temp_dir / "waterbodies.geojson",
-                1
-            ),
-            "dga_hydro_units": validate_geojson(
-                temp_dir / "dga_hydro_units.geojson",
-                3
-            ),
-            "dga_stations": validate_geojson(
-                temp_dir / "dga_stations.geojson",
-                0
-            )
+            "roads": validate_geojson(temp_dir / "roads.geojson", 1),
+            "waterbodies": validate_geojson(temp_dir / "waterbodies.geojson", 1)
         }
+        if not roads:
+            raise RuntimeError("MOP no entregó caminos para el territorio objetivo.")
+        if not waters:
+            raise RuntimeError("DGA no entregó cuerpos de agua para el territorio objetivo.")
 
-        if counts["communes"] != EXPECTED_COMMUNES:
-            raise RuntimeError(
-                "La cobertura comunal no contiene exactamente "
-                "las nueve comunas objetivo."
-            )
+        category_counts = {}
+        commune_counts = {}
+        for feature in waters:
+            props = feature["properties"]
+            category = props["water_category"]
+            commune = props["communes"][0]
+            category_counts[category] = category_counts.get(category, 0) + 1
+            commune_counts.setdefault(commune, {})
+            commune_counts[commune][category] = commune_counts[commune].get(category, 0) + 1
 
-        commune_names = sorted(
-            feature["properties"]["name"]
-            for feature in commune_features
-        )
-
-        if set(commune_names) != set(
-            TARGET_COMMUNES.values()
-        ):
-            raise RuntimeError(
-                "La cobertura comunal no coincide con "
-                "el territorio definido."
-            )
+        road_commune_counts = {}
+        for feature in roads:
+            commune = feature["properties"]["communes"][0]
+            road_commune_counts[commune] = road_commune_counts.get(commune, 0) + 1
 
         metadata = {
             "application": "AnglerMap",
-            "version": "3.4",
-            "generated_at": datetime.now(
-                timezone.utc
-            ).isoformat(),
+            "version": "5.0",
+            "generated_at": datetime.now(timezone.utc).isoformat(),
             "geographic_scope": {
                 "region": "Magallanes y de la Antártica Chilena",
                 "communes": commune_names,
@@ -1575,129 +1273,62 @@ def main():
                 "antarctica_commune_included": False,
                 "cape_horn_commune_included": False
             },
-            "spatial_query_method": {
-                "remote_query": "exact_polygon_intersection_per_commune",
-                "remote_geometry_type": "esriGeometryPolygon",
-                "local_filter": "exact_intersection_and_clip_with_commune_union",
-                "commune_spatial_index": "STRtree",
-                "spatial_reference": "EPSG:4326"
+            "architecture": {
+                "roads": "Una capa temática MOP para caminos y accesos.",
+                "waterbodies": "Una capa temática DGA que consolida red de drenajes y lagos.",
+                "basins_subbasins": "Fuera de alcance.",
+                "igm_hydrography": "Fuera de alcance."
             },
             "sources": {
-                "administrative_boundaries": commune_source_info,
-                "provinces": {
-                    "institution": "MOP",
-                    "url": URL_PROVINCES,
-                    "status": province_status,
-                    "metadata_available": province_meta is not None
+                "administrative_clip_boundaries": commune_source_info,
+                "roads": {
+                    "institution": "MOP · Dirección de Vialidad",
+                    "name": "Red Vial Chile Base Gris · capa de caminos de mayor detalle",
+                    "url": URL_MOP_ROADS,
+                    "metadata": "https://rest-sit.mop.gob.cl/arcgis/rest/services/VIALIDAD/Red_Vial_Chile_Base_gris/MapServer/3",
+                    "status": "available",
+                    "data_vintage_note": "La ficha del servicio describe datos disponibles a enero de 2021; no equivale a confirmación en terreno de transitabilidad actual."
                 },
-                "igm_rivers": {
-                    "institution": "IGM",
-                    "url": URL_IGM_RIVERS,
-                    "status": "required"
-                },
-                "igm_water_areas": {
-                    "institution": "IGM",
-                    "url": URL_IGM_WATERS,
-                    "status": "required"
-                },
-                "mop_rivers": {
-                    "institution": "MOP",
-                    "url": URL_MOP_RIVERS,
-                    "status": mop_status.get("rivers")
-                },
-                "mop_lakes": {
-                    "institution": "MOP",
-                    "url": URL_MOP_LAKES,
-                    "status": mop_status.get("lakes")
-                },
-                "dga_drainage": {
+                "waterbodies": {
                     "institution": "DGA",
-                    "url": URL_DGA_DRAINAGE,
-                    "copyright": "DGA 2012 / MOP",
-                    "status": dga_status.get("drainage")
-                },
-                "dga_lakes": {
-                    "institution": "DGA",
-                    "url": URL_DGA_LAKES,
-                    "copyright": "DGA 2017",
-                    "inventory_page": URL_DGA_INVENTORY_PAGE,
-                    "official_downloads": {
-                        "lakes_geodata_zip": URL_DGA_LAKES_DOWNLOAD,
-                        "lakes_inventory_excel": URL_DGA_LAKES_INVENTORY_XLS
-                    },
-                    "status": dga_status.get("lakes")
-                },
-                "dga_basin_units": {
-                    "institution": "DGA / Banco Nacional de Aguas",
-                    "inventory_page": URL_DGA_INVENTORY_PAGE,
-                    "official_downloads": {
-                        "bna_geodata_zip": URL_DGA_BNA_DOWNLOAD,
-                        "basin_inventory_excel": URL_DGA_BNA_INVENTORY_XLS
-                    },
-                    "data_vintage": "La capa DGA de cuencas informa actualización hasta 2004; las capas BNA se conservan con su código y nombre publicados.",
-                    "urls": {
-                        "basins": URL_DGA_BASINS,
-                        "subbasins": URL_DGA_SUBBASINS,
-                        "subsubbasins": URL_DGA_SUBSUBBASINS
-                    },
-                    "status": {
-                        "basin": dga_status.get("basin"),
-                        "subbasin": dga_status.get("subbasin"),
-                        "subsubbasin": dga_status.get("subsubbasin")
-                    }
-                },
-                "dga_stations": {
-                    "institution": "DGA",
-                    "url": URL_DGA_STATIONS,
-                    "status": "required"
+                    "service": URL_DGA_IDE,
+                    "drainage_layer": URL_DGA_DRAINAGE,
+                    "lakes_layer": URL_DGA_LAKES,
+                    "status": "available",
+                    "drainage_copyright": "DGA 2012 / MOP",
+                    "lakes_copyright": "DGA 2017"
                 }
             },
-            "counts": counts,
-            "toponymy_overrides": [
+            "counts": {
+                **counts,
+                "waterbodies_by_category": category_counts,
+                "waterbodies_by_commune": commune_counts,
+                "roads_by_commune": road_commune_counts
+            },
+            "toponymy_notes": [
                 {
                     "source_name": "Río Serrano",
                     "canonical_name": "Río del Oro",
-                    "communes": ["Primavera"],
-                    "status": "corroborated_by_igm_and_simbio",
-                    "sources": [
-                        "https://www.igm.cl/tiendaonline/inicio/4969-bahia-felipe-shp.html",
-                        "https://simbio.mma.gob.cl/Subsubcuencas/Details/12806"
-                    ],
-                    "bna_subsubbasin_code": "12806",
-                    "note": "La carta IGM Bahía Felipe (L-070, 1:50.000) identifica Río del Oro y cubre Primavera; SIMBIO registra la subsubcuenca Río del Oro BNA 12806 y 13.907 ha en Primavera. Se conserva Río Serrano como rótulo de origen/alias, no como nombre canónico del tramo de Primavera."
+                    "commune": "Primavera",
+                    "status": "corroborated_local_correction",
+                    "note": "Se conserva el nombre de origen como alias; la geometría y la ficha DGA siguen siendo la fuente primaria."
                 }
             ],
             "limitations": [
-                "La presencia de una geometría oficial no acredita acceso público ni permiso de pesca.",
-                "Las capas hidrográficas pueden no contener todos los cuerpos de agua existentes.",
-                "Las fuentes hidrográficas se conservan identificadas por procedencia; nombres homónimos no se fusionan si sus geometrías difieren.",
-                "La asociación de cuencas, subcuencas y subsubcuencas se calcula por intersección espacial con unidades BNA DGA.",
-                "La asociación a provincia depende de la disponibilidad de la capa provincial MOP.",
-                "La comuna Antártica queda excluida.",
-                "La comuna de Cabo de Hornos queda excluida del alcance inicial.",
-                "Las estaciones DGA son puntos de monitoreo; este archivo no representa por sí solo mediciones hidrométricas en tiempo real."
+                "La red de drenajes DGA representa la mayoría de las expresiones espaciales de drenaje, no necesariamente todas.",
+                "El inventario poligonal DGA de lagos se publica como dato 2017; puede no incluir todas las lagunas menores.",
+                "La red vial MOP es cartografía oficial, pero no confirma transitabilidad, mantención, barreras, permisos ni acceso público actual.",
+                "La presencia de un camino no acredita derecho de paso ni acceso legal a una propiedad.",
+                "La presencia de un cuerpo de agua no acredita acceso público ni permiso de pesca."
             ]
         }
-
-        write_json(
-            temp_dir / "sources.json",
-            metadata
-        )
-
-        # Validación final de metadata
-        with (temp_dir / "sources.json").open(
-            "r",
-            encoding="utf-8"
-        ) as file:
+        write_json(temp_dir / "sources.json", metadata)
+        with (temp_dir / "sources.json").open("r", encoding="utf-8") as file:
             json.load(file)
 
-        # 7. Publicación
-        log("Publicando archivos validados")
-
         publish_atomically(temp_dir)
-
-        log("Publicación de archivos completada.")
-        log(json.dumps(counts, ensure_ascii=False))
+        log("Publicación de las dos capas completada.")
+        log(json.dumps(metadata["counts"], ensure_ascii=False))
 
 
 if __name__ == "__main__":
