@@ -2,7 +2,7 @@
   "schema_version": 1,
   "project": "AnglerMap",
   "region": "Magallanes",
-  "updated_at": "2026-11-20T03:50:47.153364+00:00",
+  "updated_at": "2026-11-20T11:23:26.003158+00:00",
   "layers": [
     {
       "id": "roads",
@@ -51,7 +51,7 @@
   ],
   "feature_counts": {
     "roads": 179,
-    "waterbodies": 18049,
+    "waterbodies": 3404,
     "dga_stations": 225
   }
 }
