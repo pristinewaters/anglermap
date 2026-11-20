@@ -11,7 +11,9 @@ El visor no depende de una fuente concreta. Una capa nueva se incorpora publican
 data/
   magallanes/                 # productos listos para consumo del visor
     communes.geojson
+    provinces.geojson
     waterbodies.geojson
+    dga_hydro_units.geojson
     dga_stations.geojson
   sources/                    # archivos organizados por fuente
     mop/
@@ -27,6 +29,17 @@ data/
 ```
 
 Los directorios de fuentes son repositorios de origen/procesamiento. Los GeoJSON publicados en `data/magallanes/` son productos normalizados para la aplicación. Se pueden mantener ambos cuando sea necesario conservar el original y el producto depurado.
+
+## Productos hidrográficos
+
+- `waterbodies.geojson`: geometrías lineales y poligonales de ríos/esteros, lagos y lagunas. Conserva nombre original, alias, tipo, atributos de origen, fuente, identificadores, comunas y provincias.
+- `dga_hydro_units.geojson`: unidades BNA DGA separadas por nivel (cuenca, subcuenca y subsubcuenca), con códigos y nombres oficiales.
+- `dga_stations.geojson`: estaciones de monitoreo DGA. Son puntos de observación y no sustituyen la geometría de un curso de agua.
+- `communes.geojson` y `provinces.geojson`: límites administrativos usados para recortar y clasificar las geometrías.
+
+La asociación de cada agua con unidades hidrográficas se calcula por intersección espacial entre geometrías. No se infiere un río a partir del nombre de una estación ni se asigna una comuna por la cuenca completa. Los cursos compartidos pueden figurar en más de una comuna cuando la geometría intersecta sus límites.
+
+La capa DGA de red de drenaje y las unidades BNA se publican en la IDE de la SMA con atribución explícita a DGA/Banco Nacional de Aguas. La procedencia y fecha de extracción se conservan en `sources.json` y en los atributos de cada entidad.
 
 ## Incorporar una capa
 
