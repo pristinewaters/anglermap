@@ -891,7 +891,7 @@ def query_dga_stations(commune_union):
             "official_source": "DGA · Red Hidrométrica Nacional",
             "source_url": URL_DGA_STATIONS,
             "source_updated": "Julio 2022 según metadata del servicio",
-            "source_attributes": props
+            "source_attributes": clean_source_attributes(props)
         }))
 
     return output, metadata
@@ -1201,7 +1201,29 @@ def main():
                     "operational_flow_data_service": URL_DGA_LIVE_FLOW,
                     "status": "available",
                     "station_inventory_note": "Red Hidrométrica Nacional con estaciones fluviométricas, calidad de aguas, meteorológicas, niveles de lagos y embalses, sedimentometría, pozos, nivometría y glaciología. Metadata del servicio cartográfico: actualización julio 2022."
-                }
+                },
+                "supplementary_dga_references": [
+                    {
+                        "title": "Inventario Público de Lagos DGA",
+                        "url": "https://dga.mop.gob.cl/servicios-de-informacion/catastro-publico-de-aguas/inventario-publico-de-cuencas-hidrograficas-y-lagos/",
+                        "use": "Contraste documental de nombres; no reemplaza las geometrías DGA."
+                    },
+                    {
+                        "title": "Mapoteca Digital DGA",
+                        "url": "https://dga.mop.gob.cl/mapoteca-digital/",
+                        "use": "Contraste de inventarios, mapas y publicaciones hidrográficas."
+                    },
+                    {
+                        "title": "DGA Magallanes · antecedentes de sectores hidrogeológicos y estaciones",
+                        "url": "https://dga.mop.gob.cl/dga-magallanes-inicia-trabajos-de-exploracion-de-acuiferos-para-construir-pozos-de-monitoreo-de-aguas-subterraneas/",
+                        "use": "Referencia documental para contrastar topónimos regionales; no se usa para inferir geometrías."
+                    },
+                    {
+                        "title": "Decreto DGA 137/2010 · Río del Oro",
+                        "url": "https://dga.mop.gob.cl/uploads/sites/13/2023/07/DTO-137_01-FEB-2010.pdf",
+                        "use": "Antecedente técnico-administrativo de un cuerpo de agua nombrado; no altera automáticamente el nombre de la capa cartográfica."
+                    }
+                ]
             },
             "counts": {
                 **counts,
