@@ -1038,8 +1038,8 @@ def main():
     with TemporaryDirectory(prefix="anglermap-geodata-") as temporary:
         temp_dir = Path(temporary)
 
-        # Los límites comunales MOP se utilizan solo para recortar y agrupar
-        # las dos capas temáticas; no se publican como inventario adicional.
+        # Los límites comunales MOP son geometría auxiliar para recortar
+        # las tres capas temáticas; no se publican como capa de contenido.
         log("Descargando límites comunales MOP para el recorte territorial")
         commune_features, commune_records, commune_meta, commune_source_info = get_communes()
         COMMUNE_GEOMETRIES = [{
@@ -1098,15 +1098,36 @@ def main():
         if not waters:
             raise RuntimeError("DGA no entregó cuerpos de agua para el territorio objetivo.")
 
-        category_counts = {}
-        commune_counts = {}
+        # Los conteos del catálogo cuentan entidades DGA únicas, no
+        # segmentos comunales: un río que cruza tres comunas es una entidad.
+        category_ids = {}
+        commune_category_ids = {}
+        unnamed_segments = 0
         for feature in waters:
             props = feature["properties"]
             category = props["water_category"]
+            water_id = props["waterbody_id"]
+            category_ids.setdefault(category, set()).add(water_id)
             commune = props["communes"][0]
-            category_counts[category] = category_counts.get(category, 0) + 1
-            commune_counts.setdefault(commune, {})
-            commune_counts[commune][category] = commune_counts[commune].get(category, 0) + 1
+            commune_category_ids.setdefault(commune, {})
+            commune_category_ids[commune].setdefault(category, set()).add(water_id)
+            if props["name"] == "Cuerpo de agua sin nombre":
+                unnamed_segments += 1
+
+        category_counts = {
+            category: len(ids)
+            for category, ids in sorted(category_ids.items())
+        }
+        commune_counts = {
+            commune: {
+                category: len(ids)
+                for category, ids in sorted(categories.items())
+            }
+            for commune, categories in sorted(commune_category_ids.items())
+        }
+        unique_waterbody_count = len({
+            feature["properties"]["waterbody_id"] for feature in waters
+        })
 
         road_commune_counts = {}
         for feature in roads:
@@ -1170,6 +1191,8 @@ def main():
             },
             "counts": {
                 **counts,
+                "waterbodies_unique_entities": unique_waterbody_count,
+                "waterbodies_unnamed_segments": unnamed_segments,
                 "waterbodies_by_category": category_counts,
                 "waterbodies_by_commune": commune_counts,
                 "roads_by_commune": road_commune_counts,
