@@ -709,7 +709,7 @@ def query_water_layer(
     water_type,
     commune_union
 ):
-    # La consulta remota utiliza solamente el bounding box.
+    # La consulta remota usa intersección poligonal exacta por comuna.
     features, fields, metadata = fetch_features(
         layer_url,
         geometry=commune_union
