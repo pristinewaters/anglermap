@@ -170,6 +170,142 @@
     root.querySelectorAll("[data-go]").forEach(b=>b.onclick=()=>{tab=b.dataset.go;render();});
   }
 
+
+  let pilotMapAction = null, pilotRiverLayer = null, pilotSectionLayer = null, pilotAccessLayer = null;
+  const pilotDefaults = [
+    {id:"catch-release",label:"Pesca exclusivamente catch & release",enabled:true},
+    {id:"no-fire",label:"Prohibido encender fuego",enabled:true},
+    {id:"stay-area",label:"Permanecer dentro del sector delimitado y autorizado",enabled:true},
+    {id:"fences",label:"Prohibido abrir, forzar o dañar portones y alambrados",enabled:true},
+    {id:"entry-exit",label:"Ingresar y salir únicamente por los puntos indicados",enabled:true},
+    {id:"waste",label:"Retirar todos los residuos",enabled:true},
+    {id:"vehicles",label:"No circular en vehículo fuera de caminos autorizados",enabled:true}
+  ];
+  function pilotData() {
+    data=read();
+    const p=data.pilot||{};
+    if(!Array.isArray(p.sections))p.sections=[];
+    if(!Array.isArray(p.accessPoints))p.accessPoints=[];
+    if(!Array.isArray(p.bookings))p.bookings=[];
+    if(!Array.isArray(p.operators))p.operators=[];
+    if(!Array.isArray(p.policies)||!p.policies.length)p.policies=pilotDefaults.map(x=>({...x}));
+    p.seasonStart=p.seasonStart||"";
+    p.seasonEnd=p.seasonEnd||"";
+    p.price=p.price||"";
+    p.paymentMethod=p.paymentMethod||"Transferencia bancaria";
+    p.paymentTerms=p.paymentTerms||"Reserva sujeta a confirmación del administrador";
+    data.pilot=p;
+    return p;
+  }
+  function pilotRiverMatches() {
+    if(typeof RIVERS==="undefined")return [];
+    return RIVERS.filter(w=>amCatalogNormalize(w.name)==="rio del medio"&&w.category==="river");
+  }
+  function pilotLayers() {
+    if(!pilotRiverLayer)pilotRiverLayer=L.layerGroup();
+    if(!pilotSectionLayer)pilotSectionLayer=L.layerGroup();
+    if(!pilotAccessLayer)pilotAccessLayer=L.layerGroup();
+    pilotRiverLayer.addTo(map);pilotSectionLayer.addTo(map);pilotAccessLayer.addTo(map);
+  }
+  function showPilotRiver() {
+    const matches=pilotRiverMatches();
+    if(!matches.length){alert("Río del Medio no está disponible en el catálogo hidrográfico cargado. No se dibujará una geometría aproximada.");return;}
+    pilotLayers();pilotRiverLayer.clearLayers();
+    matches.forEach(w=>L.geoJSON({type:"FeatureCollection",features:w.features},{style:{color:"#39b9d2",weight:5,opacity:.95}}).bindPopup("<b>Río del Medio</b><br>Geometría hidrográfica de referencia · DGA").addTo(pilotRiverLayer));
+    const bounds=pilotRiverLayer.getBounds();if(bounds.isValid())map.fitBounds(bounds,{padding:[55,55],maxZoom:13});
+  }
+  function drawPilotRecords() {
+    pilotLayers();pilotSectionLayer.clearLayers();pilotAccessLayer.clearLayers();
+    const p=pilotData();
+    p.sections.forEach(s=>{
+      if(s.coordinates&&s.coordinates.length>1)L.polyline(s.coordinates,{color:"#e8bd70",weight:5,opacity:.9}).bindPopup("<b>"+esc(s.name)+"</b><br>Capacidad máxima: 4 pescadores por jornada").addTo(pilotSectionLayer);
+    });
+    p.accessPoints.forEach(a=>{
+      if(a.lat!=null&&a.lng!=null)L.marker([a.lat,a.lng]).bindPopup("<b>"+esc(a.name)+"</b><br>"+esc(a.kind==="entry"?"Ingreso":"Salida")+" · Punto operativo definido por administrador").addTo(pilotAccessLayer);
+    });
+  }
+  function pilotCount(p,sectionId,date) {
+    return p.bookings.filter(b=>b.sectionId===sectionId&&b.date===date&&b.status==="confirmed").reduce((n,b)=>n+Number(b.anglers||0),0);
+  }
+  function renderRioMedio(root) {
+    const p=pilotData(),matches=pilotRiverMatches();
+    const today=new Date().toISOString().slice(0,10);
+    const sections=p.sections;
+    const confirmed=p.bookings.filter(b=>b.status==="confirmed").length;
+    const pending=p.bookings.filter(b=>b.status==="pending").length;
+    root.innerHTML=heading("TERRITORIO PILOTO · LAGUNA BLANCA","Río del Medio","Prototipo operativo para administrar sectores de pesca, accesos, cupos, reglas de conservación y solicitudes de operadores turísticos.")+
+      '<div class="tm-note">La línea azul corresponde a la geometría hidrográfica de referencia disponible. Las secciones y puntos de ingreso/salida deben ser definidos por el administrador en terreno. No se presume autorización de acceso ni titularidad.</div>'+
+      '<div class="tm-actions"><button class="tm-btn primary" id="tm-rm-show-river">Localizar Río del Medio en el mapa</button><button class="tm-btn" id="tm-rm-draw-section">＋ Delimitar sección</button><button class="tm-btn" id="tm-rm-entry">＋ Marcar ingreso</button><button class="tm-btn" id="tm-rm-exit">＋ Marcar salida</button></div>'+
+      '<div class="tm-grid">'+
+      '<div class="tm-card"><small>Secciones definidas</small><div class="tm-value">'+sections.length+'</div><p>Tramos operativos delimitados por el administrador.</p></div>'+
+      '<div class="tm-card"><small>Cupo por sección</small><div class="tm-value">4</div><p>Máximo de pescadores confirmados por jornada.</p></div>'+
+      '<div class="tm-card"><small>Reservas confirmadas</small><div class="tm-value">'+confirmed+'</div><p>Reservas aceptadas por el administrador.</p></div>'+
+      '<div class="tm-card"><small>Solicitudes pendientes</small><div class="tm-value">'+pending+'</div><p>Requieren revisión antes de confirmar.</p></div></div>'+
+      '<div class="tm-pilot-grid"><div>'+
+      '<div class="tm-pilot-panel"><h3>1 · Secciones de pesca</h3><p class="tm-pilot-muted">Cada sección debe tener una geometría propia, límites visibles, capacidad fija de cuatro pescadores por jornada y accesos vinculados.</p><div class="tm-pilot-list">'+(sections.length?sections.map((s,i)=>'<div class="tm-pilot-item"><strong>'+esc(s.name)+'</strong><small>'+((s.coordinates||[]).length)+' puntos de trazado · Máximo 4 pescadores/día · '+(s.notes?esc(s.notes):"Sin observaciones")+'</small><button class="tm-btn subtle" data-rm-zoom="'+i+'">Ver sección</button><button class="tm-btn subtle" data-rm-delete-section="'+i+'">Eliminar</button></div>').join(""):empty("〰","Todavía no hay secciones delimitadas. Usa «Delimitar sección» y marca el recorrido sobre el mapa."))+'</div></div>'+
+      '<div class="tm-pilot-panel"><h3>2 · Puntos de ingreso y salida</h3><p class="tm-pilot-muted">Registrar coordenadas exactas y asociarlas a instrucciones de llegada. Los puntos deben verificarse con el administrador del predio.</p><div class="tm-pilot-list">'+(p.accessPoints.length?p.accessPoints.map((a,i)=>'<div class="tm-pilot-item"><strong>'+esc(a.name)+'</strong><small>'+(a.kind==="entry"?"Ingreso":"Salida")+' · '+Number(a.lat).toFixed(5)+', '+Number(a.lng).toFixed(5)+' · '+esc(a.notes||"Sin instrucciones")+'</small><button class="tm-btn subtle" data-rm-zoom-access="'+i+'">Ver punto</button><button class="tm-btn subtle" data-rm-delete-access="'+i+'">Eliminar</button></div>').join(""):empty("⌖","No hay accesos registrados. Marca en el mapa el punto de ingreso y el punto de salida autorizados."))+'</div></div>'+
+      '<div class="tm-pilot-panel"><h3>3 · Condiciones de ingreso</h3><p class="tm-pilot-muted">Reglas propuestas para aprobación del administrador. Se mostrarán antes de solicitar o confirmar una reserva.</p><div class="tm-pilot-checks">'+p.policies.map((x,i)=>'<label><input type="checkbox" data-rm-policy="'+i+'" '+(x.enabled?"checked":"")+'> '+esc(x.label)+'</label>').join("")+'</div><div class="tm-actions"><button class="tm-btn primary" id="tm-rm-save-policies">Guardar condiciones</button></div></div>'+
+      '</div><div>'+
+      '<div class="tm-pilot-panel"><h3>4 · Temporada y condiciones comerciales</h3><form id="tm-rm-settings" class="tm-pilot-form">'+
+      '<div class="tm-field"><label>Inicio de temporada</label><input type="date" id="tm-rm-start" value="'+esc(p.seasonStart)+'"></div><div class="tm-field"><label>Término de temporada</label><input type="date" id="tm-rm-end" value="'+esc(p.seasonEnd)+'"></div>'+
+      '<div class="tm-field"><label>Tarifa por pescador (CLP)</label><input type="number" min="0" step="1000" id="tm-rm-price" value="'+esc(p.price)+'" placeholder="Por definir"></div>'+
+      '<div class="tm-field"><label>Medio de pago</label><select id="tm-rm-payment">'+["Transferencia bancaria","Pago en línea","Efectivo al ingreso","Acuerdo directo con administrador"].map(x=>'<option '+(p.paymentMethod===x?"selected":"")+'>'+x+'</option>').join("")+'</select></div>'+
+      '<div class="tm-field full"><label>Condiciones de pago</label><textarea id="tm-rm-terms" rows="2" maxlength="500">'+esc(p.paymentTerms)+'</textarea></div><div class="tm-field full"><button class="tm-btn primary">Guardar configuración</button></div></form></div>'+
+      '<div class="tm-pilot-panel"><h3>5 · Solicitudes de operadores</h3><p class="tm-pilot-muted">Los operadores pueden solicitar cupos para sus clientes. La solicitud queda pendiente y no bloquea disponibilidad hasta ser aprobada.</p><div class="tm-pilot-list">'+(p.bookings.length?p.bookings.slice().reverse().map((b,rev)=>{const i=p.bookings.length-1-rev;return '<div class="tm-pilot-item"><strong>'+esc(b.operator)+' · '+esc(b.sectionName)+'</strong><small>'+esc(b.date)+' · '+b.anglers+' pescador(es) · '+esc(b.contact)+' · '+esc(b.payment||"Pago por coordinar")+'</small><small>Estado: '+(b.status==="confirmed"?"Confirmada":b.status==="rejected"?"Rechazada":"Pendiente")+'</small>'+(b.status==="pending"?'<button class="tm-btn primary" data-rm-approve="'+i+'">Aprobar reserva</button><button class="tm-btn subtle" data-rm-reject="'+i+'">Rechazar</button>':"")+'</div>';}).join(""):empty("▤","Aún no hay solicitudes de reserva."))+'</div></div>'+
+      '</div></div>'+
+      '<div class="tm-pilot-panel"><h3>6 · Vista de disponibilidad para operadores</h3><div class="tm-field" style="max-width:260px"><label>Consultar fecha</label><input type="date" id="tm-rm-date" value="'+today+'"></div><div id="tm-rm-availability" class="tm-grid"></div></div>'+
+      '<div class="tm-pilot-panel"><h3>7 · Portal de operadores turísticos</h3><p class="tm-pilot-muted">Simulación del flujo de reserva: elegir fecha y sector, revisar cupos, informar tamaño del grupo, contacto y forma de pago. La reserva se confirma solo después de la aprobación del administrador.</p>'+
+      '<form id="tm-rm-request" class="tm-pilot-form">'+
+      '<div class="tm-field"><label>Operador / empresa</label><input id="tm-rm-operator" required maxlength="100" placeholder="Nombre del operador"></div><div class="tm-field"><label>Contacto responsable</label><input id="tm-rm-contact" required maxlength="100" placeholder="Nombre y teléfono"></div>'+
+      '<div class="tm-field"><label>Fecha solicitada</label><input type="date" id="tm-rm-book-date" required min="'+today+'"></div><div class="tm-field"><label>Sección</label><select id="tm-rm-section" required><option value="">Seleccionar sección</option>'+sections.map(s=>'<option value="'+esc(s.id)+'">'+esc(s.name)+'</option>').join("")+'</select></div>'+
+      '<div class="tm-field"><label>Número de pescadores (máx. 4)</label><select id="tm-rm-anglers">'+[1,2,3,4].map(n=>'<option>'+n+'</option>').join("")+'</select></div><div class="tm-field"><label>Forma de pago propuesta</label><select id="tm-rm-book-payment">'+["Transferencia bancaria","Pago en línea","Efectivo al ingreso","Acuerdo directo"].map(x=>'<option>'+x+'</option>').join("")+'</select></div>'+
+      '<div class="tm-field full"><label>Observaciones / requerimientos</label><textarea id="tm-rm-message" rows="2" maxlength="500" placeholder="Nombres de pescadores, guía responsable, horario estimado, requerimientos especiales…"></textarea></div>'+
+      '<div class="tm-field full"><label><input type="checkbox" id="tm-rm-accept" required> Declaro que el grupo acepta las condiciones de ingreso publicadas para este territorio.</label></div><div class="tm-field full"><button class="tm-btn primary" '+(!sections.length?"disabled":"")+'>Enviar solicitud de disponibilidad</button></div></form></div>'+
+      '<div class="tm-note">DEMO LOCAL: las solicitudes, reservas, reglas y configuraciones se guardan únicamente en este navegador. No se envían correos, no se procesa dinero y no existe bloqueo compartido de cupos entre usuarios. Antes de operar con terceros se requiere backend, autenticación, trazabilidad y mecanismo de pago.</div>';
+    drawPilotRecords();
+    const avail=$("tm-rm-availability");
+    const drawAvailability=()=>{const date=$("tm-rm-date").value;avail.innerHTML=sections.length?sections.map(s=>{const used=pilotCount(p,s.id,date),left=Math.max(0,4-used);return '<div class="tm-card"><small>'+esc(s.name)+'</small><div class="tm-value">'+left+' / 4</div><p>'+used+' pescador(es) confirmados · '+(left?"Cupos disponibles":"Completo")+'</p></div>';}).join(""):empty("▤","Primero delimita una o más secciones.");};
+    drawAvailability();$("tm-rm-date").onchange=drawAvailability;
+    $("tm-rm-show-river").onclick=showPilotRiver;
+    $("tm-rm-draw-section").onclick=()=>startPilotMapAction("section");
+    $("tm-rm-entry").onclick=()=>startPilotMapAction("entry");
+    $("tm-rm-exit").onclick=()=>startPilotMapAction("exit");
+    $("tm-rm-settings").onsubmit=e=>{e.preventDefault();p.seasonStart=$("tm-rm-start").value;p.seasonEnd=$("tm-rm-end").value;p.price=$("tm-rm-price").value;p.paymentMethod=$("tm-rm-payment").value;p.paymentTerms=$("tm-rm-terms").value.trim();if(p.seasonStart&&p.seasonEnd&&p.seasonEnd<p.seasonStart){alert("El término de temporada debe ser posterior al inicio.");return;}data.pilot=p;save(data);alert("Configuración guardada en este navegador.");};
+    $("tm-rm-save-policies").onclick=()=>{root.querySelectorAll("[data-rm-policy]").forEach(el=>p.policies[Number(el.dataset.rmPolicy)].enabled=el.checked);data.pilot=p;save(data);alert("Condiciones guardadas.");};
+    $("tm-rm-request").onsubmit=e=>{e.preventDefault();const section=p.sections.find(s=>s.id===$("tm-rm-section").value);if(!section){alert("Selecciona una sección válida.");return;}const date=$("tm-rm-book-date").value,anglers=Number($("tm-rm-anglers").value);if(p.seasonStart&&date<p.seasonStart||p.seasonEnd&&date>p.seasonEnd){alert("La fecha está fuera de la temporada configurada.");return;}const remaining=4-pilotCount(p,section.id,date);if(anglers>remaining){alert("No hay cupos suficientes. Disponibles: "+remaining+".");return;}if(!p.accessPoints.some(a=>a.kind==="entry")||!p.accessPoints.some(a=>a.kind==="exit")){if(!confirm("Falta registrar ingreso y/o salida autorizados. ¿Deseas guardar la solicitud como pendiente de coordinación?"))return;}p.bookings.push({id:"rm-"+Date.now(),sectionId:section.id,sectionName:section.name,date,anglers,operator:$("tm-rm-operator").value.trim(),contact:$("tm-rm-contact").value.trim(),payment:$("tm-rm-book-payment").value,message:$("tm-rm-message").value.trim(),status:"pending",createdAt:new Date().toISOString()});data.pilot=p;if(save(data)){render();alert("Solicitud guardada. Queda pendiente de aprobación del administrador.");}};
+    root.querySelectorAll("[data-rm-approve]").forEach(b=>b.onclick=()=>{const booking=p.bookings[Number(b.dataset.rmApprove)];if(!booking)return;const available=4-pilotCount(p,booking.sectionId,booking.date);if(booking.anglers>available){alert("No se puede aprobar: quedan "+available+" cupos en esta sección para esa fecha.");return;}booking.status="confirmed";data.pilot=p;save(data);render();});
+    root.querySelectorAll("[data-rm-reject]").forEach(b=>b.onclick=()=>{const booking=p.bookings[Number(b.dataset.rmReject)];if(booking){booking.status="rejected";data.pilot=p;save(data);render();}});
+    root.querySelectorAll("[data-rm-delete-section]").forEach(b=>b.onclick=()=>{const s=p.sections[Number(b.dataset.rmDeleteSection)];if(s&&confirm("¿Eliminar esta sección? Las reservas históricas permanecerán registradas.")){p.sections.splice(Number(b.dataset.rmDeleteSection),1);data.pilot=p;save(data);render();}});
+    root.querySelectorAll("[data-rm-delete-access]").forEach(b=>b.onclick=()=>{p.accessPoints.splice(Number(b.dataset.rmDeleteAccess),1);data.pilot=p;save(data);render();});
+    root.querySelectorAll("[data-rm-zoom]").forEach(b=>b.onclick=()=>{const s=p.sections[Number(b.dataset.rmZoom)];if(s?.coordinates?.length)map.fitBounds(L.latLngBounds(s.coordinates),{padding:[50,50]});});
+    root.querySelectorAll("[data-rm-zoom-access]").forEach(b=>b.onclick=()=>{const a=p.accessPoints[Number(b.dataset.rmZoomAccess)];if(a)map.setView([a.lat,a.lng],15);});
+  }
+  function startPilotMapAction(type) {
+    pilotMapAction={type,points:[]};
+    const labels={section:"DELIMITAR SECCIÓN",entry:"MARCAR PUNTO DE INGRESO",exit:"MARCAR PUNTO DE SALIDA"};
+    alert(type==="section"?"Haz clic en el mapa para marcar al menos dos puntos siguiendo el cauce. Pulsa «Finalizar trazado» cuando termines.": "Haz clic en el mapa en la ubicación exacta del "+(type==="entry"?"ingreso":"salida")+" autorizado.");
+    if(type!=="section")return;
+    const note=document.createElement("div");note.id="tm-rm-draw-controls";note.style.cssText="position:absolute;z-index:1000;top:72px;left:50%;transform:translateX(-50%);background:#102638;border:1px solid #55d9e8;border-radius:10px;padding:10px;color:#fff";
+    note.innerHTML=labels[type]+' · <button class="tm-btn primary" id="tm-rm-finish">Finalizar trazado</button> <button class="tm-btn" id="tm-rm-cancel">Cancelar</button>';
+    shell.appendChild(note);
+    $("tm-rm-finish").onclick=()=>{if(!pilotMapAction||pilotMapAction.points.length<2){alert("Marca al menos dos puntos.");return;}const name=prompt("Nombre de la sección (ej. Sección Alta):");if(!name||!name.trim())return;const p=pilotData();p.sections.push({id:"rms-"+Date.now(),name:name.trim(),coordinates:pilotMapAction.points.map(x=>[x.lat,x.lng]),capacity:4,notes:"Geometría trazada en demo; pendiente de validación en terreno"});data.pilot=p;save(data);cancelPilotMapAction();render();};
+    $("tm-rm-cancel").onclick=()=>{cancelPilotMapAction();render();};
+  }
+  function cancelPilotMapAction() {
+    pilotMapAction=null;
+    const n=$("tm-rm-draw-controls");if(n)n.remove();
+    if(pilotSectionLayer)pilotSectionLayer.clearLayers();
+    drawPilotRecords();
+  }
+  function handlePilotMapClick(e) {
+    if(!pilotMapAction)return false;
+    const p=pilotData(),type=pilotMapAction.type;
+    if(type==="section"){pilotMapAction.points.push(e.latlng);pilotLayers();pilotSectionLayer.clearLayers();L.polyline(pilotMapAction.points,{color:"#e8bd70",weight:5,dashArray:"6 5"}).addTo(pilotSectionLayer);return true;}
+    const name=prompt("Nombre o referencia del punto de "+(type==="entry"?"ingreso":"salida")+":",type==="entry"?"Ingreso autorizado":"Salida autorizada");
+    if(name&&name.trim()){p.accessPoints.push({id:"rma-"+Date.now(),name:name.trim(),kind:type,lat:e.latlng.lat,lng:e.latlng.lng,notes:"Pendiente de validación por el administrador"});data.pilot=p;save(data);}
+    pilotMapAction=null;render();return true;
+  }
+
   let importedLayer = L.layerGroup().addTo(map);
   function refreshImportedLayers() {
     if (importedLayer) importedLayer.clearLayers();
@@ -231,7 +367,7 @@
   }
 
   function open() { shell.classList.add("open"); $("adminSection").hidden=false; refreshImportedLayers(); render(); }
-  function close() { shell.classList.remove("open"); if(importedLayer)importedLayer.clearLayers(); if(draft){draft=null; if(draftLayer){map.removeLayer(draftLayer);draftLayer=null;}} }
+  function close() { shell.classList.remove("open"); if(importedLayer)importedLayer.clearLayers(); if(pilotRiverLayer)pilotRiverLayer.clearLayers(); if(pilotSectionLayer)pilotSectionLayer.clearLayers(); if(pilotAccessLayer)pilotAccessLayer.clearLayers(); cancelPilotMapAction(); if(draft){draft=null; if(draftLayer){map.removeLayer(draftLayer);draftLayer=null;}} }
   function createTerritory(points) {
     const name=prompt("Nombre del territorio o sector:");
     if(!name || !name.trim()) return;
@@ -248,7 +384,9 @@
     cancel.onclick=()=>{draft=null;if(draftLayer){map.removeLayer(draftLayer);draftLayer=null;}render();};
   }
   map.on("click", e=>{
-    if(!draft || !shell.classList.contains("open") || tab!=="territories") return;
+    if(!shell.classList.contains("open")) return;
+    if(tab==="rio-medio" && handlePilotMapClick(e)) return;
+    if(!draft || tab!=="territories") return;
     draft.push(e.latlng);
     if(draftLayer)map.removeLayer(draftLayer);
     draftLayer=(draft.length>=3?L.polygon(draft,{color:"#55d9e8",weight:2,dashArray:"6 5",fillColor:"#258ba8",fillOpacity:.18}):L.polyline(draft,{color:"#55d9e8",weight:2,dashArray:"6 5"})).addTo(map);
