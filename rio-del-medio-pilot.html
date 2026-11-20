@@ -8,6 +8,154 @@ main{padding:24px clamp(14px,2.5vw,36px);min-width:0;max-width:1650px;width:100%
 .inboxfilters{display:flex;gap:7px;flex-wrap:wrap;margin-bottom:11px}.filter{background:#0d202d;border:1px solid var(--line);color:var(--text);padding:8px;border-radius:8px;font-size:10px}.inbox{display:grid;gap:7px}.message{display:grid;grid-template-columns:30px 1fr auto;gap:9px;padding:11px;border:1px solid var(--line);border-radius:9px;background:#102638}.message.unread{border-left:3px solid var(--cyan);background:#122e3f}.message h3{font-size:10px;margin:1px 0 4px}.message p{font-size:9px;line-height:1.5;color:var(--muted);margin:0}.message small{display:block;color:#6f8c9d;font-size:8px;margin-top:5px}.msgactions{display:flex;gap:5px;align-items:start;flex-wrap:wrap}.twocol{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}.opcard{padding:12px;border:1px solid var(--line);border-radius:9px;background:#102638}.opcard h3{font-size:11px;margin:0 0 5px}.opcard p{font-size:9px;line-height:1.6;color:var(--muted);margin:0 0 9px}.tags{display:flex;gap:5px;flex-wrap:wrap}.tags span{font-size:8px;padding:4px 6px;border-radius:15px;background:#18394a;color:#b4cad4}.timeline{display:grid;gap:8px}.timeitem{display:grid;grid-template-columns:62px 1fr;gap:9px;padding:9px;border-bottom:1px solid var(--line)}.timeitem time{font-size:9px;color:var(--cyan);font-weight:800}.timeitem b{font-size:10px}.timeitem small{display:block;color:var(--muted);font-size:9px;margin-top:3px}.rules{display:grid;gap:7px}.rule{padding:10px;border:1px solid var(--line);border-radius:9px;background:#102638;font-size:10px;line-height:1.5}.rule b{color:var(--green);margin-right:7px}.months{display:grid;grid-template-columns:repeat(7,1fr);gap:6px}.month{padding:10px 5px;text-align:center;background:#102638;border:1px solid var(--line);border-radius:8px}.month b{font-size:9px}.month small{display:block;font-size:8px;color:var(--muted);margin-top:4px}.toast{display:none;position:fixed;right:15px;bottom:15px;padding:11px 14px;background:#173e35;border:1px solid #2c8b69;border-radius:9px;color:#e4fff0;z-index:60}.toast.show{display:block}
 @media(max-width:1050px){.stats{grid-template-columns:repeat(2,1fr)}.grid2,.mapgrid{grid-template-columns:1fr}.sectorgrid{grid-template-columns:repeat(2,1fr)}}
 @media(max-width:720px){.app{grid-template-columns:1fr}.sidebar{position:sticky;top:0;z-index:20;min-height:0;padding:9px;gap:7px}.territory,.nav-label,.sidefoot{display:none}.brand{font-size:17px}.nav{display:flex;overflow:auto}.nav button{white-space:nowrap;padding:8px;font-size:9px}.nav .count{display:none}main{padding:14px 10px}.top{align-items:flex-start;flex-direction:column}.h1{font-size:20px}.twocol{grid-template-columns:1fr}.message{grid-template-columns:28px 1fr}.msgactions{grid-column:2}.months{grid-template-columns:repeat(4,1fr)}}
+
+/* AnglerMap visual system — Territory Manager */
+:root{
+ --bg:#f3f6fa;--panel:#fff;--panel2:#f7f9fc;--line:#e3e9f0;
+ --text:#172b3c;--muted:#6f8090;--cyan:#087f9b;--gold:#a86b19;
+ --green:#23845d;--red:#b94b48;--navy:#102b40;
+ --shadow:0 8px 26px rgba(20,45,68,.055);--shadow-hover:0 14px 34px rgba(20,45,68,.10);
+}
+*{box-sizing:border-box}
+body{background:var(--bg);color:var(--text);font:14px/1.5 Inter,"SF Pro Display",-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;letter-spacing:-.012em}
+.app{grid-template-columns:248px minmax(0,1fr);min-height:100vh}
+aside{position:sticky;top:0;height:100vh;background:#102b40;border:0;padding:28px 18px 20px;gap:25px;box-shadow:8px 0 28px rgba(12,34,52,.06)}
+.brand{font-size:23px;letter-spacing:-1.1px;font-weight:850;color:#f5f9fc}
+.brand span{color:#55c5db}
+.brand small{font-size:9px;letter-spacing:2px;color:#91adbf;margin-top:5px}
+.territory{padding:15px 14px;border:1px solid rgba(180,213,230,.16);border-radius:13px;background:rgba(255,255,255,.055);font-size:12px;color:#f4f8fb}
+.territory small{color:#a7bdcc;font-size:10px;line-height:1.7;margin-top:7px}
+.nav-label{font-size:9px;color:#83a2b6;letter-spacing:1.7px;margin:4px 9px 9px}
+.nav{gap:5px}
+.nav button{padding:11px 12px;border-radius:10px;color:#c4d4df;font-size:12px;transition:background .18s,border-color .18s,color .18s,transform .18s}
+.nav button:hover{background:rgba(255,255,255,.07);border-color:transparent;color:#fff;transform:translateX(2px)}
+.nav button.active{background:#1b465e;border-color:#2d6079;color:#78d8e7;box-shadow:inset 3px 0 #5bc7d9}
+.count{background:#77551f;color:#ffe1a8;font-size:10px;padding:3px 8px}
+.sidefoot{border-color:rgba(180,213,230,.15);color:#8da8b9;font-size:9px;line-height:1.8}
+main{max-width:1580px;padding:34px clamp(20px,3vw,52px) 48px}
+.top{margin-bottom:27px;align-items:flex-end}
+.eyebrow{font-size:10px;letter-spacing:1.8px;color:#16849d}
+.h1{font-size:30px;line-height:1.15;letter-spacing:-1.2px;font-weight:760;margin:8px 0}
+.sub{font-size:12px;color:#788a99}
+.actions{gap:8px}
+.btn{border:1px solid #dbe4ec;background:#fff;color:#294356;padding:9px 13px;border-radius:9px;font-size:11px;font-weight:650;box-shadow:0 1px 2px rgba(20,45,68,.025);transition:all .18s}
+.btn:hover{filter:none;border-color:#9bb9c9;background:#f7fbfd;transform:translateY(-1px);box-shadow:0 5px 14px rgba(20,45,68,.08)}
+.btn.primary{background:#087f9b;border-color:#087f9b;color:#fff;box-shadow:0 4px 10px rgba(8,127,155,.16)}
+.btn.primary:hover{background:#066d86;border-color:#066d86}
+.view.active{animation:amFadeIn .24s ease both}
+@keyframes amFadeIn{from{opacity:.35;transform:translateY(5px)}to{opacity:1;transform:translateY(0)}}
+.stats{gap:14px;margin-bottom:16px}
+.card{background:#fff;border:1px solid #e5ebf1;border-radius:15px;padding:19px;box-shadow:var(--shadow);transition:box-shadow .2s,border-color .2s}
+.card:hover{box-shadow:var(--shadow-hover);border-color:#d5e1ea}
+.stat{position:relative;overflow:hidden;min-height:132px}
+.stat:after{content:"";position:absolute;right:-26px;top:-36px;width:110px;height:110px;border-radius:50%;background:rgba(8,127,155,.045)}
+.stat small{font-size:9px;letter-spacing:1px;font-weight:750;color:#7b8c9a}
+.stat strong{font-size:30px;letter-spacing:-1.3px;color:#16384e;margin:10px 0 3px}
+.stat em{font-size:10px;color:#27845f}
+.gold{color:#a86b19!important}
+.grid2{gap:15px;margin-bottom:15px}
+.head{margin-bottom:16px}
+.head h2{font-size:14px;font-weight:730;letter-spacing:-.25px;color:#20394c}
+.pill{font-size:9px;padding:5px 9px;border-radius:20px;background:#e8f5f8;color:#087f9b;font-weight:700}
+.pill.gold{background:#fbf2e3;color:#9c681e}
+.pill.green{background:#e9f5ef;color:#27845f}
+.sectorgrid{gap:9px}
+.sector{border:1px solid #e0e8ef;background:#f8fafc;color:#20394c;border-radius:11px;padding:13px;text-align:left;transition:all .18s}
+.sector:hover,.sector.selected{border-color:#5ba9bc;background:#f0f9fb;box-shadow:0 5px 14px rgba(8,127,155,.08);transform:translateY(-2px)}
+.sector b{font-size:11px;font-weight:730}
+.sector small{color:#778b9a;font-size:10px;line-height:1.45;margin:7px 0}
+.bar{height:6px;background:#e6edf2}
+.bar i{background:linear-gradient(90deg,#168da5,#4cb8c5);border-radius:9px}
+.meta{font-size:9px;color:#788b99}
+.activity{gap:12px}
+.act{gap:11px;border-color:#edf1f5;padding-bottom:11px}
+.ico{width:32px;height:32px;border-radius:10px;background:#e9f5f8;color:#087f9b;font-size:13px}
+.act b{font-size:11px;color:#294356}
+.act small{font-size:10px;color:#82919d;line-height:1.55}
+.tablewrap{border:1px solid #edf1f5;border-radius:11px}
+table{font-size:11px}
+th{color:#7d8e9b;font-size:9px;letter-spacing:1px;padding:12px 11px;background:#f8fafc}
+td{padding:13px 11px;border-color:#edf1f5;color:#344d60}
+tbody tr{transition:background .15s}
+tbody tr:hover{background:#f7fbfd}
+.status{font-size:9px;padding:5px 9px;border-radius:20px;background:#e8f5ef;color:#27845f;font-weight:700}
+.status.pending{background:#fbf2e3;color:#9c681e}
+.status.rejected{background:#faeceb;color:#b94b48}
+.mapgrid{gap:15px}
+.mapbox{background:#193a40;border:1px solid #d8e3e8;border-radius:13px}
+.mapbox svg{min-height:340px}
+.maplegend{padding:12px 4px 2px;color:#718491;font-size:10px}
+.mapnote,.notice{padding:13px 15px;border:1px solid #eadfc8;background:#fff9ed;border-radius:11px;color:#7e6335;font-size:11px;line-height:1.65;margin-top:13px}
+.detail{gap:9px}
+.detail div{padding:13px;border:1px solid #e7edf2;border-radius:11px;background:#f9fbfc}
+.detail b{font-size:11px;color:#294356}
+.detail p{font-size:10px;color:#778b99;line-height:1.6}
+.map-sector{transition:filter .18s,stroke-width .18s}
+.map-sector:hover{filter:brightness(1.2)}
+.inboxfilters{gap:8px;margin-bottom:14px}
+.filter{background:#fff;border:1px solid #dfe7ee;color:#314b5e;padding:9px 11px;border-radius:9px;font-size:11px}
+.inbox{gap:9px}
+.message{gap:12px;padding:14px;border:1px solid #e5ebf1;border-radius:12px;background:#fff;transition:all .18s}
+.message:hover{border-color:#b9d2df;box-shadow:0 5px 15px rgba(20,45,68,.06);transform:translateY(-1px)}
+.message.unread{border-left:3px solid #1591a9;background:#f7fcfd}
+.message h3{font-size:11px;color:#294356}
+.message p{font-size:10px;color:#718594;line-height:1.6}
+.message small{color:#91a0ab;font-size:9px}
+.msgactions{gap:7px}
+.twocol{gap:12px}
+.opcard{padding:16px;border:1px solid #e4ebf1;border-radius:12px;background:#fbfcfd;transition:all .18s}
+.opcard:hover{background:#fff;border-color:#bfd4df;box-shadow:0 7px 18px rgba(20,45,68,.06)}
+.opcard h3{font-size:13px;color:#20394c}
+.opcard p{font-size:10px;color:#718594;line-height:1.7}
+.tags span{font-size:9px;padding:5px 8px;border-radius:20px;background:#eaf2f6;color:#557184}
+.timeline{gap:4px}
+.timeitem{grid-template-columns:68px 1fr;gap:12px;padding:12px 8px;border-color:#edf1f5}
+.timeitem time{font-size:10px;color:#087f9b}
+.timeitem b{font-size:11px;color:#294356}
+.timeitem small{font-size:10px;color:#7c8d99}
+.rules{gap:9px}
+.rule{padding:13px 14px;border:1px solid #e5ebf1;border-radius:11px;background:#fbfcfd;font-size:11px;color:#526b7d;line-height:1.6}
+.rule b{color:#23845d}
+.months{gap:8px}
+.month{padding:13px 7px;background:#f8fafc;border:1px solid #e4ebf1;border-radius:10px;transition:all .18s}
+.month:hover{background:#fff;border-color:#b8d2de;transform:translateY(-2px)}
+.month b{font-size:10px;color:#294356}
+.month small{font-size:9px;color:#82929e}
+.toast{padding:13px 17px;background:#123c38;border:1px solid #3d8c77;border-radius:11px;box-shadow:0 10px 28px rgba(12,34,52,.2);font-size:11px}
+.mapnote b{color:#76521c}
+@media(max-width:1050px){
+ .app{grid-template-columns:210px minmax(0,1fr)}
+ main{padding:25px 20px 38px}
+ .stats{gap:10px}
+ .stat{padding:15px}
+ .stat strong{font-size:26px}
+}
+@media(max-width:720px){
+ .app{grid-template-columns:1fr}
+ aside{position:sticky;top:0;height:auto;padding:10px 12px;gap:8px;z-index:30;box-shadow:0 5px 18px rgba(12,34,52,.12)}
+ .brand{font-size:18px}
+ .brand small{font-size:8px}
+ .territory,.nav-label,.sidefoot{display:none}
+ .nav{display:flex;overflow:auto;scrollbar-width:none}
+ .nav button{font-size:10px;padding:8px 10px;flex:0 0 auto}
+ main{padding:19px 12px 30px}
+ .top{gap:12px;margin-bottom:19px}
+ .h1{font-size:24px}
+ .sub{font-size:10px}
+ .card{padding:14px;border-radius:13px}
+ .stats{gap:9px}
+ .stat{min-height:112px}
+ .stat small{font-size:8px}
+ .stat strong{font-size:24px}
+ .grid2,.mapgrid{gap:10px}
+ .sectorgrid{gap:7px}
+ .sector{padding:10px}
+ .twocol{grid-template-columns:1fr}
+ .message{grid-template-columns:28px 1fr;padding:11px}
+ .msgactions{grid-column:2}
+ .months{grid-template-columns:repeat(4,1fr)}
+}
+
 </style></head><body><div class="app">
 <aside><div class="brand">angler<span>map</span><small>TERRITORY MANAGER</small></div><div class="territory"><b>Estancia Río del Medio</b><small>Cuenca Río del Medio · Laguna Blanca<br>Temporada 2026–2027</small></div><div><div class="nav-label">GESTIÓN DEL TERRITORIO</div><nav class="nav">
 <button class="active" data-view="overview">◫ Resumen</button><button data-view="map">⌖ Mapa y sectores</button><button data-view="inbox">✉ Bandeja de entrada <span class="count" id="unreadNav">6</span></button><button data-view="reservations">▦ Reservas e ingresos</button><button data-view="operators">♧ Operadores y convenios</button><button data-view="season">▤ Temporada y resultados</button><button data-view="rules">✓ Accesos y condiciones</button></nav></div><div class="sidefoot">ENTORNO DEMO · INFORMACIÓN FICTICIA<br>No representa accesos, deslindes ni convenios reales.</div></aside>
