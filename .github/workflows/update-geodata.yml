@@ -139,7 +139,7 @@ jobs:
           catalog["updated_at"] = datetime.now(timezone.utc).isoformat()
           catalog["feature_counts"] = file_counts
           catalog_path.write_text(
-              json.dumps(catalog, ensure_ascii=False, indent=2) + "\\n",
+              json.dumps(catalog, ensure_ascii=False, indent=2) + "\n",
               encoding="utf-8"
           )
           print(json.dumps(file_counts, ensure_ascii=False))
