@@ -434,8 +434,8 @@ async function loadHydroCatalog() {
    // El inventario poligonal DGA puede incluir islas/islotes.
    // No son aguas pescables ni deben contaminar el catálogo de ríos y lagos.
    const isIsland=(category==="lake"||category==="lagoon")&&(
-    /\\b(isla|islas|islote|islotes)\\b/.test(normalizedSubtype)||
-    /^(isla|islote)\\s/.test(normalizedName)
+    /\b(isla|islas|islote|islotes)\b/.test(normalizedSubtype)||
+    /^(isla|islote)\s/.test(normalizedName)
    );
    if(isIsland)return;
    const labels={river:"Río / estero",lake:"Lago",lagoon:"Laguna"};
