@@ -4,6 +4,7 @@ on:
   push:
     paths:
       - "index.html"
+      - "scripts/**/*.js"
       - "data/metadata/layers.json"
       - ".github/workflows/validate-ui.yml"
   pull_request:
@@ -47,6 +48,13 @@ jobs:
           PY
 
           for file in /tmp/anglermap-*.js; do
+            node --check "$file"
+          done
+
+      - name: Validate standalone JavaScript modules
+        run: |
+          for file in scripts/*.js; do
+            [ -f "$file" ] || continue
             node --check "$file"
           done
 
