@@ -1190,7 +1190,7 @@ def publish_atomically(temp_dir):
 def main():
     global COMMUNE_GEOMETRIES
 
-    log("Inicio de AnglerMap Geodata 4.0")
+    log("Inicio de AnglerMap Geodata 4.0 · catálogo hidrográfico DGA consolidado")
     log("Territorio: nueve comunas de Magallanes.")
     log("Fuentes: MOP, IGM y DGA (drenajes, lagos y unidades BNA).")
     log("Cabo de Hornos y Antártica excluidos.")
