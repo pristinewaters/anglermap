@@ -909,6 +909,41 @@ def query_water_layer(
             if type_field else None
         )
 
+        subtype_normalized = normalize(subtype)
+        name_normalized = normalize(name)
+        effective_water_type = water_type
+
+        if water_type == "lake" and source_name.startswith("MOP"):
+            # La capa MOP 17 es un sistema lacustre mixto: contiene ríos,
+            # esteros, embalses, lagos, lagunas, salares y glaciares.
+            # Solo se incorporan las clases hidrográficas pertinentes.
+            if subtype_normalized in ("rio", "estero", "rio - estero"):
+                water_category = "river"
+                effective_water_type = "river_or_stream"
+            elif subtype_normalized == "embalse":
+                water_category = "reservoir"
+                effective_water_type = "reservoir"
+            elif subtype_normalized == "lago":
+                water_category = "lake"
+                effective_water_type = "lake"
+            elif subtype_normalized == "laguna":
+                water_category = "lagoon"
+                effective_water_type = "lagoon"
+            else:
+                continue
+        elif water_type in ("river", "river_or_stream"):
+            water_category = "river"
+        elif subtype_normalized == "embalse":
+            water_category = "reservoir"
+            effective_water_type = "reservoir"
+        elif "laguna" in name_normalized or "laguna" in subtype_normalized:
+            water_category = "lagoon"
+            effective_water_type = "lagoon"
+        else:
+            water_category = "lake" if water_type in ("lake", "lake_or_lagoon") else "river"
+            if water_category == "lake":
+                effective_water_type = "lake"
+
         official_id = props.get("OBJECTID")
 
         stable = (
@@ -933,15 +968,8 @@ def query_water_layer(
                     "aliases": aliases,
                     "toponymy_status": toponymy_status,
                     "toponymy_note": toponymy_note,
-                    "water_type": water_type,
-                    "water_category": (
-                        "river" if water_type in ("river", "river_or_stream")
-                        else "lagoon" if (
-                            "laguna" in normalize(name)
-                            or "laguna" in normalize(subtype)
-                        )
-                        else "lake"
-                    ),
+                    "water_type": effective_water_type,
+                    "water_category": water_category,
                     "subtype": subtype,
                     "official_source": source_name,
                     "official_id": official_id,
