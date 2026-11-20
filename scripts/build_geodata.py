@@ -2,6 +2,7 @@
 import hashlib
 import json
 import re
+from numbers import Integral
 import time
 import unicodedata
 from datetime import datetime, timezone
@@ -510,7 +511,7 @@ def intersecting_communes(geometry):
     matches = []
     for candidate in COMMUNE_TREE.query(geometry):
         # Shapely 2 returns integer indices; Shapely 1 returns geometries.
-        if isinstance(candidate, int):
+        if isinstance(candidate, Integral):
             index = candidate
         else:
             index = COMMUNE_TREE_LOOKUP.get(id(candidate))
