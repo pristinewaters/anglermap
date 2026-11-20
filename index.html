@@ -1021,7 +1021,7 @@ window.addEventListener("resize",()=>map.invalidateSize());
    No utiliza coordenadas inventadas.
    ========================================================= */
 
-const AM_RIVER_CACHE_KEY = "anglerMapRiverGeoCache";
+const AM_RIVER_CACHE_KEY = "anglerMapRiverGeoCache_v2";
 const AM_RIVER_BOUNDS = "(-56.5,-76.5,-48,-65)";
 const AM_OVERPASS_ENDPOINTS = [
   "https://overpass-api.de/api/interpreter",
@@ -1143,23 +1143,54 @@ async function amSearchRiverGeometry(river) {
   const pattern = aliases.map(amEscapeRegex).join("|");
 
   const query = `
-    [out:json][timeout:25];
-    way
-      ["waterway"~"^(river|stream|canal)$"]
-      ["name"~"${pattern}",i]
-      ${AM_RIVER_BOUNDS};
-    out tags geom;
+    [out:json][timeout:40];
+    (
+      way
+        ["waterway"~"^(river|stream|canal)$"]
+        ["name"~"${pattern}",i]
+        ${AM_RIVER_BOUNDS};
+      relation
+        ["waterway"~"^(river|stream|canal)$"]
+        ["name"~"${pattern}",i]
+        ${AM_RIVER_BOUNDS};
+    );
+    (._;>;);
+    out body geom;
   `;
 
   const data = await amFetchOverpass(query);
+  const elements = Array.isArray(data.elements) ? data.elements : [];
+  const matchingRelations = elements.filter(element => {
+    if (element.type !== "relation") return false;
+    const tags = element.tags || {};
+    const names = [
+      tags.name,
+      tags["name:es"],
+      tags.alt_name,
+      tags.official_name
+    ].filter(Boolean);
+    return names.some(name =>
+      aliases.some(alias => amNormalize(name) === amNormalize(alias))
+    );
+  });
 
-  const ways = data.elements
+  const relationWayIds = new Set();
+  matchingRelations.forEach(relation => {
+    (relation.members || []).forEach(member => {
+      if (member.type === "way" && Number.isFinite(Number(member.ref))) {
+        relationWayIds.add(Number(member.ref));
+      }
+    });
+  });
+
+  const ways = elements
     .filter(element =>
       element.type === "way" &&
       Array.isArray(element.geometry) &&
       element.geometry.length >= 2
     )
     .filter(element => {
+      if (relationWayIds.has(Number(element.id))) return true;
       const tags = element.tags || {};
       const names = [
         tags.name,
@@ -1167,20 +1198,18 @@ async function amSearchRiverGeometry(river) {
         tags.alt_name,
         tags.official_name
       ].filter(Boolean);
-
       return names.some(name =>
-        aliases.some(alias =>
-          amNormalize(name) === amNormalize(alias)
-        )
+        aliases.some(alias => amNormalize(name) === amNormalize(alias))
       );
     });
 
-  if (!ways.length) return null;
+  const uniqueWays = [...new Map(ways.map(way => [way.id, way])).values()];
+  if (!uniqueWays.length) return null;
 
   return {
     source: "OpenStreetMap / Overpass API",
     type: "line",
-    ways: ways.map(way => ({
+    ways: uniqueWays.map(way => ({
       name: way.tags?.name || river.name,
       geometry: way.geometry.map(point => ({
         lat: Number(point.lat),
@@ -1189,7 +1218,6 @@ async function amSearchRiverGeometry(river) {
     }))
   };
 }
-
 async function amSearchRiverFallback(river) {
   const query = river.name + " river Magallanes Chile";
 
