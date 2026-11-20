@@ -454,6 +454,7 @@
   $("territoryBtn").onclick=()=>{tab="territories";open();};
   $("accessBtn").onclick=()=>{tab="access";open();};
   document.addEventListener("keydown",e=>{if(e.key==="Escape"&&shell.classList.contains("open"))close();});
-  if(new URLSearchParams(location.search).get("profile")==="admin"){ $("profileSelect").value="admin"; open(); }
+  const requestedProfile=new URLSearchParams(location.search).get("profile");
+  if(["admin","operator","angler"].includes(requestedProfile)){ $("profileSelect").value=requestedProfile; tab=requestedProfile==="admin"?"overview":requestedProfile==="operator"?"operator-portal":"angler-portal"; open(); }
   console.info("AnglerMap Territory Manager: interfaz demo cargada; sin backend ni permisos reales.");
 })();
