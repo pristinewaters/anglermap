@@ -400,43 +400,98 @@ button:focus-visible,input:focus-visible,select:focus-visible{outline:2px solid 
 // del Plan de Riego de Magallanes) y nombres/localidades de estaciones DGA.
 // En cuencas compartidas el mismo río aparece en más de una comuna; no implica
 // que todo su trazado esté dentro de cada comuna ni acredita acceso de pesca.
-const RIVERS=[
-{name:"Río Serrano",communes:["Natales","Torres del Paine"],desc:"Cuenca costera Seno Andrew–río Hollemberg; tributario principal identificado por MOP. La cuenca abarca Natales y Torres del Paine."},
-{name:"Río Las Chinas",communes:["Natales","Torres del Paine"],desc:"Curso y estaciones DGA en Cerro Guido y antes del desagüe al Toro. MOP lo identifica como tributario principal de la cuenca Seno Andrew–Hollemberg."},
-{name:"Río Paine",communes:["Natales","Torres del Paine"],desc:"Curso con estaciones DGA en el Parque Nacional y Laguna Amarga; tributario principal de la cuenca Seno Andrew–Hollemberg."},
-{name:"Río Baguales",communes:["Torres del Paine"],desc:"Curso con estación DGA en Cerro Guido. La ubicación de tramos y accesos debe verificarse cartográficamente."},
-{name:"Río Vizcachas",communes:["Torres del Paine"],desc:"Curso registrado en la red histórica de estaciones fluviométricas DGA en Cerro Guido."},
-{name:"Río Grey",communes:["Torres del Paine"],desc:"Curso registrado por DGA en la cuenca del río Serrano."},
-{name:"Río Tindall",communes:["Torres del Paine"],desc:"Curso con estación DGA en desembocadura."},
-{name:"Río Rincón",communes:["Torres del Paine"],desc:"Curso con estación DGA en ruta Y-290."},
-{name:"Río Tres Pasos",communes:["Torres del Paine"],desc:"Curso identificado por MOP/DGA en el sistema del lago del Toro."},
-{name:"Río Geikie",communes:["Torres del Paine"],desc:"Curso con estación DGA en desembocadura."},
-{name:"Río Pérez",communes:["Natales","Río Verde"],desc:"MOP identifica la cuenca costera Islas río Hollemberg–Laguna Blanca en Natales y Río Verde; DGA mantiene estación en su desembocadura, comuna de Río Verde."},
-{name:"Río Hollemberg",communes:["Natales","Río Verde"],desc:"Tributario principal de la cuenca costera identificada por MOP entre Natales y Río Verde; DGA registra estación en desembocadura."},
-{name:"Río Tranquilo",communes:["Natales"],desc:"Curso con estación DGA Río Tranquilo en ruta Nº 9."},
-{name:"Río Prat",communes:["Natales"],desc:"Curso con estación DGA en desembocadura."},
-{name:"Río Primero",communes:["Natales"],desc:"Curso con estación DGA en Seno Obstrucción."},
-{name:"Río Blanco",communes:["Natales"],desc:"Curso con estación DGA en Seno Obstrucción."},
-{name:"Río Penitente",communes:["Laguna Blanca","San Gregorio"],desc:"Curso con estación DGA en Morro Chico. MOP ubica la cuenca de la vertiente del Atlántico entre Laguna Blanca y San Gregorio."},
-{name:"Río Rubens",communes:["Laguna Blanca","San Gregorio"],desc:"Curso con estación DGA en ruta Nº 9. MOP ubica la cuenca de la vertiente del Atlántico entre Laguna Blanca y San Gregorio."},
-{name:"Río Las Minas",communes:["Punta Arenas","San Gregorio"],desc:"MOP identifica la cuenca costera Laguna Blanca–Estrecho de Magallanes entre Punta Arenas y San Gregorio; DGA registra estaciones en el río Las Minas."},
-{name:"Río San Juan",communes:["Punta Arenas","San Gregorio"],desc:"MOP identifica esta cuenca entre Punta Arenas y San Gregorio; DGA registra estación en la desembocadura."},
-{name:"Río Tres Brazos",communes:["Punta Arenas","San Gregorio"],desc:"Tributario de la cuenca costera Laguna Blanca–Estrecho de Magallanes identificada por MOP."},
-{name:"Río Grande en Isla Riesco",communes:["Punta Arenas"],desc:"Curso con estación DGA en Isla Riesco, dentro del territorio comunal de Punta Arenas."},
-{name:"Río Side",communes:["Primavera"],desc:"Curso con estación fluviométrica DGA en Cerro Sombrero."},
-{name:"Río Oro",communes:["Primavera"],desc:"Curso con estación DGA en Bahía San Felipe; ubicación comunal identificada en el inventario de estaciones."},
-{name:"Río Óscar",communes:["Primavera"],desc:"Curso con estación DGA en Bahía San Felipe."},
-{name:"Río San Martín",communes:["Primavera"],desc:"Curso con estación DGA en San Sebastián."},
-{name:"Río Onaissin",communes:["Primavera"],desc:"Curso con estación DGA en María Cristina."},
-{name:"Río Cullen",communes:["Primavera"],desc:"Curso con estación DGA en frontera."},
-{name:"Río Grande en Tierra del Fuego",communes:["Timaukel"],desc:"Curso con estación DGA y puente de la ruta Y-85 en el sector Cameron–Vicuña, comuna de Timaukel."},
-{name:"Río Catalina",communes:["Timaukel"],desc:"Curso identificado en Pampa Guanaco por antecedentes municipales y registros DGA."},
-{name:"Río Rasmussen",communes:["Timaukel"],desc:"Curso con estación DGA en frontera, sector de estancia Vicuña."},
-{name:"Río Herminita",communes:["Timaukel"],desc:"Curso con estación DGA en ruta Y-895."},
-{name:"Río Chico",communes:["Timaukel"],desc:"Curso con estación DGA en ruta Y-895."},
-{name:"Río Azopardo",communes:["Porvenir"],desc:"Curso con estación DGA en desembocadura; ficha de estación identifica la comuna de Porvenir."},
-{name:"Río Cóndor",communes:["Porvenir"],desc:"Curso con estación DGA; ficha de estación identifica la comuna de Porvenir."}
-];
+let RIVERS = [];
+let hydroCatalogState = "loading";
+
+function amCatalogNormalize(value) {
+ return String(value ?? "").normalize("NFD").replace(/[\\u0300-\\u036f]/g,"").toLowerCase().replace(/\\s+/g," ").trim();
+}
+
+function amWaterCategory(props) {
+ const declared = String(props.water_category || "").toLowerCase();
+ if (declared === "river" || declared === "lake" || declared === "lagoon") return declared;
+ const label = amCatalogNormalize([props.name,props.subtype,props.water_type].join(" "));
+ if (label.includes("laguna")) return "lagoon";
+ if (label.includes("lago") || label.includes("lake")) return "lake";
+ return "river";
+}
+
+async function loadHydroCatalog() {
+ try {
+  const response = await fetch("data/magallanes/waterbodies.geojson",{cache:"no-store"});
+  if (!response.ok) throw new Error("Inventario hidrográfico HTTP " + response.status);
+  const collection = await response.json();
+  if (collection.type !== "FeatureCollection" || !Array.isArray(collection.features)) {
+   throw new Error("El inventario hidrográfico no es un GeoJSON válido");
+  }
+
+  const grouped = new Map();
+  collection.features.forEach(feature => {
+   const p = feature.properties || {};
+   const name = String(p.name || "").trim();
+   const communes = Array.isArray(p.communes) ? p.communes.filter(Boolean) : [];
+   if (!name || name === "Cuerpo de agua sin nombre" || !communes.length || !feature.geometry) return;
+
+   const category = amWaterCategory(p);
+   const basinCodes = [...new Set((p.hydro_units || [])
+    .filter(unit => unit.level === "basin" && unit.code)
+    .map(unit => String(unit.code)))].sort();
+   const basinKey = basinCodes.join(",") || communes.slice().sort().join(",");
+   const key = amCatalogNormalize(name) + "|" + category + "|" + basinKey;
+   let item = grouped.get(key);
+
+   if (!item) {
+    const labels = {river:"Río / estero",lake:"Lago",lagoon:"Laguna"};
+    item = {
+     name,
+     category,
+     categoryLabel:labels[category] || "Agua",
+     communes:[],
+     provinces:[],
+     basins:[],
+     subbasins:[],
+     subsubbasins:[],
+     sources:[],
+     aliases:[],
+     features:[],
+     basinCodes:[],
+     desc:"Geometría hidrográfica consolidada desde las capas disponibles."
+    };
+    grouped.set(key,item);
+   }
+
+   item.communes = [...new Set(item.communes.concat(communes))].sort((a,b)=>zoneOrder.indexOf(a)-zoneOrder.indexOf(b));
+   item.provinces = [...new Set(item.provinces.concat(p.provinces || []))].sort();
+   item.basins = [...new Set(item.basins.concat(p.basins || []))].sort();
+   item.subbasins = [...new Set(item.subbasins.concat(p.subbasins || []))].sort();
+   item.subsubbasins = [...new Set(item.subsubbasins.concat(p.subsubbasins || []))].sort();
+   item.sources = [...new Set(item.sources.concat(p.official_source || []))].sort();
+   item.aliases = [...new Set(item.aliases.concat(p.aliases || []))];
+   item.basinCodes = [...new Set(item.basinCodes.concat(basinCodes))].sort();
+   item.features.push({
+    type:"Feature",
+    geometry:feature.geometry,
+    properties:{
+     name:p.name,
+     official_source:p.official_source,
+     water_type:p.water_type,
+     water_category:category
+    }
+   });
+  });
+
+  RIVERS = [...grouped.values()].sort((a,b)=>a.name.localeCompare(b.name,"es"));
+  hydroCatalogState = "ready";
+ } catch (error) {
+  console.error("AnglerMap: no se pudo cargar el inventario hidrográfico.",error);
+  RIVERS = [];
+  hydroCatalogState = "unavailable";
+ }
+ if (typeof renderZones === "function") renderZones(document.getElementById("globalSearch")?.value || "");
+}
+
+const zoneOrder=["Punta Arenas","Laguna Blanca","Río Verde","San Gregorio","Natales","Torres del Paine","Porvenir","Primavera","Timaukel"];
+
 
 const $=id=>document.getElementById(id);
 const zoneOrder=["Punta Arenas","Laguna Blanca","Río Verde","San Gregorio","Natales","Torres del Paine","Porvenir","Primavera","Timaukel"];
@@ -450,7 +505,7 @@ const saveStore=(key,value)=>{
 let favorites=readStore("anglerMapFavorites",[]);
 let savedPoints=readStore("anglerMapPoints",[]);
 let selectedRiver=null,addPointMode=false,measureMode=false;
-let pointMarkers=[],measureMarkers=[],measurePoints=[],measureLine=null,weatherDebounce=null;
+let pointMarkers=[],measureMarkers=[],measurePoints=[],measureLine=null,weatherDebounce=null,selectedWaterLayer=null;
 let dgaLayer=L.layerGroup(),dgaFeatures=[],dgaLoaded=false;
 
 const map=L.map("map",{zoomControl:false}).setView([-52.1,-70.8],7);
@@ -472,6 +527,13 @@ $("osmBtn").onclick=()=>setBase(osm,"osmBtn");
 
 function renderZones(filter=""){
  const root=$("zones");root.innerHTML="";
+ if(!RIVERS.length){
+  const empty=document.createElement("div");
+  empty.className="empty-state";
+  empty.textContent=hydroCatalogState==="loading"?"Cargando inventario hidrográfico…":"El inventario oficial aún no está disponible. No se mostrará una lista manual sin validar.";
+  root.appendChild(empty);
+  return;
+ }
  zoneOrder.forEach((zone,index)=>{
   const waters=RIVERS.filter(r=>r.communes.includes(zone)&&r.name.toLowerCase().includes(filter.toLowerCase()));
   if(!waters.length)return;
@@ -488,7 +550,7 @@ function renderZones(filter=""){
    item.className="water-item"+(selectedRiver?.name===r.name?" selected":"");
    const dot=document.createElement("span");dot.className="water-dot";
    const label=document.createElement("span");label.textContent=r.name;
-   const hint=document.createElement("small");hint.textContent="Ficha ↗";
+   const hint=document.createElement("small");hint.textContent=r.categoryLabel;
    item.append(dot,label,hint);item.onclick=()=>openRiver(r);body.appendChild(item);
   });
   section.append(head,body);root.appendChild(section);
@@ -498,17 +560,30 @@ function renderZones(filter=""){
 function openRiver(r){
  selectedRiver=r;
  $("generalPanel").classList.remove("show");
- $("detailKicker").textContent="Ficha de agua · Magallanes";
+ $("detailKicker").textContent="Ficha de agua · "+r.categoryLabel;
  $("detailTitle").textContent=r.name;
- $("detailZone").textContent=r.communes.join(" · ")+" · Región de Magallanes";
- $("detailDescription").textContent=r.desc;
- $("detailWarning").textContent="Ubicación y trazado geográfico pendientes de validación. No se mostrará una posición aproximada como si fuera la ubicación oficial del río.";
- $("detailGeometry").textContent="Sin geometría validada disponible en esta versión. Esta ficha no representa un punto de acceso ni garantiza la ubicación del curso de agua.";
- $("riverWeather").textContent="La meteorología corresponde al centro actual del mapa y no necesariamente a este río. Mueve el mapa hasta el sector de interés para consultar el pronóstico local.";
- $("riverDga").textContent="Las estaciones DGA se muestran según la ubicación oficial publicada por el servicio. La cercanía a un río no implica que midan directamente ese tramo.";
+ $("detailZone").textContent=r.communes.join(" · ")+(r.provinces.length?" · "+r.provinces.join(" / "):"")+" · Magallanes";
+ const context=[
+  r.categoryLabel,
+  r.basins.length?"Cuenca: "+r.basins.join(", "):"",
+  r.subbasins.length?"Subcuenca: "+r.subbasins.join(", "):"",
+  r.subsubbasins.length?"Subsubcuenca: "+r.subsubbasins.join(", "):""
+ ].filter(Boolean);
+ $("detailDescription").textContent=context.join(" · ")+".";
+ $("detailWarning").textContent="La ficha reúne registros cartográficos oficiales y complementarios. La geometría no acredita acceso público, permiso de pesca ni condiciones actuales del cauce.";
+ $("detailGeometry").textContent="Fuentes: "+(r.sources.join("; ")||"sin procedencia informada")+". Geometrías disponibles: "+r.features.length+". "+(r.aliases.length?"Rótulo alternativo registrado: "+r.aliases.join(", ")+".":"")+" Las cuencas y subunidades se asignan por intersección espacial.";
+ $("riverWeather").textContent="La meteorología corresponde al centro actual del mapa y no necesariamente a este cuerpo de agua. Mueve el mapa hasta el sector de interés para consultar el pronóstico local.";
+ $("riverDga").textContent="Las estaciones DGA son puntos de monitoreo. Solo se deben asociar a un curso cuando su identificación y ubicación confirmen esa relación.";
  $("favoriteBtn").textContent=favorites.includes(r.name)?"★ En Mis aguas":"☆ Guardar agua";
  $("detailPanel").classList.add("show");
- amLocateRiver(r);
+ if(selectedWaterLayer){map.removeLayer(selectedWaterLayer);selectedWaterLayer=null;}
+ if(Array.isArray(r.features)&&r.features.length){
+  selectedWaterLayer=L.geoJSON({type:"FeatureCollection",features:r.features},{style:{color:"#55d9e8",weight:4,opacity:1,fillColor:"#55d9e8",fillOpacity:.16}}).addTo(map);
+  const bounds=selectedWaterLayer.getBounds();
+  if(bounds.isValid()) map.fitBounds(bounds,{padding:[55,55],maxZoom:13});
+ }else{
+  amLocateRiver(r);
+ }
  document.querySelectorAll(".detail-tab").forEach((b,i)=>b.classList.toggle("active",i===0));
  $("tabOverview").hidden=false;$("tabConditions").hidden=true;$("tabAccess").hidden=true;
  renderZones($("globalSearch").value);
