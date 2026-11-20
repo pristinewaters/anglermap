@@ -45,6 +45,7 @@ El prototipo web está operativo como visor y herramienta de exploración, pero 
 - OpenStreetMap contributors: https://www.openstreetmap.org/copyright
 - Open-Meteo: https://open-meteo.com/
 - Dirección General de Aguas (MOP): https://dga.mop.gob.cl/
+- IDE de la Superintendencia del Medio Ambiente, capas hidrográficas con atribución a DGA/Banco Nacional de Aguas: https://ideserver.sma.gob.cl/arcgis/rest/services/IDE/Recursos_hidricos_glaciares/MapServer
 - Instituto Geográfico Militar: https://www.igm.cl/
 - Ministerio de Obras Públicas: https://www.mop.gob.cl/
 
