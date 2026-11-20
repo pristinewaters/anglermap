@@ -441,6 +441,7 @@ async function loadHydroCatalog() {
    if (!item) {
     const labels = {river:"Río / estero",lake:"Lago",lagoon:"Laguna"};
     item = {
+     id:key,
      name,
      category,
      categoryLabel:labels[category] || "Agua",
@@ -554,7 +555,7 @@ function renderZones(filter=""){
   const body=document.createElement("div");body.className="zone-body";
   waters.forEach(r=>{
    const item=document.createElement("div");
-   item.className="water-item"+(selectedRiver?.name===r.name?" selected":"");
+   item.className="water-item"+(selectedRiver?.id===r.id||(!selectedRiver?.id&&selectedRiver?.name===r.name)?" selected":"");
    const dot=document.createElement("span");dot.className="water-dot";
    const label=document.createElement("span");label.textContent=r.name;
    const hint=document.createElement("small");hint.textContent=r.categoryLabel;
@@ -583,7 +584,7 @@ function openRiver(r){
  $("detailGeometry").textContent="Fuentes: "+(r.sources.join("; ")||"sin procedencia informada")+". Geometrías disponibles: "+r.features.length+". "+(r.basinCodes.length?"Códigos BNA cuenca: "+r.basinCodes.join(", ")+". ":"")+(r.subbasinCodes.length?"Subcuencas BNA: "+r.subbasinCodes.join(", ")+". ":"")+(r.subsubbasinCodes.length?"Subsubcuencas BNA: "+r.subsubbasinCodes.join(", ")+". ":"")+(r.aliases.length?"Rótulo alternativo registrado: "+r.aliases.join(", ")+". ":"")+(r.toponymyNotes.length?"Nota toponímica: "+r.toponymyNotes.join(" ")+" ":"")+"Las cuencas y subunidades se asignan por intersección espacial.";
  $("riverWeather").textContent="La meteorología corresponde al centro actual del mapa y no necesariamente a este cuerpo de agua. Mueve el mapa hasta el sector de interés para consultar el pronóstico local.";
  $("riverDga").textContent="Las estaciones DGA son puntos de monitoreo. Solo se deben asociar a un curso cuando su identificación y ubicación confirmen esa relación.";
- $("favoriteBtn").textContent=favorites.includes(r.name)?"★ En Mis aguas":"☆ Guardar agua";
+ $("favoriteBtn").textContent=isWaterFavorite(r)?"★ En Mis aguas":"☆ Guardar agua";
  $("detailPanel").classList.add("show");
  if(selectedWaterLayer){map.removeLayer(selectedWaterLayer);selectedWaterLayer=null;}
  if(Array.isArray(r.features)&&r.features.length){
@@ -609,11 +610,20 @@ document.querySelectorAll(".detail-tab").forEach(button=>{
  };
 });
 
+function isWaterFavorite(water){
+ return favorites.includes(water.id) || favorites.includes(water.name);
+}
+
 $("favoriteBtn").onclick=()=>{
  if(!selectedRiver)return;
- favorites=favorites.includes(selectedRiver.name)?favorites.filter(x=>x!==selectedRiver.name):[...favorites,selectedRiver.name];
+ const key=selectedRiver.id || selectedRiver.name;
+ if(isWaterFavorite(selectedRiver)){
+  favorites=favorites.filter(value=>value!==key&&value!==selectedRiver.name);
+ }else{
+  favorites=[...favorites,key];
+ }
  saveStore("anglerMapFavorites",favorites);
- $("favoriteBtn").textContent=favorites.includes(selectedRiver.name)?"★ En Mis aguas":"☆ Guardar agua";
+ $("favoriteBtn").textContent=isWaterFavorite(selectedRiver)?"★ En Mis aguas":"☆ Guardar agua";
  $("savedCount").textContent=favorites.length;
 };
 
@@ -636,8 +646,8 @@ function setView(view){
  $("sidebar").classList.remove("open");$("detailPanel").classList.remove("show");$("generalPanel").classList.remove("show");
  if(view==="explore"){renderZones($("globalSearch").value);return;}
  if(view==="saved"){
-  const saved=RIVERS.filter(r=>favorites.includes(r.name));
-  const html=saved.length?saved.map(r=>`<div class="panel-row"><strong>${escapeHtml(r.name)}</strong><p>${escapeHtml(r.communes.join(" · "))}</p><button class="action-btn" style="margin-top:9px" onclick="openRiverByName('${escapeHtml(r.name)}')">Abrir ficha</button></div>`).join(""):'<div class="empty-state">☆<br>Todavía no tienes aguas guardadas.<br>Explora ríos, lagos y lagunas y utiliza «Guardar agua» para crear tu colección.</div>';
+  const saved=RIVERS.filter(r=>isWaterFavorite(r));
+  const html=saved.length?saved.map(r=>`<div class="panel-row"><strong>${escapeHtml(r.name)}</strong><p>${escapeHtml(r.communes.join(" · "))}</p><button class="action-btn" style="margin-top:9px" onclick="openRiverById('${escapeHtml(r.id)}')">Abrir ficha</button></div>`).join(""):'<div class="empty-state">☆<br>Todavía no tienes aguas guardadas.<br>Explora ríos, lagos y lagunas y utiliza «Guardar agua» para crear tu colección.</div>';
   openGeneral("Mis aguas",saved.length+" aguas guardadas",html);
  }
  if(view==="points"){
@@ -648,6 +658,7 @@ function setView(view){
 }
 document.querySelectorAll(".nav-item[data-view]").forEach(b=>b.addEventListener("click",()=>setView(b.dataset.view)));
 window.openRiverByName=name=>{const river=RIVERS.find(r=>r.name===name);if(river)openRiver(river);};
+window.openRiverById=id=>{const river=RIVERS.find(r=>r.id===id);if(river)openRiver(river);};
 $("globalSearch").addEventListener("input",e=>renderZones(e.target.value));
 $("globalSearch").addEventListener("keydown",e=>{
  if(e.key==="Enter"){
