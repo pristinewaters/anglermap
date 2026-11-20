@@ -20,7 +20,9 @@ data/
 - Servicio: [Red Vial Chile Base Gris, capa 3](https://rest-sit.mop.gob.cl/arcgis/rest/services/VIALIDAD/Red_Vial_Chile_Base_gris/MapServer/3).
 - Responsable: Dirección de Vialidad, Ministerio de Obras Públicas.
 - Incluye caminos nacionales, regionales, provinciales, comunales y regionales de acceso según la descripción del servicio.
-- La ficha describe datos disponibles a enero de 2021. Es cartografía de referencia; no confirma transitabilidad actual, derecho de paso, servidumbre ni acceso a predios privados.
+- La ficha describe datos disponibles a enero de 2021. La capa registra `NOMBRE_CAMINO`, `ROL`, `CLASIFICACION`, `CARPETA` y `RVO`, por lo que permite distinguir la jerarquía vial y la carpeta (pavimento, ripio, suelo natural y otras categorías). Incluye caminos nacionales, internacionales, regionales principales, provinciales, comunales, regionales de acceso y caminos en proceso de enrolamiento.
+- La cobertura de 179 features de la primera descarga no se considera exhaustiva por sí sola. Se contrasta con los dimensionamientos oficiales MOP por longitud y carpeta de rodadura, además de la ficha regional IDE Magallanes. La cifra de registros no equivale al número total de rutas ni demuestra cobertura completa.
+- Es cartografía de referencia; no confirma transitabilidad actual, derecho de paso, servidumbre ni acceso a predios privados.
 - Producto: `roads.geojson`, recortado y segmentado por comuna.
 
 ### 2. Cuerpos de agua — DGA (cartografía hidrográfica)
@@ -30,9 +32,9 @@ data/
 - Subcapa 5: [Lagos DGA](https://ideserver.sma.gob.cl/arcgis/rest/services/IDE/Recursos_hidricos_glaciares/MapServer/5), geometrías poligonales con nombre, tipo, uso y área.
 - Se incorporan todos los registros espaciales intersectantes de ambas subcapas; no se seleccionan solo destinos conocidos ni se filtran por popularidad.
 - Los cursos lineales conservan el tipo DGA disponible (por ejemplo, río, estero, chorrillo, arroyo o canal); lagos y lagunas se clasifican a partir de los atributos DGA, usando el nombre solo como respaldo si el tipo está vacío.
+- Solo se incorporan registros con un nombre informado por DGA; los registros sin nombre se excluyen del GeoJSON y del catálogo.
 - Los registros se recortan e indexan por intersección geométrica con las nueve comunas. Si un mismo cuerpo cruza comunas, se generan segmentos comunales con el mismo `waterbody_id`.
 - El catálogo agrupa por `waterbody_id`, no solo por nombre: dos cuerpos distintos con el mismo nombre no se fusionan accidentalmente.
-- Las geometrías sin nombre se conservan en el GeoJSON, pero no se presentan como entradas nominales indistinguibles en el listado.
 - Limitaciones: la descripción de la red DGA indica que representa la mayoría, no necesariamente todas, las expresiones espaciales de drenaje. La capa de lagos tiene atribución DGA 2017 y puede omitir lagunas menores.
 
 ### 3. Estaciones de monitoreo — DGA (capa puntual independiente)
