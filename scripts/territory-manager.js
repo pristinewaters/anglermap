@@ -178,6 +178,7 @@
   `;
 
 
+  style.textContent += `
   /* Territory Manager · sistema visual claro y coherente con el explorador */
   #tm-shell{background:#f5f7fa!important;color:#172b3d!important;backdrop-filter:none!important}
   #tm-shell .tm-head{background:#fff!important;border-bottom:1px solid #dce4ec!important;color:#172b3d!important}
@@ -210,6 +211,8 @@
   #tm-shell .tm-status{background:#29966b!important}
   #tm-shell button:focus-visible,#tm-shell input:focus-visible,#tm-shell select:focus-visible{outline:3px solid #1683b8!important;outline-offset:2px!important}
   @media(max-width:760px){#tm-shell .tm-nav{background:#fff!important}#tm-shell .tm-nav button.active{box-shadow:inset 0 -3px #1683b8!important}}
+
+  `;
 
   document.head.appendChild(style);
 
