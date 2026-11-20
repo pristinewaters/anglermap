@@ -7,8 +7,11 @@
 
   const STORE = "anglerMapTerritoryManagerV1";
   const read = () => {
-    try { return JSON.parse(localStorage.getItem(STORE)) || { territories: [], rules: [], requests: [] }; }
-    catch (_) { return { territories: [], rules: [], requests: [] }; }
+    try {
+      const value = JSON.parse(localStorage.getItem(STORE)) || {};
+      return { territories: [], rules: [], requests: [], imports: [], ...value,
+        imports: Array.isArray(value.imports) ? value.imports : [] };
+    } catch (_) { return { territories: [], rules: [], requests: [], imports: [] }; }
   };
   const save = data => {
     try { localStorage.setItem(STORE, JSON.stringify(data)); return true; }
@@ -45,6 +48,11 @@
   .tm-tag{font-size:9px;border:1px solid #5b543b;color:#e8bd70;padding:5px 8px;border-radius:20px;white-space:nowrap}
   .tm-empty{padding:24px;border:1px dashed #3b5a6d;border-radius:12px;color:#9bb1be;line-height:1.7;text-align:center}
   .tm-note{padding:12px 14px;border:1px solid #655337;background:#2a261d;border-radius:10px;color:#e5d2a8;font-size:10px;line-height:1.6;margin:15px 0}
+  .tm-import{display:flex;gap:12px;align-items:center;flex-wrap:wrap;padding:15px;background:#0e2433;border:1px solid #29485b;border-radius:10px;margin:14px 0}
+  .tm-import input{max-width:100%;color:#c6d8e1;font-size:11px}.tm-import small{display:block;color:#91a9b8;line-height:1.5;margin-top:4px}
+  .tm-import-list{display:grid;gap:8px;margin-top:10px}.tm-import-item{display:flex;align-items:center;gap:12px;padding:12px;background:#0e2433;border:1px solid #29485b;border-radius:9px}
+  .tm-import-item strong{display:block;font-size:11px}.tm-import-item small{color:#91a9b8;font-size:10px}
+  .tm-import-item button{margin-left:auto}
   .tm-form{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;max-width:760px}
   .tm-field{display:grid;gap:6px}.tm-field.full{grid-column:1/-1}.tm-field label{font-size:10px;color:#a9bdc8}
   .tm-field input,.tm-field select,.tm-field textarea{width:100%;padding:11px;border:1px solid #35566a;border-radius:8px;background:#0a1b28;color:#edf5f8}
@@ -96,10 +104,17 @@
       root.innerHTML = heading("DELIMITACIÓN Y FICHAS", "Territorios", "Crea borradores de áreas de gestión y organiza sus sectores. La geometría que dibujes aquí es privada y no reemplaza límites ni capas oficiales.") +
         `<div class="tm-actions"><button class="tm-btn primary" id="tm-draw">＋ Delimitar en el mapa</button><button class="tm-btn" id="tm-manual">Crear ficha sin polígono</button></div>
         <div class="tm-note" id="tm-draw-note">Para delimitar, activa la herramienta y marca al menos tres vértices en el mapa. El polígono quedará guardado como borrador local, pendiente de revisión.</div>
+        <div class="tm-section"><h3>Cartografía de referencia</h3>${tag(data.imports.length+" archivos")}</div>
+        <div class="tm-import"><div><strong>Incorporar límites prediales o de estancias</strong><small>Formatos admitidos: GeoJSON (.geojson/.json) y KML (.kml). Máximo 10 MB y 10.000 elementos por archivo.</small></div><input id="tm-import-file" type="file" accept=".geojson,.json,.kml,application/geo+json,application/json,application/vnd.google-earth.kml+xml"><button class="tm-btn primary" id="tm-import-btn">Importar archivo</button></div>
+        <div class="tm-note">Los archivos importados se guardan solo en este navegador. Se muestran como referencia pendiente de validación; no acreditan propiedad, deslindes vigentes, titularidad ni derechos de acceso. Se conserva el nombre del archivo y la fuente declarada.</div>
+        <div class="tm-import-list">${data.imports.length ? data.imports.map((item,i)=>`<div class="tm-import-item"><div><strong>${esc(item.name)}</strong><small>${esc(item.fileName)} · ${esc(item.format)} · ${item.featureCount} elementos · Pendiente de validar</small></div><button class="tm-btn subtle" data-zoom-import="${i}">Ver en mapa</button><button class="tm-btn subtle" data-remove-import="${i}">Quitar</button></div>`).join("") : empty("▧","Todavía no has importado archivos geográficos.")}</div>
         <div class="tm-section"><h3>Mis territorios</h3>${tag(data.territories.length+" registros")}</div>
         <div class="tm-list">${data.territories.length ? data.territories.map((t,i)=>row(t.name,t.commune+" · "+(t.points.length>=3?"Polígono local":"Sin geometría") , "Pendiente de validar")+`<div class="tm-actions"><button class="tm-btn subtle" data-remove-territory="${i}">Eliminar borrador</button></div>`).join("") : empty("▱","Aún no has registrado territorios.")}</div>`;
       $("tm-draw").onclick = startDrawing;
       $("tm-manual").onclick = () => createTerritory([]);
+      $("tm-import-btn").onclick = importTerritoryFile;
+      root.querySelectorAll("[data-remove-import]").forEach(b=>b.onclick=()=>{data.imports.splice(Number(b.dataset.removeImport),1);save(data);refreshImportedLayers();render();});
+      root.querySelectorAll("[data-zoom-import]").forEach(b=>b.onclick=()=>zoomImported(Number(b.dataset.zoomImport)));
       root.querySelectorAll("[data-remove-territory]").forEach(b=>b.onclick=()=>{data.territories.splice(Number(b.dataset.removeTerritory),1);save(data);render();});
     } else if (tab === "access") {
       root.innerHTML = heading("CONTROL DE INGRESO", "Accesos y reglas", "Registra condiciones operativas para tus sectores. Una regla documentada en esta demo no constituye autorización legal ni acredita un derecho de acceso.") +
@@ -134,6 +149,67 @@
     root.querySelectorAll("[data-go]").forEach(b=>b.onclick=()=>{tab=b.dataset.go;render();});
   }
 
+  let importedLayer = L.layerGroup().addTo(map);
+  function refreshImportedLayers() {
+    if (importedLayer) importedLayer.clearLayers();
+    const current = read();
+    current.imports.forEach((item,index) => {
+      try {
+        L.geoJSON(item.geojson, {
+          style: () => ({color:"#e8bd70",weight:2,dashArray:"7 5",fillColor:"#d4a64f",fillOpacity:.12}),
+          pointToLayer: (_feature,latlng) => L.circleMarker(latlng,{radius:5,color:"#e8bd70",weight:2,fillOpacity:.75}),
+          onEachFeature: (feature,featureLayer) => {
+            const props = feature.properties || {};
+            const details = Object.entries(props).slice(0,8).map(([k,v])=>"<b>"+esc(k)+":</b> "+esc(typeof v==="object"?JSON.stringify(v):v)).join("<br>");
+            featureLayer.bindPopup("<b>"+esc(item.name)+"</b><br><small>Cartografía importada · pendiente de validar</small>"+(details?"<hr>"+details:""));
+          }
+        }).addTo(importedLayer);
+      } catch(error) { console.warn("No se pudo dibujar una capa importada",index,error); }
+    });
+  }
+  function zoomImported(index) {
+    const item=read().imports[index]; if(!item)return;
+    try { const bounds=L.geoJSON(item.geojson).getBounds(); if(bounds.isValid()){shell.classList.remove("open");map.fitBounds(bounds,{padding:[45,45],maxZoom:13});} }
+    catch(error) { alert("No se pudo localizar la geometría importada."); }
+  }
+  function parseKml(text) {
+    const xml=new DOMParser().parseFromString(text,"application/xml");
+    if(xml.querySelector("parsererror")) throw new Error("El archivo KML no tiene XML válido.");
+    const features=[];
+    const coords=node=>node.textContent.trim().split(/\s+/).filter(Boolean).map(pair=>{const p=pair.split(",").map(Number);return [p[0],p[1],...(p.length>2?[p[2]]:[])];});
+    xml.querySelectorAll("Placemark").forEach(pm=>{
+      const properties={}; const name=pm.querySelector(":scope > name"); if(name)properties.name=name.textContent.trim();
+      pm.querySelectorAll("ExtendedData Data").forEach(d=>{const k=d.getAttribute("name"),v=d.querySelector("value");if(k&&v)properties[k]=v.textContent.trim();});
+      pm.querySelectorAll("Point,LineString,Polygon").forEach(g=>{
+        let geometry=null;
+        if(g.tagName==="Point"){const c=g.querySelector("coordinates");if(c)geometry={type:"Point",coordinates:coords(c)[0]};}
+        if(g.tagName==="LineString"){const c=g.querySelector("coordinates");if(c)geometry={type:"LineString",coordinates:coords(c)};}
+        if(g.tagName==="Polygon"){const rings=[...g.querySelectorAll(":scope > outerBoundaryIs coordinates, :scope > innerBoundaryIs coordinates")].map(coords);if(rings.length)geometry={type:"Polygon",coordinates:rings};}
+        if(geometry)features.push({type:"Feature",properties:{...properties},geometry});
+      });
+    });
+    if(!features.length)throw new Error("El KML no contiene puntos, líneas o polígonos compatibles.");
+    return {type:"FeatureCollection",features};
+  }
+  async function importTerritoryFile() {
+    const input=$("tm-import-file"),file=input.files&&input.files[0]; if(!file){alert("Selecciona primero un archivo GeoJSON o KML.");return;}
+    if(file.size>10*1024*1024){alert("El archivo supera el límite de 10 MB.");return;}
+    const ext=file.name.split(".").pop().toLowerCase(); if(!["geojson","json","kml"].includes(ext)){alert("Formato no admitido. Usa GeoJSON o KML.");return;}
+    try {
+      const raw=await file.text(),geojson=ext==="kml"?parseKml(raw):JSON.parse(raw);
+      const collection=geojson.type==="FeatureCollection"?geojson:geojson.type==="Feature"?{type:"FeatureCollection",features:[geojson]}:null;
+      if(!collection||!Array.isArray(collection.features)||!collection.features.length)throw new Error("El archivo debe contener un Feature o FeatureCollection GeoJSON.");
+      if(collection.features.length>10000)throw new Error("El archivo supera el límite de 10.000 elementos.");
+      const valid=collection.features.filter(f=>f&&f.type==="Feature"&&f.geometry&&["Point","MultiPoint","LineString","MultiLineString","Polygon","MultiPolygon","GeometryCollection"].includes(f.geometry.type));
+      if(!valid.length)throw new Error("No se encontraron geometrías compatibles.");
+      const name=prompt("Nombre de esta capa (por ejemplo, Catastro predial SAG):",file.name.replace(/\.[^.]+$/,"")); if(!name||!name.trim())return;
+      const source=prompt("Fuente o institución de origen (si se desconoce, dejar en blanco):","No declarada")||"No declarada";
+      const current=read(); current.imports.push({id:"imp-"+Date.now(),name:name.trim(),fileName:file.name,format:ext.toUpperCase(),source:source.trim(),featureCount:valid.length,importedAt:new Date().toISOString(),status:"pending-validation",geojson:{type:"FeatureCollection",features:valid}});
+      if(save(current)){data=current;refreshImportedLayers();render();alert("Importación local completada. La capa queda pendiente de validación.");}
+    } catch(error) { alert("No se pudo importar el archivo: "+error.message); }
+  }
+  let importedLayer = L.layerGroup().addTo(map);
+  refreshImportedLayers();
   function open() { shell.classList.add("open"); $("adminSection").hidden=false; render(); }
   function close() { shell.classList.remove("open"); if(draft){draft=null; if(draftLayer){map.removeLayer(draftLayer);draftLayer=null;}} }
   function createTerritory(points) {
