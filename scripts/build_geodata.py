@@ -64,11 +64,11 @@ TARGET_COMMUNES = {
 EXPECTED_COMMUNES = 9
 
 BATCH_SIZE = 100
-MAX_RETRIES = 3
+MAX_RETRIES = 4
 
 SESSION = requests.Session()
 SESSION.headers.update({
-    "User-Agent": "AnglerMap-Geodata/3.0"
+    "User-Agent": "AnglerMap-Geodata/3.2"
 })
 
 COMMUNE_GEOMETRIES = []
@@ -104,7 +104,7 @@ def request_json(url, params=None, method="GET"):
                 response = SESSION.post(
                     url,
                     data=params,
-                    timeout=(15, 60)
+                    timeout=(20, 120)
                 )
             else:
                 response = SESSION.get(
