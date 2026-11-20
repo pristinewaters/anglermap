@@ -454,6 +454,8 @@ async function loadHydroCatalog() {
      toponymyNotes:[],
      features:[],
      basinCodes:[],
+     subbasinCodes:[],
+     subsubbasinCodes:[],
      desc:"Geometría hidrográfica consolidada desde las capas disponibles."
     };
     grouped.set(key,item);
@@ -468,6 +470,8 @@ async function loadHydroCatalog() {
    item.aliases = [...new Set(item.aliases.concat(p.aliases || []))];
    if(p.toponymy_note) item.toponymyNotes.push(p.toponymy_note);
    item.basinCodes = [...new Set(item.basinCodes.concat(basinCodes))].sort();
+   item.subbasinCodes = [...new Set(item.subbasinCodes.concat((p.hydro_units || []).filter(unit => unit.level === "subbasin" && unit.code).map(unit => String(unit.code))))].sort();
+   item.subsubbasinCodes = [...new Set(item.subsubbasinCodes.concat((p.hydro_units || []).filter(unit => unit.level === "subsubbasin" && unit.code).map(unit => String(unit.code))))].sort();
    item.features.push({
     type:"Feature",
     geometry:feature.geometry,
@@ -576,7 +580,7 @@ function openRiver(r){
  ].filter(Boolean);
  $("detailDescription").textContent=context.join(" · ")+".";
  $("detailWarning").textContent="La ficha reúne registros cartográficos oficiales y complementarios. La geometría no acredita acceso público, permiso de pesca ni condiciones actuales del cauce.";
- $("detailGeometry").textContent="Fuentes: "+(r.sources.join("; ")||"sin procedencia informada")+". Geometrías disponibles: "+r.features.length+". "+(r.aliases.length?"Rótulo alternativo registrado: "+r.aliases.join(", ")+". ":"")+(r.toponymyNotes.length?"Nota toponímica: "+r.toponymyNotes.join(" ")+" ":"")+"Las cuencas y subunidades se asignan por intersección espacial.";
+ $("detailGeometry").textContent="Fuentes: "+(r.sources.join("; ")||"sin procedencia informada")+". Geometrías disponibles: "+r.features.length+". "+(r.basinCodes.length?"Códigos BNA cuenca: "+r.basinCodes.join(", ")+". ":"")+(r.subbasinCodes.length?"Subcuencas BNA: "+r.subbasinCodes.join(", ")+". ":"")+(r.subsubbasinCodes.length?"Subsubcuencas BNA: "+r.subsubbasinCodes.join(", ")+". ":"")+(r.aliases.length?"Rótulo alternativo registrado: "+r.aliases.join(", ")+". ":"")+(r.toponymyNotes.length?"Nota toponímica: "+r.toponymyNotes.join(" ")+" ":"")+"Las cuencas y subunidades se asignan por intersección espacial.";
  $("riverWeather").textContent="La meteorología corresponde al centro actual del mapa y no necesariamente a este cuerpo de agua. Mueve el mapa hasta el sector de interés para consultar el pronóstico local.";
  $("riverDga").textContent="Las estaciones DGA son puntos de monitoreo. Solo se deben asociar a un curso cuando su identificación y ubicación confirmen esa relación.";
  $("favoriteBtn").textContent=favorites.includes(r.name)?"★ En Mis aguas":"☆ Guardar agua";
