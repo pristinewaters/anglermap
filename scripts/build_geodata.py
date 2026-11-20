@@ -907,7 +907,6 @@ def publish_atomically(temp_dir):
 
     files = [
         "communes.geojson",
-        "provinces.geojson",
         "waterbodies.geojson",
         "dga_stations.geojson"
     ]
@@ -999,17 +998,9 @@ def main():
             commune_features
         )
 
-        # 2. Provincias MOP
-        log("Construyendo provincias")
-
-        province_features, province_meta = get_provinces(
-            commune_records
-        )
-
-        write_geojson(
-            temp_dir / "provinces.geojson",
-            province_features
-        )
+        # 2. Provincias temporalmente fuera del proceso.
+        # No son necesarias para la cobertura geográfica inicial.
+        log("Se omite temporalmente la capa provincial MOP.")
 
         # 3. Hidrografía IGM
         log("Consultando hidrografía lineal IGM")
@@ -1134,10 +1125,6 @@ def main():
                 temp_dir / "communes.geojson",
                 EXPECTED_COMMUNES
             ),
-            "provinces": validate_geojson(
-                temp_dir / "provinces.geojson",
-                1
-            ),
             "waterbodies": validate_geojson(
                 temp_dir / "waterbodies.geojson",
                 1
@@ -1169,7 +1156,7 @@ def main():
 
         metadata = {
             "application": "AnglerMap",
-            "version": "3.1",
+            "version": "3.2",
             "generated_at": datetime.now(
                 timezone.utc
             ).isoformat(),
@@ -1196,7 +1183,8 @@ def main():
                 "provinces": {
                     "institution": "MOP",
                     "url": URL_PROVINCES,
-                    "status": "required"
+                    "status": "deferred",
+                    "reason": "Capa administrativa complementaria; excluida temporalmente del proceso de generación."
                 },
                 "igm_rivers": {
                     "institution": "IGM",
