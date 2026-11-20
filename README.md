@@ -2,6 +2,10 @@
 
 Plataforma cartográfica de exploración para pesca recreativa en la Región de Magallanes, Chile.
 
+## Demo pública
+
+https://pristinewaters.github.io/anglermap/
+
 ## Prototipo web
 
 La aplicación se ejecuta como sitio estático desde `index.html`. No requiere instalación ni cuenta de usuario.
@@ -28,7 +32,7 @@ El prototipo web está operativo como visor y herramienta de exploración, pero 
 
 - Los trazados obtenidos desde OpenStreetMap son cartografía colaborativa y deben contrastarse con fuentes oficiales y conocimiento local.
 - Una estación DGA cercana no necesariamente mide el río seleccionado; los datos dependen de la disponibilidad del servicio.
-- Las capas estáticas de límites comunales, hidrografía consolidada y estaciones DGA GeoJSON permanecen pendientes de generación y validación.
+- Las capas estáticas de hidrografía consolidada y estaciones DGA GeoJSON permanecen pendientes de generación y validación. Los límites comunales usan MOP como fuente primaria y cuentan con respaldo institucional DPA 2020 de IDE MINVU (SUBDERE/IGM/DIFROL/INE), identificado como respaldo y sujeto a validación de vigencia.
 - La extracción MOP/IGM/DGA se mantiene separada del visor. Los fallos temporales de servicios remotos no deben impedir abrir la aplicación.
 - Guardados, puntos personales y preferencias se almacenan en el navegador local; todavía no existe sincronización entre dispositivos ni cuentas.
 - Los perfiles de administrador, gestión de predios y permisos son demostrativos; no hay autenticación ni base de datos de usuarios.
