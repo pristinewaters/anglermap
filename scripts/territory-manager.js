@@ -119,7 +119,8 @@
     } else if (tab === "access") {
       root.innerHTML = heading("CONTROL DE INGRESO", "Accesos y reglas", "Registra condiciones operativas para tus sectores. Una regla documentada en esta demo no constituye autorización legal ni acredita un derecho de acceso.") +
         `<form id="tm-rule-form" class="tm-form">
-          <div class="tm-field"><label for="tm-sector">Sector o territorio</label><input id="tm-sector" required maxlength="90" placeholder="Nombre del sector"></div>
+          <div class="tm-field"><label for="tm-territory">Territorio relacionado</label><select id="tm-territory"><option value="">Regla general · sin vincular</option>${data.territories.map(t=>'<option value="'+esc(t.id||"")+'">'+esc(t.name)+" · "+esc(t.commune)+'</option>').join("")}</select></div>
+          <div class="tm-field"><label for="tm-sector">Sector o referencia</label><input id="tm-sector" required maxlength="90" placeholder="Ej. Acceso por portón norte"></div>
           <div class="tm-field"><label for="tm-type">Tipo de condición</label><select id="tm-type"><option>Acceso autorizado</option><option>Acceso restringido</option><option>Requiere coordinación previa</option><option>Acceso público por verificar</option></select></div>
           <div class="tm-field"><label for="tm-season">Vigencia o temporada</label><input id="tm-season" maxlength="80" placeholder="Ej. Octubre–abril"></div>
           <div class="tm-field"><label for="tm-capacity">Cupo diario (opcional)</label><input id="tm-capacity" type="number" min="0" max="999" placeholder="Sin definir"></div>
@@ -127,8 +128,8 @@
           <div class="tm-field full"><div class="tm-actions"><button class="tm-btn primary" type="submit">Guardar regla local</button></div></div>
         </form>
         <div class="tm-section"><h3>Reglas registradas</h3>${tag(data.rules.length+" reglas")}</div>
-        <div class="tm-list">${data.rules.length ? data.rules.map((r,i)=>row(r.sector,r.type+" · "+(r.season||"Sin vigencia")+(r.notes?" · "+r.notes:""),"Borrador local")+ `<button class="tm-btn subtle" data-remove-rule="${i}">Eliminar</button>`).join("") : empty("◇","No hay condiciones registradas.")}</div>`;
-      $("tm-rule-form").onsubmit=e=>{e.preventDefault();data.rules.push({sector:$("tm-sector").value.trim(),type:$("tm-type").value,season:$("tm-season").value.trim(),capacity:$("tm-capacity").value,notes:$("tm-notes").value.trim()});if(save(data))render();};
+        <div class="tm-list">${data.rules.length ? data.rules.map((r,i)=>row(r.sector,(r.territoryId ? (data.territories.find(t=>t.id===r.territoryId)?.name||"Territorio no disponible")+" · " : "Sin territorio vinculado · ")+r.type+" · "+(r.season||"Sin vigencia")+(r.notes?" · "+r.notes:""),"Borrador local")+ `<button class="tm-btn subtle" data-remove-rule="${i}">Eliminar</button>`).join("") : empty("◇","No hay condiciones registradas.")}</div>`;
+      $("tm-rule-form").onsubmit=e=>{e.preventDefault();data.rules.push({territoryId:$("tm-territory").value||null,sector:$("tm-sector").value.trim(),type:$("tm-type").value,season:$("tm-season").value.trim(),capacity:$("tm-capacity").value,notes:$("tm-notes").value.trim()});if(save(data))render();};
       root.querySelectorAll("[data-remove-rule]").forEach(b=>b.onclick=()=>{data.rules.splice(Number(b.dataset.removeRule),1);save(data);render();});
     } else if (tab === "requests") {
       root.innerHTML = heading("COORDINACIÓN", "Solicitudes", "Este espacio está preparado para revisar solicitudes de ingreso, coordinación con guías y disponibilidad. La recepción real requiere cuentas y un servicio backend.") +
@@ -215,7 +216,7 @@
     const name=prompt("Nombre del territorio o sector:");
     if(!name || !name.trim()) return;
     const commune=prompt("Comuna:", "Por definir") || "Por definir";
-    data=read(); data.territories.push({name:name.trim(),commune:commune.trim(),points:points.map(p=>[p.lat,p.lng]),createdAt:new Date().toISOString(),status:"draft"});
+    data=read(); data.territories.push({id:"ter-"+Date.now(),name:name.trim(),commune:commune.trim(),points:points.map(p=>[p.lat,p.lng]),createdAt:new Date().toISOString(),status:"draft"});
     save(data); draft=null; if(draftLayer){map.removeLayer(draftLayer);draftLayer=null;} tab="territories";render();
   }
   function startDrawing() {
