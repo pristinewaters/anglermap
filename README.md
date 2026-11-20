@@ -18,6 +18,15 @@ Los tres perfiles utilizan la misma base geoespacial y un motor común de permis
 
 La definición funcional completa, los flujos, estados, modelo de datos conceptual, principios de pago, seguridad y hoja de ruta están en [Arquitectura del ecosistema AnglerMap](docs/ANGLERMAP-ECOSYSTEM-ARCHITECTURE.md).
 
+## Experiencias de plataforma en desarrollo
+
+El selector de perfil permite explorar tres vistas sobre la misma cartografía:
+- **Pescador recreativo:** exploración del mapa y portal de solicitud de acceso.
+- **Operador turístico:** solicitudes para clientes y sectores cubiertos por acuerdos.
+- **Administrador territorial:** territorios, cuerpos de agua asociados, delimitación, accesos, reglas, equipo, operadores y bandeja unificada.
+
+El módulo Territory Manager y los portales de demostración guardan actualmente sus datos en el navegador (localStorage). No hay cuentas autenticadas, sincronización entre dispositivos, pagos ni mensajería real. Las solicitudes son pruebas funcionales; los sectores y accesos deben validarse antes de habilitar operaciones reales.
+
 ## Funciones disponibles
 
 - Mapa interactivo con cartografía satelital, topográfica y OpenStreetMap.
