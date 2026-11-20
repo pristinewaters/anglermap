@@ -891,11 +891,18 @@ def query_water_layer(
         # el tramo rotulado "Río Serrano" dentro de Primavera corresponde
         # al Río del Oro. Se conserva el nombre de origen como alias.
         toponymy_status = "source_name"
+        toponymy_note = None
         aliases = []
         if normalize(name) == "rio serrano" and "Primavera" in communes:
             aliases = [name]
             name = "Río del Oro"
             toponymy_status = "locally_corrected"
+            toponymy_note = (
+                "Corrección local aportada para el trazado de Primavera: "
+                "la cartografía de origen lo rotula Río Serrano, pero se "
+                "identifica localmente como Río del Oro. Mantener el rótulo "
+                "original como alias hasta completar contraste documental."
+            )
 
         subtype = (
             props.get(type_field)
@@ -925,6 +932,7 @@ def query_water_layer(
                     "source_name": str(source_feature_name).strip(),
                     "aliases": aliases,
                     "toponymy_status": toponymy_status,
+                    "toponymy_note": toponymy_note,
                     "water_type": water_type,
                     "water_category": (
                         "river" if water_type in ("river", "river_or_stream")
@@ -947,7 +955,11 @@ def query_water_layer(
                         clipped
                     ),
                     "geometry_status": "official_geometry",
-                    "source_confidence": "official"
+                    "source_confidence": (
+                        "local_toponymy_correction"
+                        if toponymy_status == "locally_corrected"
+                        else "official"
+                    )
                 }
             )
         )
