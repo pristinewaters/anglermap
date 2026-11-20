@@ -1,5 +1,6 @@
 
 import hashlib
+import math
 import json
 import re
 from numbers import Integral
@@ -39,17 +40,22 @@ URL_COMMUNES = BASE + "/MAPA_BASE/LIMITES/MapServer/2"
 URL_COMMUNES_FALLBACK = "https://geoide.minvu.cl/server/rest/services/Hosted/DS19/FeatureServer/3"
 URL_PROVINCES = BASE + "/MAPA_BASE/LIMITES/MapServer/1"
 
-URL_IGM = BASE + "/MAPA_BASE/IGM50/MapServer"
-URL_IGM_RIVERS = URL_IGM + "/15"
-URL_IGM_WATERS = URL_IGM + "/18"
-
-URL_MOP_HYDRO = BASE + "/MAPA_BASE/RED_HIDROGRAFICA/MapServer"
-URL_MOP_RIVERS = URL_MOP_HYDRO + "/16"
-URL_MOP_LAKES = URL_MOP_HYDRO + "/17"
-
-URL_DGA_STATIONS = (
-    BASE + "/DGA/Red_Hidrometrica/MapServer/0"
+# Una fuente institucional por temática: MOP para caminos y DGA para aguas.
+# MOP Dirección de Vialidad: red vial nacional (incluye caminos regionales
+# comunales y caminos regionales de acceso). La capa 3 es la de mayor detalle.
+URL_MOP_ROADS = (
+    BASE + "/VIALIDAD/Red_Vial_Chile_Base_gris/MapServer/3"
 )
+
+# Servicio hidrográfico DGA publicado en IDE SMA: dos subcapas que se
+# consolidan en un único GeoJSON de cuerpos de agua.
+URL_DGA_IDE = "https://ideserver.sma.gob.cl/arcgis/rest/services/IDE/Recursos_hidricos_glaciares/MapServer"
+URL_DGA_DRAINAGE = URL_DGA_IDE + "/2"
+URL_DGA_LAKES = URL_DGA_IDE + "/5"
+# Red Hidrométrica Nacional DGA: inventario puntual de estaciones de distintos tipos.
+URL_DGA_STATIONS = BASE + "/DGA/Red_Hidrometrica/MapServer/0"
+# Datos operacionales de estaciones fluviométricas (SNIA), para enriquecer popups.
+URL_DGA_LIVE_FLOW = "https://services3.arcgis.com/aSoEm9TBK2shtWjP/ArcGIS/rest/services/DGA_MONITOREO_CAUCE/FeatureServer/0"
 
 
 # Cabo de Hornos y Antártica quedan fuera del alcance.
@@ -67,7 +73,9 @@ TARGET_COMMUNES = {
 
 EXPECTED_COMMUNES = 9
 
-BATCH_SIZE = 500
+# Relación administrativa oficial comuna → provincia, usada como respaldo
+# si la capa geométrica provincial MOP no está disponible.
+BATCH_SIZE = 100
 MAX_RETRIES = 4
 
 SESSION = requests.Session()
@@ -424,7 +432,8 @@ def fetch_batch(layer_url, ids, oid_field):
             "outFields": "*",
             "returnGeometry": "true",
             "outSR": "4326"
-        }
+        },
+        method="POST"
     )
 
     if data.get("exceededTransferLimit"):
@@ -733,212 +742,230 @@ def get_communes():
 
     return output, records, metadata, source_info
 
-def get_provinces(commune_records):
-    commune_union = unary_union([
-        record["geometry"]
-        for record in commune_records
-    ])
-
-    # La capa provincial contiene pocos registros. Descargarla completa
-    # evita enviar polígonos comunales extensos al servicio MOP, cuyo
-    # endpoint ha agotado el tiempo de espera al recibir consultas POST.
-    # El recorte exacto al territorio de las nueve comunas se realiza abajo.
-    features, fields, metadata = fetch_features(
-        URL_PROVINCES
-    )
-
-    records = records_from_features(features, "límites comunales")
-
-    name_field = find_field(
-        fields,
-        [
-            "NOM_PROV",
-            "PROVINCIA",
-            "NOMBRE_PROVINCIA"
-        ]
-    )
-
-    output = []
-
-    for record in records:
-        geometry = record["geometry"]
-
-        if not geometry.intersects(commune_union):
-            continue
-
-        clipped = geometry.intersection(commune_union)
-
-        if clipped.is_empty:
-            continue
-
-        props = record["properties"]
-
-        output.append(
-            geojson_feature(
-                clipped,
-                {
-                    "name": (
-                        props.get(name_field)
-                        if name_field else "Provincia"
-                    ),
-                    "official_id": props.get("OBJECTID"),
-                    "source": "MOP · Límites administrativos"
-                }
-            )
-        )
-
-    if not output:
-        raise RuntimeError(
-            "No se pudieron construir las provincias."
-        )
-
-    return output, metadata
+def clean_source_attributes(properties):
+    """Conserva atributos de origen útiles, excluyendo códigos de cuencas."""
+    excluded = {
+        "cod_cuen", "cod_subc", "cod_ssubc", "codbna",
+        "cod_bna", "nom_cuen", "nom_subc", "nom_ssubc",
+        "supcuen", "suphoya"
+    }
+    return {
+        key: value
+        for key, value in (properties or {}).items()
+        if normalize(key) not in excluded
+    }
 
 
-def query_water_layer(
-    layer_url,
-    source_name,
-    water_type,
-    commune_union
-):
-    # La consulta remota usa intersección poligonal exacta por comuna.
+def query_water_layer(layer_url, source_name, water_type, commune_union):
+    """Descarga y recorta una subcapa DGA de drenajes o lagos."""
     features, fields, metadata = fetch_features(
         layer_url,
         geometry=commune_union
     )
-
-    name_field = find_field(
-        fields,
-        [
-            "NOMBRE",
-            "NOMBRESS",
-            "NOM_RIO",
-            "NOM_CUERPO",
-            "TOPONIMO",
-            "TEXTO",
-            "NOM"
-        ]
-    )
-
-    type_field = find_field(
-        fields,
-        [
-            "TIPO",
-            "TIPO_ENT",
-            "CLASE",
-            "CATEGORIA"
-        ]
-    )
-
+    name_field = find_field(fields, ["NOMBRE", "NOM", "TOPONIMO"])
+    type_field = find_field(fields, ["TIPO", "CATEGORIA", "CLASIFICAC"])
     records = records_from_features(features, source_name)
     output = []
 
     for record in records:
-        geom = record["geometry"]
-
-        # Filtro espacial exacto contra los límites comunales.
-        if not geom.intersects(commune_union):
+        geometry = record["geometry"]
+        if not geometry.intersects(commune_union):
             continue
-
-        clipped = geom.intersection(commune_union)
-
+        clipped = geometry.intersection(commune_union)
         if clipped.is_empty:
             continue
 
         props = record["properties"]
-
-        name = (
-            props.get(name_field)
-            if name_field else None
-        )
-
+        raw_name = props.get(name_field) if name_field else None
+        name = str(raw_name or "").strip()
         if not name:
-            name = "Cuerpo de agua sin nombre"
+            # El catálogo inicial incluye exclusivamente cuerpos de agua
+            # nombrados en la fuente DGA. Los registros sin topónimo quedan
+            # fuera de esta versión de la plataforma.
+            continue
 
-        subtype = (
-            props.get(type_field)
-            if type_field else None
-        )
+        communes = sorted({
+            item["name"] for item in intersecting_communes(clipped)
+        })
+        subtype = props.get(type_field) if type_field else None
+        subtype_text = str(subtype or "").strip()
+        subtype_normalized = normalize(subtype_text)
+
+        if water_type == "river":
+            # No se filtra la red lineal DGA: se conserva cada elemento
+            # con nombre y tipo de origen. La etiqueta visible respeta TIPO.
+            category = "river"
+            if "rio" in subtype_normalized:
+                category_label = "Río"
+            elif "estero" in subtype_normalized:
+                category_label = "Estero"
+            elif "chorrillo" in subtype_normalized:
+                category_label = "Chorrillo"
+            elif "arroyo" in subtype_normalized:
+                category_label = "Arroyo"
+            elif "quebrada" in subtype_normalized:
+                category_label = "Quebrada"
+            elif "canal" in subtype_normalized:
+                category_label = "Canal"
+            else:
+                category_label = "Curso de agua"
+        else:
+            # La capa DGA 5 es el inventario poligonal nacional de lagos.
+            # Se respeta el campo TIPO; el nombre solo sirve como respaldo
+            # cuando el atributo de clasificación viene vacío.
+            lagoon_by_name = normalize(name).startswith("laguna ")
+            category = (
+                "lagoon"
+                if "laguna" in subtype_normalized
+                or (not subtype_normalized and lagoon_by_name)
+                else "lake"
+            )
+            category_label = "Laguna" if category == "lagoon" else "Lago"
+
+        source_feature_name = name
+        aliases = []
+        toponymy_status = "source_name"
+        toponymy_note = None
 
         official_id = props.get("OBJECTID")
+        stable = source_name + "|" + str(official_id) + "|" + normalize(name)
+        water_id = hashlib.sha1(stable.encode("utf-8")).hexdigest()[:16]
 
-        stable = (
-            source_name
-            + "|"
-            + str(official_id)
-            + "|"
-            + normalize(name)
-        )
-
-        water_id = hashlib.sha1(
-            stable.encode("utf-8")
-        ).hexdigest()[:16]
-
-        communes = [
-            commune["name"]
-            for commune in intersecting_communes(clipped)
-        ]
-
-        output.append(
-            geojson_feature(
-                clipped,
-                {
-                    "waterbody_id": water_id,
-                    "name": str(name).strip(),
-                    "water_type": water_type,
-                    "subtype": subtype,
-                    "official_source": source_name,
-                    "official_id": official_id,
-                    "communes": sorted(set(communes)),
-                    "representative_point": representative_point(
-                        clipped
-                    ),
-                    "geometry_status": "official_geometry",
-                    "source_confidence": "official"
-                }
-            )
-        )
+        for commune in COMMUNE_GEOMETRIES:
+            if commune["name"] not in communes:
+                continue
+            segment = clipped.intersection(commune["geometry"])
+            if segment.is_empty:
+                continue
+            output.append(geojson_feature(segment, {
+                "waterbody_id": water_id,
+                "name": name,
+                "source_name": source_feature_name,
+                "aliases": aliases,
+                "toponymy_status": toponymy_status,
+                "toponymy_note": toponymy_note,
+                "water_type": category,
+                "water_category": category,
+                "category_label": category_label,
+                "subtype": subtype_text or None,
+                "official_source": "DGA · " + source_name,
+                "official_id": official_id,
+                "source_attributes": clean_source_attributes(props),
+                "communes": [commune["name"]],
+                "representative_point": representative_point(segment),
+                "geometry_status": "official_geometry",
+                "source_confidence": "official"
+            }))
 
     return output, metadata
 
 
-def get_dga_stations(commune_union):
-    # Recuperación de candidatos mediante bounding box.
+def query_dga_stations(commune_union):
+    """Descarga la Red Hidrométrica Nacional DGA como puntos independientes."""
     features, fields, metadata = fetch_features(
         URL_DGA_STATIONS,
         geometry=commune_union
     )
-
-    records = records_from_features(features, "estaciones DGA")
+    records = records_from_features(features, "estaciones Red Hidrométrica DGA")
     output = []
 
     for record in records:
-        geom = record["geometry"]
-
-        # Las estaciones se conservan solamente si están
-        # dentro o intersectan el territorio comunal real.
-        if not geom.intersects(commune_union):
+        geometry = record["geometry"]
+        if not geometry.intersects(commune_union):
+            continue
+        props = record["properties"]
+        communes = sorted({
+            item["name"] for item in intersecting_communes(geometry)
+        })
+        if not communes:
             continue
 
+        station_id = props.get("ID_IDE") or props.get("OBJECTID")
+        output.append(geojson_feature(geometry, {
+            "station_id": str(station_id) if station_id is not None else None,
+            "station_name": props.get("NOM_ESTACION") or "Estación DGA sin nombre",
+            "station_type": props.get("TIPO_ESTACION"),
+            "vigencia": props.get("VIGENCIA"),
+            "place": props.get("LUGAR"),
+            "associated_lake": props.get("LAGO_ASOCIADO"),
+            "communes": communes,
+            "official_source": "DGA · Red Hidrométrica Nacional",
+            "source_url": URL_DGA_STATIONS,
+            "source_updated": "Julio 2022 según metadata del servicio",
+            "source_attributes": clean_source_attributes(props)
+        }))
+
+    return output, metadata
+
+
+def geodesic_line_length_km(geometry):
+    """Longitud aproximada de una geometría lineal WGS84, en kilómetros."""
+    if geometry is None or geometry.is_empty:
+        return 0.0
+    if isinstance(geometry, LineString):
+        lines = [geometry]
+    elif isinstance(geometry, MultiLineString):
+        lines = list(geometry.geoms)
+    elif isinstance(geometry, GeometryCollection):
+        lines = []
+        for part in geometry.geoms:
+            if isinstance(part, LineString):
+                lines.append(part)
+            elif isinstance(part, MultiLineString):
+                lines.extend(part.geoms)
+    else:
+        return 0.0
+
+    radius_km = 6371.0088
+    total = 0.0
+    for line in lines:
+        coords = list(line.coords)
+        for first, second in zip(coords, coords[1:]):
+            lon1, lat1 = math.radians(first[0]), math.radians(first[1])
+            lon2, lat2 = math.radians(second[0]), math.radians(second[1])
+            dlat, dlon = lat2 - lat1, lon2 - lon1
+            a = math.sin(dlat / 2) ** 2 + math.cos(lat1) * math.cos(lat2) * math.sin(dlon / 2) ** 2
+            total += 2 * radius_km * math.asin(min(1.0, math.sqrt(a)))
+    return total
+
+
+def query_mop_roads(commune_union):
+    """Descarga caminos MOP y genera una única capa GeoJSON de accesos."""
+    features, fields, metadata = fetch_features(
+        URL_MOP_ROADS,
+        geometry=commune_union
+    )
+    records = records_from_features(features, "MOP · Red vial")
+    output = []
+    for record in records:
+        geometry = record["geometry"]
+        if not geometry.intersects(commune_union):
+            continue
+        clipped = geometry.intersection(commune_union)
+        if clipped.is_empty:
+            continue
         props = record["properties"]
-
-        communes = [
-            commune["name"]
-            for commune in intersecting_communes(geom)
-        ]
-
-        output.append(
-            geojson_feature(
-                geom,
-                {
-                    "official_source": "DGA · Red Hidrométrica Nacional",
-                    "official_id": props.get("OBJECTID"),
-                    "communes": sorted(set(communes)),
-                    "attributes": props
-                }
-            )
-        )
-
+        communes = sorted({
+            item["name"] for item in intersecting_communes(clipped)
+        })
+        for commune in COMMUNE_GEOMETRIES:
+            if commune["name"] not in communes:
+                continue
+            segment = clipped.intersection(commune["geometry"])
+            if segment.is_empty:
+                continue
+            output.append(geojson_feature(segment, {
+                "road_id": str(props.get("OBJECTID") or props.get("GlobalID") or ""),
+                "name": props.get("NOMBRE_CAMINO") or props.get("ROL_LABEL") or props.get("ROL") or "Camino sin nombre",
+                "route_code": props.get("ROL"),
+                "classification": props.get("CLASIFICACION"),
+                "surface": props.get("CARPETA"),
+                "status": props.get("RVO"),
+                "communes": [commune["name"]],
+                "official_source": "MOP · Dirección de Vialidad · Red Vial Chile Base Gris",
+                "source_url": URL_MOP_ROADS,
+                "source_attributes": props
+            }))
     return output, metadata
 
 
@@ -995,7 +1022,7 @@ def publish_atomically(temp_dir):
     META.mkdir(parents=True, exist_ok=True)
 
     files = [
-        "communes.geojson",
+        "roads.geojson",
         "waterbodies.geojson",
         "dga_stations.geojson"
     ]
@@ -1050,205 +1077,139 @@ def publish_atomically(temp_dir):
 def main():
     global COMMUNE_GEOMETRIES
 
-    log("Inicio de AnglerMap Geodata 3.3")
-    log("Territorio: nueve comunas de Magallanes.")
-    log("Fuentes: MOP, IGM y DGA. SNIA excluido.")
-    log("Cabo de Hornos y Antártica excluidos.")
+    log("AnglerMap Geodata · tres capas temáticas")
+    log("MOP: caminos y accesos · DGA: cuerpos de agua · DGA: estaciones de monitoreo.")
+    log("Territorio: nueve comunas de Magallanes; Antártica y Cabo de Hornos excluidos.")
 
-    with TemporaryDirectory(
-        prefix="anglermap-geodata-"
-    ) as temporary:
-
+    with TemporaryDirectory(prefix="anglermap-geodata-") as temporary:
         temp_dir = Path(temporary)
 
-        # 1. Límites administrativos MOP
-        log("Descargando límites comunales MOP")
-
-        commune_features, commune_records, commune_meta, commune_source_info = (
-            get_communes()
-        )
-
-        COMMUNE_GEOMETRIES = []
-
-        for feature in commune_features:
-            COMMUNE_GEOMETRIES.append({
-                "name": feature["properties"]["name"],
-                "geometry": shape(feature["geometry"])
-            })
-
-        commune_union = unary_union([
-            item["geometry"]
-            for item in COMMUNE_GEOMETRIES
-        ])
+        # Los límites comunales MOP son geometría auxiliar para recortar
+        # las tres capas temáticas; no se publican como capa de contenido.
+        log("Descargando límites comunales MOP para el recorte territorial")
+        commune_features, commune_records, commune_meta, commune_source_info = get_communes()
+        COMMUNE_GEOMETRIES = [{
+            "name": feature["properties"]["name"],
+            "geometry": shape(feature["geometry"])
+        } for feature in commune_features]
+        commune_union = unary_union([item["geometry"] for item in COMMUNE_GEOMETRIES])
         build_commune_spatial_index()
 
-        write_geojson(
-            temp_dir / "communes.geojson",
-            commune_features
-        )
+        commune_names = sorted(item["name"] for item in COMMUNE_GEOMETRIES)
+        if len(commune_names) != EXPECTED_COMMUNES or set(commune_names) != set(TARGET_COMMUNES.values()):
+            raise RuntimeError("Los límites MOP no coinciden con las nueve comunas objetivo.")
 
-        # 2. Provincias temporalmente fuera del proceso.
-        # No son necesarias para la cobertura geográfica inicial.
-        log("Se omite temporalmente la capa provincial MOP.")
+        # Capa 1: caminos y accesos MOP.
+        log("Descargando caminos y accesos MOP")
+        roads, roads_meta = query_mop_roads(commune_union)
+        write_geojson(temp_dir / "roads.geojson", roads)
 
-        # 3. Hidrografía IGM
-        log("Consultando hidrografía lineal IGM")
-
-        igm_rivers, igm_rivers_meta = query_water_layer(
-            URL_IGM_RIVERS,
-            "IGM · Cartografía 1:50.000 · Hidrografía lineal",
-            "river_or_stream",
+        # Capa 2: cuerpos de agua DGA. Dos subcapas del mismo servicio
+        # oficial se consolidan en un único inventario homogéneo.
+        log("Descargando red de drenajes DGA")
+        dga_rivers, drainage_meta = query_water_layer(
+            URL_DGA_DRAINAGE,
+            "Red de drenajes",
+            "river",
             commune_union
         )
-
-        log("Consultando hidrografía de áreas IGM")
-
-        igm_lakes, igm_lakes_meta = query_water_layer(
-            URL_IGM_WATERS,
-            "IGM · Cartografía 1:50.000 · Hidrografía de áreas",
-            "lake_or_lagoon",
+        log("Descargando inventario de lagos DGA")
+        dga_lakes, lakes_meta = query_water_layer(
+            URL_DGA_LAKES,
+            "Inventario de lagos",
+            "lake",
             commune_union
         )
+        waters = dga_rivers + dga_lakes
+        waters.sort(key=lambda feature: (
+            normalize(feature["properties"]["name"]),
+            feature["properties"]["water_category"],
+            feature["properties"]["communes"][0]
+        ))
+        write_geojson(temp_dir / "waterbodies.geojson", waters)
 
-        # 4. Complemento hidrográfico MOP
-        mop_rivers = []
-        mop_lakes = []
-        mop_status = {}
-
-        try:
-            log("Consultando ríos MOP")
-
-            mop_rivers, mop_rivers_meta = query_water_layer(
-                URL_MOP_RIVERS,
-                "MOP · Red Hidrográfica · Ríos",
-                "river",
-                commune_union
-            )
-
-            mop_status["rivers"] = {
-                "status": "available",
-                "features": len(mop_rivers)
-            }
-
-        except Exception as error:
-            log(
-                "Fuente complementaria MOP ríos no disponible: "
-                + str(error)
-            )
-
-            mop_status["rivers"] = {
-                "status": "unavailable",
-                "reason": str(error)
-            }
-
-        try:
-            log("Consultando sistemas lacustres MOP")
-
-            mop_lakes, mop_lakes_meta = query_water_layer(
-                URL_MOP_LAKES,
-                "MOP · Red Hidrográfica · Sistemas lacustres",
-                "lake",
-                commune_union
-            )
-
-            mop_status["lakes"] = {
-                "status": "available",
-                "features": len(mop_lakes)
-            }
-
-        except Exception as error:
-            log(
-                "Fuente complementaria MOP lagos no disponible: "
-                + str(error)
-            )
-
-            mop_status["lakes"] = {
-                "status": "unavailable",
-                "reason": str(error)
-            }
-
-        # IGM se conserva como fuente principal de geometría
-        # detallada. MOP queda como complemento separado.
-        all_waters = (
-            igm_rivers
-            + igm_lakes
-            + mop_rivers
-            + mop_lakes
-        )
-
-        if not igm_rivers and not igm_lakes:
-            raise RuntimeError(
-                "IGM no entregó geometrías hidrográficas. "
-                "No se publicarán archivos."
-            )
-
-        all_waters.sort(
-            key=lambda item: (
-                normalize(item["properties"]["name"]),
-                item["properties"]["official_source"]
-            )
-        )
-
-        write_geojson(
-            temp_dir / "waterbodies.geojson",
-            all_waters
-        )
-
-        # 5. Estaciones DGA
-        log("Descargando estaciones DGA")
-
-        stations, dga_meta = get_dga_stations(
-            commune_union
-        )
-
-        write_geojson(
-            temp_dir / "dga_stations.geojson",
-            stations
-        )
-
-        # 6. Validación
-        log("Validando archivos generados")
+        # Capa 3: estaciones DGA. Son puntos de monitoreo independientes;
+        # no se utilizan sus nombres para nombrar ni crear cuerpos de agua.
+        log("Descargando Red Hidrométrica Nacional DGA")
+        stations, stations_meta = query_dga_stations(commune_union)
+        write_geojson(temp_dir / "dga_stations.geojson", stations)
 
         counts = {
-            "communes": validate_geojson(
-                temp_dir / "communes.geojson",
-                EXPECTED_COMMUNES
-            ),
-            "waterbodies": validate_geojson(
-                temp_dir / "waterbodies.geojson",
-                1
-            ),
-            "dga_stations": validate_geojson(
-                temp_dir / "dga_stations.geojson",
-                0
-            )
+            "roads": validate_geojson(temp_dir / "roads.geojson", 1),
+            "waterbodies": validate_geojson(temp_dir / "waterbodies.geojson", 1),
+            "dga_stations": validate_geojson(temp_dir / "dga_stations.geojson", 1)
         }
+        if not roads:
+            raise RuntimeError("MOP no entregó caminos para el territorio objetivo.")
+        if not waters:
+            raise RuntimeError("DGA no entregó cuerpos de agua para el territorio objetivo.")
 
-        if counts["communes"] != EXPECTED_COMMUNES:
-            raise RuntimeError(
-                "La cobertura comunal no contiene exactamente "
-                "las nueve comunas objetivo."
-            )
+        # Los conteos del catálogo cuentan entidades DGA únicas, no
+        # segmentos comunales: un río que cruza tres comunas es una entidad.
+        category_ids = {}
+        commune_category_ids = {}
+        for feature in waters:
+            props = feature["properties"]
+            category = props["water_category"]
+            water_id = props["waterbody_id"]
+            category_ids.setdefault(category, set()).add(water_id)
+            commune = props["communes"][0]
+            commune_category_ids.setdefault(commune, {})
+            commune_category_ids[commune].setdefault(category, set()).add(water_id)
+        category_counts = {
+            category: len(ids)
+            for category, ids in sorted(category_ids.items())
+        }
+        commune_counts = {
+            commune: {
+                category: len(ids)
+                for category, ids in sorted(categories.items())
+            }
+            for commune, categories in sorted(commune_category_ids.items())
+        }
+        unique_waterbody_count = len({
+            feature["properties"]["waterbody_id"] for feature in waters
+        })
 
-        commune_names = sorted(
-            feature["properties"]["name"]
-            for feature in commune_features
-        )
+        road_commune_counts = {}
+        road_ids = set()
+        road_surface_counts = {}
+        road_classification_counts = {}
+        road_surface_lengths_km = {}
+        road_classification_lengths_km = {}
+        regional_communal_access_km = 0.0
+        total_road_length_km = 0.0
+        for feature in roads:
+            props = feature["properties"]
+            commune = props["communes"][0]
+            road_commune_counts[commune] = road_commune_counts.get(commune, 0) + 1
+            if props.get("road_id"):
+                road_ids.add(props["road_id"])
+            surface = props.get("surface") or "Sin clasificación de carpeta"
+            classification = props.get("classification") or "Sin clasificación vial"
+            length_km = geodesic_line_length_km(shape(feature["geometry"]))
+            total_road_length_km += length_km
+            road_surface_counts[surface] = road_surface_counts.get(surface, 0) + 1
+            road_classification_counts[classification] = road_classification_counts.get(classification, 0) + 1
+            road_surface_lengths_km[surface] = road_surface_lengths_km.get(surface, 0.0) + length_km
+            road_classification_lengths_km[classification] = road_classification_lengths_km.get(classification, 0.0) + length_km
+            normalized_classification = normalize(classification)
+            if "regional comunal" in normalized_classification or "regional de acceso" in normalized_classification:
+                regional_communal_access_km += length_km
 
-        if set(commune_names) != set(
-            TARGET_COMMUNES.values()
-        ):
-            raise RuntimeError(
-                "La cobertura comunal no coincide con "
-                "el territorio definido."
-            )
+        station_commune_counts = {}
+        station_type_counts = {}
+        for feature in stations:
+            props = feature["properties"]
+            station_type = props.get("station_type") or "Sin tipo informado"
+            station_type_counts[station_type] = station_type_counts.get(station_type, 0) + 1
+            for commune in props.get("communes", []):
+                station_commune_counts[commune] = station_commune_counts.get(commune, 0) + 1
 
         metadata = {
             "application": "AnglerMap",
-            "version": "3.4",
-            "generated_at": datetime.now(
-                timezone.utc
-            ).isoformat(),
+            "version": "5.1",
+            "generated_at": datetime.now(timezone.utc).isoformat(),
             "geographic_scope": {
                 "region": "Magallanes y de la Antártica Chilena",
                 "communes": commune_names,
@@ -1256,77 +1217,102 @@ def main():
                 "antarctica_commune_included": False,
                 "cape_horn_commune_included": False
             },
-            "spatial_query_method": {
-                "remote_query": "exact_polygon_intersection_per_commune",
-                "remote_geometry_type": "esriGeometryPolygon",
-                "local_filter": "exact_intersection_and_clip_with_commune_union",
-                "commune_spatial_index": "STRtree",
-                "spatial_reference": "EPSG:4326"
+            "architecture": {
+                "roads": "Capa MOP de caminos y accesos.",
+                "waterbodies": "Capa cartográfica DGA de cuerpos de agua: drenajes lineales y lagos poligonales.",
+                "dga_stations": "Capa puntual DGA de estaciones de la Red Hidrométrica Nacional; separada de los cuerpos de agua.",
+                "basins_subbasins": "Fuera de alcance.",
+                "igm_hydrography": "Fuera de alcance."
             },
             "sources": {
-                "administrative_boundaries": commune_source_info,
-                "provinces": {
-                    "institution": "MOP",
-                    "url": URL_PROVINCES,
-                    "status": "deferred",
-                    "reason": "Capa administrativa complementaria; excluida temporalmente del proceso de generación."
+                "administrative_clip_boundaries": commune_source_info,
+                "roads": {
+                    "institution": "MOP · Dirección de Vialidad",
+                    "name": "Red Vial Chile Base Gris · capa de caminos de mayor detalle",
+                    "url": URL_MOP_ROADS,
+                    "metadata": "https://rest-sit.mop.gob.cl/arcgis/rest/services/VIALIDAD/Red_Vial_Chile_Base_gris/MapServer/3",
+                    "status": "available",
+                    "data_vintage_note": "La ficha del servicio describe datos disponibles a enero de 2021; no equivale a confirmación en terreno de transitabilidad actual.",
+                    "attributes_used": ["NOMBRE_CAMINO", "ROL", "CLASIFICACION", "CARPETA", "RVO"],
+                    "coverage_note": "La capa incluye caminos nacionales, internacionales, regionales principales, provinciales, comunales, regionales de acceso y caminos en proceso de enrolamiento. La cobertura se somete a contraste adicional antes de considerarla exhaustiva.",
+                    "official_statistical_crosscheck": "https://vialidad.mop.gob.cl/uploads/sites/9/2025/08/Red-Vial-Nacional-Dimensionamiento-y-Caracteristicas-Ano-2025.pdf",
+                    "regional_dataset_crosscheck": "https://idemagallanes.cl/magallanes/catalog/79/Red%20Vial%20Regi%C3%B3n%20de%20Magallanes",
+                    "crosscheck_note": "El informe MOP 2025 reporta 1.678,203 km para caminos regionales comunales y de acceso de Magallanes a diciembre de 2024, desglosados por carpeta de rodadura. Esta longitud sirve como control de consistencia; no equivale al total de todas las categorías viales ni al número de features cartográficos."
                 },
-                "igm_rivers": {
-                    "institution": "IGM",
-                    "url": URL_IGM_RIVERS,
-                    "status": "required"
-                },
-                "igm_water_areas": {
-                    "institution": "IGM",
-                    "url": URL_IGM_WATERS,
-                    "status": "required"
-                },
-                "mop_rivers": {
-                    "institution": "MOP",
-                    "url": URL_MOP_RIVERS,
-                    "status": mop_status.get("rivers")
-                },
-                "mop_lakes": {
-                    "institution": "MOP",
-                    "url": URL_MOP_LAKES,
-                    "status": mop_status.get("lakes")
+                "waterbodies": {
+                    "institution": "DGA",
+                    "service": URL_DGA_IDE,
+                    "drainage_layer": URL_DGA_DRAINAGE,
+                    "lakes_layer": URL_DGA_LAKES,
+                    "status": "available",
+                    "drainage_copyright": "DGA 2012 / MOP",
+                    "lakes_copyright": "DGA 2017",
+                    "method": "Todos los registros intersectantes de las dos subcapas se conservan y se asignan por intersección geométrica a las comunas."
                 },
                 "dga_stations": {
-                    "institution": "DGA",
-                    "url": URL_DGA_STATIONS,
-                    "status": "required"
-                }
+                    "institution": "DGA · División de Hidrología",
+                    "service": URL_DGA_STATIONS,
+                    "operational_flow_data_service": URL_DGA_LIVE_FLOW,
+                    "status": "available",
+                    "station_inventory_note": "Red Hidrométrica Nacional con estaciones fluviométricas, calidad de aguas, meteorológicas, niveles de lagos y embalses, sedimentometría, pozos, nivometría y glaciología. Metadata del servicio cartográfico: actualización julio 2022."
+                },
+                "supplementary_dga_references": [
+                    {
+                        "title": "Inventario Público de Lagos DGA",
+                        "url": "https://dga.mop.gob.cl/servicios-de-informacion/catastro-publico-de-aguas/inventario-publico-de-cuencas-hidrograficas-y-lagos/",
+                        "use": "Contraste documental de nombres; no reemplaza las geometrías DGA."
+                    },
+                    {
+                        "title": "Mapoteca Digital DGA",
+                        "url": "https://dga.mop.gob.cl/mapoteca-digital/",
+                        "use": "Contraste de inventarios, mapas y publicaciones hidrográficas."
+                    },
+                    {
+                        "title": "DGA Magallanes · antecedentes de sectores hidrogeológicos y estaciones",
+                        "url": "https://dga.mop.gob.cl/dga-magallanes-inicia-trabajos-de-exploracion-de-acuiferos-para-construir-pozos-de-monitoreo-de-aguas-subterraneas/",
+                        "use": "Referencia documental para contrastar topónimos regionales; no se usa para inferir geometrías."
+                    },
+                    {
+                        "title": "Decreto DGA 137/2010 · Río del Oro",
+                        "url": "https://dga.mop.gob.cl/uploads/sites/13/2023/07/DTO-137_01-FEB-2010.pdf",
+                        "use": "Antecedente técnico-administrativo de un cuerpo de agua nombrado; no altera automáticamente el nombre de la capa cartográfica."
+                    }
+                ]
             },
-            "counts": counts,
+            "counts": {
+                **counts,
+                "roads_unique_source_features": len(road_ids),
+                "roads_total_length_km": round(total_road_length_km, 2),
+                "roads_regional_communal_and_access_length_km": round(regional_communal_access_km, 2),
+                "roads_by_surface": dict(sorted(road_surface_counts.items())),
+                "roads_by_surface_length_km": {key: round(value, 2) for key, value in sorted(road_surface_lengths_km.items())},
+                "roads_by_classification": dict(sorted(road_classification_counts.items())),
+                "roads_by_classification_length_km": {key: round(value, 2) for key, value in sorted(road_classification_lengths_km.items())},
+                "waterbodies_unique_entities": unique_waterbody_count,
+                "waterbodies_by_category": category_counts,
+                "waterbodies_by_commune": commune_counts,
+                "roads_by_commune": road_commune_counts,
+                "dga_stations_by_commune": station_commune_counts,
+                "dga_stations_by_type": station_type_counts
+            },
+            "toponymy_notes": [],
             "limitations": [
-                "La presencia de una geometría oficial no acredita acceso público ni permiso de pesca.",
-                "Las capas hidrográficas pueden no contener todos los cuerpos de agua existentes.",
-                "Las geometrías de fuentes diferentes se conservan identificadas por separado hasta realizar conciliación de entidades.",
-                "La comuna Antártica queda excluida.",
-                "La comuna de Cabo de Hornos queda excluida del alcance inicial.",
-                "Las estaciones DGA son puntos de monitoreo; este archivo no representa por sí solo mediciones hidrométricas en tiempo real."
+                "La red de drenajes DGA representa la mayoría de las expresiones espaciales de drenaje, no necesariamente todas.",
+                "El inventario poligonal DGA de lagos se publica como dato 2017; puede no incluir todas las lagunas menores.",
+                "La red vial MOP es cartografía oficial, pero no confirma transitabilidad, mantención, barreras, permisos ni acceso público actual.",
+                "La presencia de un camino no acredita derecho de paso ni acceso legal a una propiedad.",
+                "La presencia de un cuerpo de agua no acredita acceso público ni permiso de pesca.",
+                "Las estaciones DGA son puntos de monitoreo; sus nombres no definen el nombre del río o lago donde se encuentran.",
+                "La Red Hidrométrica Nacional publicada en la capa cartográfica consultada tiene metadata de actualización julio 2022; validar vigencia de cada estación antes de interpretar su operación."
             ]
         }
-
-        write_json(
-            temp_dir / "sources.json",
-            metadata
-        )
-
-        # Validación final de metadata
-        with (temp_dir / "sources.json").open(
-            "r",
-            encoding="utf-8"
-        ) as file:
+        write_json(temp_dir / "sources.json", metadata)
+        with (temp_dir / "sources.json").open("r", encoding="utf-8") as file:
             json.load(file)
 
-        # 7. Publicación
-        log("Publicando archivos validados")
-
         publish_atomically(temp_dir)
-
-        log("Publicación de archivos completada.")
-        log(json.dumps(counts, ensure_ascii=False))
+        log("Publicación de las tres capas completada.")
+        log(json.dumps(metadata["counts"], ensure_ascii=False))
 
 
 if __name__ == "__main__":
