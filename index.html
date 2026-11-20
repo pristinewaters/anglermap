@@ -363,6 +363,81 @@ button:focus-visible,input:focus-visible,select:focus-visible{outline:2px solid 
  .detail-panel{top:58px;left:9px;max-height:calc(100% - 130px)}
 }
 @media(prefers-reduced-motion:reduce){.sidebar{transition:none}}
+
+/* ANGLERMAP MAP-FIRST SHELL v2 — drawer navigation, not a permanent dashboard sidebar */
+.app{grid-template-rows:70px minmax(0,1fr);background:#071521}
+.topbar{height:70px;padding:0 22px;gap:18px;background:rgba(7,21,33,.97);border-bottom:1px solid #1b3547;box-shadow:0 5px 24px #0002}
+.menu-btn{display:grid!important;width:40px;height:40px;flex:0 0 40px;border-radius:12px;background:#112b3d;border-color:#2b4d62;color:#dff5fa}
+.brand{min-width:185px;gap:10px}
+.logo{width:37px;height:37px}
+.brand-name{font-size:18px;letter-spacing:1.2px}
+.brand-sub{font-size:8px;letter-spacing:2.1px}
+.search-wrap{max-width:660px;margin-left:12px}
+.search-wrap input{height:43px;border-radius:13px;background:#102638;border:1px solid #29485b;padding-left:44px;font-size:12px}
+.search-wrap input::placeholder{color:#88a3b3}
+.search-icon{left:15px;top:10px}
+.top-actions{gap:8px}
+.profile-select{height:40px;border-radius:11px;padding:0 13px;background:#102638;border-color:#29485b;font-size:11px}
+.icon-btn{height:40px;width:40px;border-radius:11px;background:#102638;border-color:#29485b}
+.help-btn{height:40px;min-width:62px;border-radius:11px;background:#153b50;border:1px solid #32647b;color:#dffaff;font-weight:700}
+.workspace{position:relative;display:block;min-height:0;overflow:hidden;background:#0a1b28}
+.map-area{position:absolute;inset:0;background:#102735}
+#map{position:absolute;inset:0}
+.sidebar{position:absolute;z-index:800;left:14px;top:14px;bottom:14px;width:306px;visibility:hidden;transform:translateX(calc(-100% - 22px));border:1px solid #31536a;border-radius:17px;background:rgba(8,24,37,.97);box-shadow:0 18px 60px #0008;backdrop-filter:blur(18px);transition:transform .22s ease,visibility .22s;overflow:hidden}
+.sidebar.open{visibility:visible;transform:translateX(0)}
+.side-scroll{padding:17px 15px 20px}
+.side-intro{padding:7px 7px 18px}
+.side-intro-mark{width:38px;height:38px;border-radius:12px;background:#153d52}
+.side-intro strong{font-size:14px}
+.side-intro small{font-size:10px}
+.side-heading{font-size:9px;letter-spacing:1.35px;margin:13px 5px 8px}
+.nav-item{min-height:42px;padding:9px 11px;border-radius:10px;font-size:12px}
+.nav-item.active{background:linear-gradient(100deg,#17445a,#123246);border-color:#28546a;box-shadow:inset 3px 0 #58d8e7}
+.resource-details{margin-top:16px}
+.map-controls{top:16px;right:16px;left:auto;display:flex;flex-wrap:nowrap;gap:4px;padding:5px;border-radius:13px;background:rgba(7,22,34,.91);border:1px solid #3a5a6d;box-shadow:0 8px 26px #0004;backdrop-filter:blur(14px)}
+.map-control{padding:10px 12px;border-radius:9px;font-size:10px;white-space:nowrap}
+.map-control.active{background:#17465b;color:#70e1ed}
+.map-tools{top:78px;right:17px;gap:6px}
+.map-tool{width:40px;height:40px;border-radius:12px;background:rgba(7,22,34,.92);border-color:#3a5a6d}
+.map-bottom{top:auto;bottom:16px;left:16px;max-width:calc(100% - 420px);gap:6px}
+.map-chip{border-radius:9px;padding:7px 10px;background:rgba(7,22,34,.88);border-color:#355367;font-size:9px;backdrop-filter:blur(12px)}
+.weather-dock{left:50%;right:auto;bottom:14px;transform:translateX(-50%);width:min(760px,calc(100% - 460px));border-radius:15px;background:rgba(8,25,39,.96);border-color:#355d73;box-shadow:0 15px 45px #0008}
+.weather-dock.minimized{left:16px;right:auto;bottom:16px;transform:none;width:260px}
+.detail-panel{left:16px;top:16px;width:360px;max-height:calc(100% - 32px);border-radius:17px;background:rgba(8,25,39,.97);border-color:#35576b;box-shadow:0 18px 55px #0009}
+.detail-top{padding:19px}
+.detail-title{font-size:25px}
+.detail-content{padding:17px}
+.am-guide-card{border-radius:18px}
+@media(max-width:900px){
+ .app{grid-template-rows:62px minmax(0,1fr)}
+ .topbar{height:62px;padding:0 12px;gap:9px}
+ .brand{min-width:150px}.brand-name{font-size:16px}.brand-sub{display:none}
+ .search-wrap{margin-left:0;max-width:none}
+ .workspace{display:block}
+ .sidebar{top:10px;bottom:10px;left:10px;width:min(310px,calc(100vw - 38px))}
+ .map-controls{top:10px;left:10px;right:10px;max-width:calc(100% - 20px);overflow-x:auto}
+ .map-tools{top:62px;right:10px}
+ .map-bottom{bottom:10px;left:10px;max-width:calc(100% - 20px)}
+ .weather-dock{width:calc(100% - 20px);bottom:10px}
+ .weather-dock.minimized{left:10px;bottom:10px;width:250px}
+}
+@media(max-width:600px){
+ .app{grid-template-rows:56px minmax(0,1fr)}
+ .topbar{height:56px;padding:0 8px;gap:6px}
+ .menu-btn,.icon-btn{width:34px;height:34px;flex-basis:34px}
+ .brand{min-width:0;gap:6px}.logo{width:30px;height:30px}.brand-name{font-size:14px}
+ .search-wrap{min-width:60px}.search-wrap input{height:35px;font-size:10px;padding-left:31px}
+ .search-icon{left:9px;top:7px}
+ .top-actions{gap:4px}.profile-select{max-width:94px;height:34px;padding:0 5px;font-size:9px}
+ .help-btn{min-width:40px;height:34px;padding:0 6px;font-size:9px}
+ .map-controls{gap:2px;padding:4px}.map-control{padding:8px 9px;font-size:9px}
+ .map-tools{top:58px;right:9px}.map-tool{width:35px;height:35px}
+ .map-chip{font-size:8px;padding:5px 7px}
+ .weather-dock{width:calc(100% - 18px);bottom:9px}
+ .weather-dock.minimized{left:9px;bottom:9px}
+ .detail-panel{left:9px;top:58px;width:min(350px,calc(100% - 18px));max-height:calc(100% - 125px)}
+}
+@media(prefers-reduced-motion:reduce){.sidebar{transition:none}}
 </style>
 </head>
 <body>
