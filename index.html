@@ -35,6 +35,19 @@ button:focus-visible,input:focus-visible,select:focus-visible{outline:2px solid 
 .search-icon{position:absolute;left:14px;top:9px;color:var(--muted);font-size:19px}
 .top-actions{margin-left:auto;display:flex;align-items:center;gap:9px}
 .profile-select{height:38px;padding:0 12px;background:var(--panel2);color:var(--text);border:1px solid var(--line);border-radius:9px}
+.profile-modal{position:fixed;z-index:3000;inset:0;background:#020b12c9;display:none;align-items:center;justify-content:center;padding:16px}
+.profile-modal.open{display:flex}
+.profile-dialog{width:min(680px,100%);max-height:90vh;overflow:auto;background:#0c1c29;border:1px solid #35566a;border-radius:16px;box-shadow:0 20px 70px #000b}
+.profile-dialog-head{display:flex;align-items:center;justify-content:space-between;padding:17px 20px;border-bottom:1px solid #20394b}
+.profile-dialog-head h2{font-size:17px;margin:0}.profile-dialog-body{padding:20px}
+.profile-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
+.profile-field{display:grid;gap:6px}.profile-field.full{grid-column:1/-1}
+.profile-field label,.profile-group-title{font-size:10px;color:#a9bdc8}
+.profile-field input,.profile-field select{padding:11px;border:1px solid #35566a;border-radius:8px;background:#0a1b28;color:#edf5f8;width:100%}
+.profile-options{display:flex;gap:8px;flex-wrap:wrap;margin-top:8px}
+.profile-option{display:flex;align-items:center;gap:6px;padding:8px 10px;background:#102638;border:1px solid #29485b;border-radius:8px;color:#dceaf1;font-size:10px}
+.profile-footnote{padding:11px 13px;margin-top:14px;background:#2a261d;border:1px solid #655337;border-radius:9px;color:#e5d2a8;font-size:10px;line-height:1.6}
+@media(max-width:600px){.profile-grid{grid-template-columns:1fr}.profile-field.full{grid-column:auto}.profile-dialog-body{padding:14px}}
 .workspace{min-height:0;display:grid;grid-template-columns:320px minmax(0,1fr)}
 .sidebar{z-index:600;background:var(--panel);border-right:1px solid var(--line);display:flex;flex-direction:column;min-height:0;overflow:hidden}
 .side-scroll{overflow:auto;padding:16px 14px 25px;scrollbar-width:thin;scrollbar-color:#29485b transparent}
@@ -267,8 +280,10 @@ button:focus-visible,input:focus-visible,select:focus-visible{outline:2px solid 
  </div>
  <div class="search-wrap"><span class="search-icon">⌕</span><input id="globalSearch" placeholder="Buscar río, lago o sector..."></div>
  <div class="top-actions">
-  <select class="profile-select" id="profileSelect" aria-label="Perfil">
+  <button class="icon-btn" id="userProfileBtn" title="Crear cuenta o editar mi perfil" aria-label="Mi perfil">♙</button>
+  <select class="profile-select" id="profileSelect" aria-label="Perfil de demostración">
    <option value="angler">Pescador recreativo</option>
+   <option value="operator">Operador turístico</option>
    <option value="admin">Administrador territorial</option>
   </select>
   <button class="icon-btn" id="locateBtn" title="Mi ubicación" aria-label="Mi ubicación">◎</button>
@@ -480,6 +495,42 @@ const saveStore=(key,value)=>{
  try{localStorage.setItem(key,JSON.stringify(value))}
  catch(e){alert("No fue posible guardar los datos en este navegador.")}
 };
+const AM_PROFILE_KEY="anglerMapUserProfileV1";
+let amUserProfile=readStore(AM_PROFILE_KEY,null);
+function openUserProfile(){
+ const saved=amUserProfile||{};
+ const communes=["Punta Arenas","Laguna Blanca","Río Verde","San Gregorio","Natales","Torres del Paine","Porvenir","Primavera","Timaukel"];
+ const categories=["river","lake","lagoon"];
+ const techniques=["Mosca seca","Ninfa","Streamer","Spey / dos manos","Spinning"];
+ const species=["Trucha marrón","Trucha arcoíris","Trucha de arroyo","Salmón Chinook","Salmón coho"];
+ const checks=(items,selected,name)=>items.map(item=>'<label class="profile-option"><input type="checkbox" name="'+name+'" value="'+item+'" '+(selected.includes(item)?"checked":"")+'>'+item+'</label>').join("");
+ let modal=document.getElementById("amProfileModal");
+ if(!modal){
+  modal=document.createElement("section");modal.id="amProfileModal";modal.className="profile-modal";
+  modal.innerHTML='<div class="profile-dialog" role="dialog" aria-modal="true" aria-labelledby="amProfileTitle"><div class="profile-dialog-head"><div><div class="detail-kicker">ANGLERMAP · ESPACIO PERSONAL</div><h2 id="amProfileTitle">Crear mi perfil</h2></div><button class="close-btn" id="amProfileClose" aria-label="Cerrar">×</button></div><div class="profile-dialog-body"><form id="amProfileForm"><div class="profile-grid"><div class="profile-field"><label for="amProfileName">Nombre</label><input id="amProfileName" maxlength="100" required></div><div class="profile-field"><label for="amProfileEmail">Correo electrónico</label><input id="amProfileEmail" type="email" required></div><div class="profile-field"><label for="amProfileRole">¿Cómo utilizas AnglerMap?</label><select id="amProfileRole"><option value="angler">Pesca recreativa</option><option value="operator">Operador turístico</option><option value="admin">Administrador de territorio</option><option value="multiple">Más de un rol</option></select></div><div class="profile-field"><label for="amProfileExperience">Experiencia de pesca</label><select id="amProfileExperience"><option>Principiante</option><option>Intermedio</option><option>Avanzado</option><option>Guía / profesional</option></select></div><div class="profile-field full"><div class="profile-group-title">Zonas de interés</div><div class="profile-options">'+checks(communes,saved.communes||[],"communes")+'</div></div><div class="profile-field full"><div class="profile-group-title">Tipos de agua que quieres explorar</div><div class="profile-options">'+checks(categories,saved.categories||categories,"categories").replaceAll('value="river"','value="river"').replaceAll('>river<','>Ríos y esteros<').replaceAll('>lake<','>Lagos<').replaceAll('>lagoon<','>Lagunas<')+'</div></div><div class="profile-field full"><div class="profile-group-title">Especies de interés</div><div class="profile-options">'+checks(species,saved.species||[],"species")+'</div></div><div class="profile-field full"><div class="profile-group-title">Modalidades y técnicas</div><div class="profile-options">'+checks(techniques,saved.techniques||[],"techniques")+'</div></div></div><div class="profile-footnote">Este formulario crea un perfil de preferencias guardado en este navegador. Todavía no crea una cuenta autenticada ni sincroniza tus datos entre dispositivos. El registro seguro, inicio de sesión y recuperación de cuenta se implementarán con el backend.</div><div class="detail-actions"><button class="action-btn" type="button" id="amProfileCancel">Cancelar</button><button class="action-btn primary" type="submit">Guardar mi perfil</button></div></form></div></div>';
+  document.body.appendChild(modal);
+  $("amProfileClose").onclick=$("amProfileCancel").onclick=()=>modal.classList.remove("open");
+  modal.addEventListener("click",e=>{if(e.target===modal)modal.classList.remove("open");});
+  $("amProfileForm").onsubmit=e=>{
+   e.preventDefault();
+   const values=name=>Array.from(modal.querySelectorAll('input[name="'+name+'"]:checked')).map(x=>x.value);
+   amUserProfile={name:$("amProfileName").value.trim(),email:$("amProfileEmail").value.trim(),role:$("amProfileRole").value,experience:$("amProfileExperience").value,communes:values("communes"),categories:values("categories"),species:values("species"),techniques:values("techniques"),updatedAt:new Date().toISOString()};
+   saveStore(AM_PROFILE_KEY,amUserProfile);modal.classList.remove("open");$("userProfileBtn").textContent="♙";$("userProfileBtn").title="Perfil: "+amUserProfile.name;
+   applyProfileFilters();alert("Perfil de preferencias guardado en este navegador.");
+  };
+ }
+ $("amProfileName").value=saved.name||"";$("amProfileEmail").value=saved.email||"";
+ $("amProfileRole").value=saved.role||"angler";$("amProfileExperience").value=saved.experience||"Principiante";
+ ["communes","categories","species","techniques"].forEach(name=>modal.querySelectorAll('input[name="'+name+'"]').forEach(el=>el.checked=(saved[name]|| (name==="categories"?categories:[])).includes(el.value)));
+ modal.classList.add("open");
+}
+function applyProfileFilters(){
+ if(!amUserProfile)return;
+ renderZones($("globalSearch").value);
+}
+$("userProfileBtn").onclick=openUserProfile;
+if(amUserProfile){$("userProfileBtn").title="Perfil: "+amUserProfile.name;}
+
 let favorites=readStore("anglerMapFavorites",[]);
 let savedPoints=readStore("anglerMapPoints",[]);
 let selectedRiver=null,addPointMode=false,measureMode=false;
@@ -650,7 +701,7 @@ function renderZones(filter=""){
  }
  zoneOrder.forEach((zone,index)=>{
   const searchTerm=amCatalogNormalize(filter);
-  const waters=RIVERS.filter(r=>r.communes.includes(zone)&&(!searchTerm||amCatalogNormalize([r.name,...r.aliases].join(" ")).includes(searchTerm)));
+  const waters=RIVERS.filter(r=>r.communes.includes(zone)&&(!searchTerm||amCatalogNormalize([r.name,...r.aliases].join(" ")).includes(searchTerm))&&(!amUserProfile?.communes?.length||amUserProfile.communes.includes(zone))&&(!amUserProfile?.categories?.length||amUserProfile.categories.includes(r.category)));
   if(!waters.length)return;
   const section=document.createElement("section");
   section.className="zone"+(index===0||filter?" open":"");
@@ -847,6 +898,7 @@ $("accessBtn").onclick=()=>openGeneral("Accesos y permisos","Control territorial
 $("regulationBtn").onclick=()=>window.open("https://www.sernapesca.cl/","_blank","noopener");
 
 renderZones();renderPoints();
+if(amUserProfile)applyProfileFilters();
 $("savedCount").textContent=favorites.length;$("pointCount").textContent=savedPoints.length;
  /* =========================================================
    METEOROLOGÍA · OPEN-METEO

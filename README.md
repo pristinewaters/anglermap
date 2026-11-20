@@ -6,6 +6,27 @@ Plataforma cartográfica de exploración para pesca recreativa en la Región de 
 
 https://pristinewaters.github.io/anglermap/
 
+## Modelo de plataforma y arquitectura funcional
+
+AnglerMap se organiza en tres pilares conectados por una infraestructura cartográfica compartida:
+
+- **Administrador de territorio:** gestiona cuerpos de agua, sectores, accesos, cupos, temporadas, reglas, solicitudes, equipo e ingresos.
+- **Operador turístico:** utiliza sus acuerdos comerciales para solicitar sectores, fechas y cupos para sus clientes.
+- **Pescador recreativo:** descubre lugares en el mapa, consulta condiciones y solicita acceso a sectores administrados.
+
+Los tres perfiles utilizan la misma base geoespacial y un motor común de permisos, disponibilidad, reservas, pagos, notificaciones y control de ingreso/salida.
+
+La definición funcional completa, los flujos, estados, modelo de datos conceptual, principios de pago, seguridad y hoja de ruta están en [Arquitectura del ecosistema AnglerMap](docs/ANGLERMAP-ECOSYSTEM-ARCHITECTURE.md).
+
+## Experiencias de plataforma en desarrollo
+
+El selector de perfil permite explorar tres vistas sobre la misma cartografía:
+- **Pescador recreativo:** exploración del mapa y portal de solicitud de acceso.
+- **Operador turístico:** solicitudes para clientes y sectores cubiertos por acuerdos.
+- **Administrador territorial:** territorios, cuerpos de agua asociados, delimitación, accesos, reglas, equipo, operadores y bandeja unificada.
+
+El módulo Territory Manager y los portales de demostración guardan actualmente sus datos en el navegador (localStorage). No hay cuentas autenticadas, sincronización entre dispositivos, pagos ni mensajería real. Las solicitudes son pruebas funcionales; los sectores y accesos deben validarse antes de habilitar operaciones reales.
+
 ## Funciones disponibles
 
 - Mapa interactivo con cartografía satelital, topográfica y OpenStreetMap.
