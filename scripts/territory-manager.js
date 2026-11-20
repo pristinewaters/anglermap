@@ -106,7 +106,8 @@
   @media(max-width:760px){.tm-nav{position:sticky;top:0;z-index:5;align-items:center;scroll-snap-type:x proximity}.tm-nav-group{display:flex;gap:4px;align-items:center;flex-shrink:0;margin:0}.tm-nav-group .tm-nav-label{display:none}.tm-nav button{scroll-snap-align:start;min-height:38px}.tm-nav button span{display:inline}.tm-nav button.active{box-shadow:inset 0 -3px #55d9e8}}
   `;
 
-  /* Territory Manager redesign: task navigation across the top, spacious work area */
+  style.textContent += `
+/* Territory Manager redesign: task navigation across the top, spacious work area */
   #tm-shell{background:#071521f7;backdrop-filter:blur(16px)}
   .tm-head{height:66px;padding:0 clamp(14px,2.5vw,34px);gap:14px;background:#081a28;border-bottom:1px solid #203d50}
   .tm-brand{font-size:17px;letter-spacing:1.2px}
@@ -174,6 +175,7 @@
     .tm-grid{grid-template-columns:repeat(2,minmax(0,1fr))}
     .tm-nav button{padding:7px 9px}
   }
+  `;
 
   document.head.appendChild(style);
 
