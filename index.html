@@ -275,6 +275,29 @@ button:focus-visible,input:focus-visible,select:focus-visible{outline:2px solid 
 .profile-dialog-body #amAuthPanel .am-auth-secondary{display:flex;gap:8px;flex-wrap:wrap;width:100%}
 .profile-dialog-body #amAuthPanel button{min-width:0;white-space:normal;margin:0}
 @media(max-width:520px){.profile-modal{padding:8px}.profile-dialog{max-height:96dvh}.profile-dialog-body{padding:12px}.profile-dialog-body #amAuthPanel .am-auth-actions{grid-template-columns:1fr}}
+
+/* AnglerMap · navegación transversal y accesibilidad */
+:root{--am-focus:#7ce7f2}
+:where(button,a,input,select,textarea,[tabindex]):focus-visible{outline:3px solid var(--am-focus)!important;outline-offset:3px!important}
+.nav-item,.map-control,.map-tool,.icon-btn,.menu-btn{transition:background .16s ease,border-color .16s ease,color .16s ease,transform .16s ease}
+.nav-item:active,.map-control:active,.map-tool:active,.icon-btn:active{transform:scale(.98)}
+.profile-select{min-width:174px}
+.help-btn{height:38px;min-width:38px;padding:0 10px;border:1px solid var(--line);border-radius:10px;background:#102638;color:var(--cyan);font-weight:800}
+.help-btn:hover{background:#17364a;border-color:var(--cyan)}
+.am-guide{position:fixed;z-index:5000;inset:0;display:none;align-items:center;justify-content:center;padding:18px;background:#020a12c9;backdrop-filter:blur(7px)}
+.am-guide.open{display:flex}
+.am-guide-card{width:min(620px,100%);max-height:min(86dvh,760px);overflow:auto;background:#0d1e2b;border:1px solid #315064;border-radius:18px;box-shadow:0 24px 90px #000b}
+.am-guide-head{display:flex;justify-content:space-between;align-items:flex-start;gap:14px;padding:20px 22px;border-bottom:1px solid var(--line)}
+.am-guide-head h2{margin:5px 0 0;font-size:20px}.am-guide-kicker{font-size:10px;letter-spacing:1.5px;color:var(--cyan);font-weight:800}
+.am-guide-body{padding:20px 22px}.am-guide-intro{margin:0 0 17px;color:#b5c8d2;line-height:1.6;font-size:13px}
+.am-guide-steps{display:grid;gap:9px;counter-reset:guide}
+.am-guide-step{display:grid;grid-template-columns:32px 1fr;gap:12px;align-items:start;padding:12px;border:1px solid #29485b;border-radius:12px;background:#102638}
+.am-guide-step:before{counter-increment:guide;content:counter(guide);width:28px;height:28px;display:grid;place-items:center;border-radius:50%;background:#17465a;color:var(--cyan);font-weight:800}
+.am-guide-step strong{display:block;font-size:12px;margin:1px 0 4px}.am-guide-step span{display:block;color:#9fb5c2;font-size:11px;line-height:1.5}
+.am-guide-foot{display:flex;justify-content:space-between;gap:10px;align-items:center;padding:14px 22px;border-top:1px solid var(--line)}
+.am-guide-foot small{color:var(--muted);font-size:10px}
+@media(max-width:600px){.profile-select{min-width:0;max-width:135px}.help-btn{height:35px;min-width:35px;padding:0 8px}.am-guide{padding:8px}.am-guide-head,.am-guide-body{padding:16px}.am-guide-foot{padding:12px 16px}}
+@media(prefers-reduced-motion:reduce){*,*::before,*::after{scroll-behavior:auto!important;transition:none!important;animation:none!important}}
 </style>
 </head>
 <body>
@@ -297,6 +320,7 @@ button:focus-visible,input:focus-visible,select:focus-visible{outline:2px solid 
    <option value="operator">Operador turístico</option>
    <option value="admin">Administrador territorial</option>
   </select>
+  <button class="help-btn" id="amHelpBtn" title="Guía rápida de navegación" aria-label="Abrir guía rápida">?</button>
   <button class="icon-btn" id="locateBtn" title="Mi ubicación" aria-label="Mi ubicación">◎</button>
  </div>
 </header>
@@ -422,6 +446,14 @@ button:focus-visible,input:focus-visible,select:focus-visible{outline:2px solid 
 </div>
 </div>
 
+
+<section class="am-guide" id="amGuide" aria-hidden="true">
+ <div class="am-guide-card" role="dialog" aria-modal="true" aria-labelledby="amGuideTitle">
+  <header class="am-guide-head"><div><div class="am-guide-kicker">ANGLERMAP · GUÍA RÁPIDA</div><h2 id="amGuideTitle">Todo empieza en el mapa</h2></div><button class="close-btn" id="amGuideClose" aria-label="Cerrar guía">×</button></header>
+  <div class="am-guide-body"><p class="am-guide-intro" id="amGuideIntro">Explora aguas, abre una ficha y encuentra las herramientas desde el menú.</p><div class="am-guide-steps" id="amGuideSteps"></div></div>
+  <footer class="am-guide-foot"><small>Puedes cambiar de perfil cuando quieras desde la barra superior.</small><button class="action-btn primary" id="amGuideDone">Entendido</button></footer>
+ </div>
+</section>
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script>
 // Catálogo dinámico construido desde geometrías hidrográficas oficiales.
@@ -1711,6 +1743,22 @@ console.info(
 })();
 </script>
 
+
+<script>
+/* Guía contextual: misma cartografía, orientación según el perfil activo. */
+(function(){
+ const $=id=>document.getElementById(id), modal=$("amGuide"), role=$("profileSelect");
+ if(!modal||!role)return;
+ const content={
+  angler:{intro:"Encuentra un lugar, revisa su información y organiza tu próxima salida.",steps:[["Explora el mapa","Acércate a ríos, lagos y lagunas. Usa la búsqueda para encontrar un nombre o comuna."],["Abre la ficha del agua","Selecciona un resultado para ver geometría disponible, condiciones y antecedentes de acceso."],["Guarda tus lugares","Añade aguas a Mis aguas o marca puntos personales para volver a encontrarlos."],["Prepara tu salida","Consulta meteorología, caminos y estaciones DGA. Confirma siempre permisos y normativa antes de ingresar."]]},
+  operator:{intro:"Usa el mapa para descubrir territorios y gestionar solicitudes de acceso para tus clientes.",steps:[["Busca el destino","Explora el mapa y abre la ficha del río, lago o sector que te interesa."],["Revisa las condiciones","Comprueba si existe administración territorial, convenio y reglas de ingreso."],["Solicita acceso","Cuando el territorio lo permita, envía una solicitud con fecha, sector y cantidad de pescadores."],["Sigue el estado","Revisa aprobación, cupos y confirmación. Una solicitud no equivale a autorización de ingreso."]]},
+  admin:{intro:"Administra el acceso al territorio sin perder de vista el mapa compartido.",steps:[["Abre Mis territorios","Desde el menú principal entra al módulo de administración territorial."],["Define sectores y accesos","Delimita áreas, registra entradas y salidas y revisa la geometría antes de habilitarla."],["Configura reglas y cupos","Establece temporadas, condiciones de pesca y límites por sector."],["Gestiona solicitudes","Revisa operadores y pescadores, aprueba o rechaza solicitudes y controla reservas e ingresos."]]} };
+ function open(){const c=content[role.value]||content.angler;$("amGuideIntro").textContent=c.intro;$("amGuideSteps").innerHTML=c.steps.map(x=>'<div class="am-guide-step"><div><strong>'+x[0]+'</strong><span>'+x[1]+'</span></div></div>').join("");modal.classList.add("open");modal.setAttribute("aria-hidden","false");$("amGuideClose").focus();}
+ function close(){modal.classList.remove("open");modal.setAttribute("aria-hidden","true");$("amHelpBtn").focus();}
+ $("amHelpBtn").addEventListener("click",open);$("amGuideClose").addEventListener("click",close);$("amGuideDone").addEventListener("click",close);
+ modal.addEventListener("click",e=>{if(e.target===modal)close();});document.addEventListener("keydown",e=>{if(e.key==="Escape"&&modal.classList.contains("open"))close();if(e.key==="?"&&!modal.classList.contains("open")&&!/INPUT|TEXTAREA|SELECT/.test(document.activeElement?.tagName||""))open();});
+})();
+</script>
 <script src="scripts/territory-manager.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="scripts/supabase-config.js"></script>
