@@ -41,6 +41,31 @@ La asociación de cada agua con unidades hidrográficas se calcula por intersecc
 
 La capa DGA de red de drenaje y las unidades BNA se publican en la IDE de la SMA con atribución explícita a DGA/Banco Nacional de Aguas. La procedencia y fecha de extracción se conservan en `sources.json` y en los atributos de cada entidad.
 
+## Diccionario de atributos
+
+### `waterbodies.geojson`
+
+- `waterbody_id`: identificador estable por registro y fuente.
+- `name`: nombre normalizado que usa el catálogo; `source_name` conserva el rótulo original.
+- `aliases` y `toponymy_status`: nombres alternativos y estado de conciliación toponímica.
+- `water_type` / `water_category`: tipo de geometría y categoría de interfaz (`river`, `lake`, `lagoon`).
+- `official_source`, `official_id`, `source_attributes`: trazabilidad y atributos originales.
+- `communes`, `provinces`: unidades administrativas intersectadas por la geometría.
+- `hydro_units`, `basins`, `subbasins`, `subsubbasins`: unidades BNA intersectadas y sus nombres/códigos.
+- `representative_point`: punto de referencia cartográfico; no es acceso de pesca.
+- `source_confidence`: distingue geometría de fuente oficial de correcciones toponímicas locales.
+
+### `dga_hydro_units.geojson`
+
+- `unit_level`: `basin`, `subbasin` o `subsubbasin`.
+- `name`, `code`, `basin_code`, `subbasin_code`, `subsubbasin_code`: nomenclatura y códigos BNA.
+- `communes`, `provinces`: comunas y provincias intersectadas.
+- `source_url`, `source_attributes`: servicio de origen y atributos originales.
+
+### `dga_stations.geojson`
+
+Conserva el identificador y los atributos de la estación DGA. La estación no se transforma en un río ni se asigna a un curso solo por proximidad.
+
 ## Incorporar una capa
 
 1. Guardar el GeoJSON normalizado en `data/magallanes/` o en la ruta de producto definida para esa capa.
