@@ -298,6 +298,71 @@ button:focus-visible,input:focus-visible,select:focus-visible{outline:2px solid 
 .am-guide-foot small{color:var(--muted);font-size:10px}
 @media(max-width:600px){.profile-select{min-width:0;max-width:135px}.help-btn{height:35px;min-width:35px;padding:0 8px}.am-guide{padding:8px}.am-guide-head,.am-guide-body{padding:16px}.am-guide-foot{padding:12px 16px}}
 @media(prefers-reduced-motion:reduce){*,*::before,*::after{scroll-behavior:auto!important;transition:none!important;animation:none!important}}
+
+/* Rediseño visible de navegación global — mapa y fuentes geográficas intactos */
+:root{--sidebar-width:286px}
+.app{grid-template-rows:62px minmax(0,1fr)}
+.topbar{height:62px;padding:0 16px;gap:13px}
+.brand{min-width:190px}.brand-name{font-size:18px}
+.workspace{grid-template-columns:286px minmax(0,1fr)}
+.sidebar{background:#0b1b28}
+.side-scroll{padding:14px 13px 20px}
+.side-intro{display:flex;align-items:center;gap:11px;padding:7px 7px 16px;margin-bottom:7px}
+.side-intro-mark{width:34px;height:34px;display:grid;place-items:center;border-radius:10px;background:#15394b;color:var(--cyan);font-size:11px;font-weight:850}
+.side-intro strong{display:block;font-size:13px;letter-spacing:.1px}
+.side-intro small{display:block;color:var(--muted);font-size:10px;margin-top:3px}
+.side-heading{margin:11px 5px 7px;font-size:9px;letter-spacing:1.25px;color:#8ca7b7}
+.side-heading-row{display:flex;justify-content:space-between;align-items:center}
+.nav-list{gap:3px;margin-bottom:12px}
+.nav-item{min-height:39px;padding:8px 10px;gap:10px;border-radius:9px;font-size:11px;color:#c5d6df}
+.nav-item>span:nth-child(2){min-width:0}
+.nav-item.active{background:#15394b;border-color:#2b5268;box-shadow:inset 3px 0 var(--cyan);color:#fff}
+.nav-item.active .nav-icon{color:var(--cyan)}
+.nav-icon{font-size:15px;width:19px}
+.nav-hint{margin-left:auto;color:#7fa0b2;font-size:9px}
+.nav-count{margin-left:auto;min-width:20px;text-align:center;padding:3px 6px;background:#17384b;border-radius:20px}
+.section-rule{margin:11px 0;border-color:#1b3445}
+.zone{margin-bottom:5px;border-radius:9px}
+.zone-head{padding:9px 10px;font-size:11px}
+.zone-body{padding:3px}
+.water-item{padding:8px;font-size:11px}
+.tool-nav .nav-item{min-height:36px}
+.resource-details{margin:13px 2px 5px;border-top:1px solid var(--line);padding-top:11px}
+.resource-details summary{cursor:pointer;list-style:none;color:#9fb7c5;font-size:10px;padding:6px 5px}
+.resource-details summary::-webkit-details-marker{display:none}
+.resource-details summary span{color:var(--cyan);margin-right:7px}
+.resource-details[open] summary{margin-bottom:8px;color:#eaf5f8}
+.resource-details .nav-item{min-height:32px;font-size:10px}
+.side-footer{padding:12px 5px 3px;color:#607e8e;font-size:9px;letter-spacing:1.4px}
+.side-footer span{color:var(--cyan)}
+.help-btn{min-width:66px;padding:0 13px;font-size:11px;letter-spacing:.2px}
+.map-controls{gap:3px;padding:4px}
+.map-control{padding:8px 10px;font-size:10px}
+.map-tools{gap:5px}
+.map-tool{width:36px;height:36px}
+.map-bottom{max-width:50%;gap:5px}
+.map-chip{padding:6px 8px;font-size:9px}
+.detail-panel{width:min(350px,calc(100% - 30px))}
+@media(max-width:900px){.workspace{grid-template-columns:260px minmax(0,1fr)}}
+@media(max-width:700px){
+ .app{grid-template-rows:56px minmax(0,1fr)}
+ .topbar{height:56px;padding:0 9px;gap:8px}
+ .brand{min-width:0;gap:7px}.logo{width:31px;height:31px}.brand-name{font-size:15px}.brand-sub{font-size:7px;letter-spacing:1px}
+ .search-wrap{max-width:none}.search-wrap input{height:36px;font-size:11px;padding-left:34px}.search-icon{top:7px;left:10px}
+ .top-actions{gap:5px}.profile-select{max-width:118px;height:34px;padding:0 6px;font-size:10px}.help-btn{min-width:44px;height:34px;padding:0 7px;font-size:10px}.icon-btn{height:34px;width:34px}
+ .workspace{grid-template-columns:minmax(0,1fr);grid-template-rows:minmax(0,1fr)}
+ .sidebar{position:absolute;z-index:900;top:56px;bottom:0;left:0;width:min(320px,88vw);transform:translateX(-105%);transition:transform .22s ease;box-shadow:18px 0 45px #0008}
+ .sidebar.open{transform:translateX(0)}
+ .side-scroll{padding:12px}
+ .map-controls{top:9px;right:9px;left:9px;justify-content:flex-start;overflow-x:auto;flex-wrap:nowrap;max-width:calc(100% - 18px)}
+ .map-control{white-space:nowrap;flex-shrink:0;padding:8px}
+ .map-tools{top:58px;right:9px}
+ .map-bottom{left:9px;top:auto;bottom:12px;max-width:calc(100% - 18px)}
+ .map-chip{font-size:8px;padding:5px 7px}
+ .weather-dock{max-width:calc(100% - 18px)}
+ .detail-panel{top:58px;left:9px;max-height:calc(100% - 130px)}
+}
+@media(prefers-reduced-motion:reduce){.sidebar{transition:none}}
 </style>
 </head>
 <body>
@@ -320,7 +385,7 @@ button:focus-visible,input:focus-visible,select:focus-visible{outline:2px solid 
    <option value="operator">Operador turístico</option>
    <option value="admin">Administrador territorial</option>
   </select>
-  <button class="help-btn" id="amHelpBtn" title="Guía rápida de navegación" aria-label="Abrir guía rápida">?</button>
+  <button class="help-btn" id="amHelpBtn" title="Guía rápida de navegación" aria-label="Abrir guía rápida">Guía</button>
   <button class="icon-btn" id="locateBtn" title="Mi ubicación" aria-label="Mi ubicación">◎</button>
  </div>
 </header>
@@ -328,40 +393,41 @@ button:focus-visible,input:focus-visible,select:focus-visible{outline:2px solid 
 <div class="workspace">
 <aside class="sidebar" id="sidebar">
  <div class="side-scroll">
-  <div class="side-heading">Explorar <small>MAGALLANES</small></div>
-  <nav class="nav-list">
-   <button class="nav-item active" data-view="explore"><span class="nav-icon">⌖</span>Explorar aguas</button>
-   <button class="nav-item" data-view="saved"><span class="nav-icon">☆</span>Mis aguas<span class="nav-count" id="savedCount">0</span></button>
-   <button class="nav-item" data-view="points"><span class="nav-icon">⌁</span>Mis puntos<span class="nav-count" id="pointCount">0</span></button>
-   <button class="nav-item" data-view="logbook"><span class="nav-icon">▤</span>Bitácora</button>
+  <div class="side-intro"><span class="side-intro-mark">01</span><div><strong>Explora Patagonia</strong><small>Mapa y herramientas de pesca</small></div></div>
+  <div class="side-heading">TU ESPACIO</div>
+  <nav class="nav-list primary-nav" aria-label="Tu espacio">
+   <button class="nav-item active" data-view="explore"><span class="nav-icon">⌖</span><span>Explorar mapa</span><span class="nav-hint">Inicio</span></button>
+   <button class="nav-item" data-view="saved"><span class="nav-icon">☆</span><span>Mis aguas</span><span class="nav-count" id="savedCount">0</span></button>
+   <button class="nav-item" data-view="points"><span class="nav-icon">⌁</span><span>Mis puntos</span><span class="nav-count" id="pointCount">0</span></button>
+   <button class="nav-item" data-view="logbook"><span class="nav-icon">▤</span><span>Mi bitácora</span></button>
   </nav>
   <div class="section-rule"></div>
-  <div class="side-heading">Aguas por territorio <small id="waterCount">CARGANDO…</small></div>
+  <div class="side-heading side-heading-row"><span>AGUAS DE MAGALLANES</span><small id="waterCount">CARGANDO…</small></div>
   <div id="zones"></div>
   <div class="section-rule"></div>
-  <div class="side-heading">Herramientas</div>
-  <nav class="nav-list">
-   <button class="nav-item" id="addPointBtn"><span class="nav-icon">＋</span>Guardar punto en el mapa</button>
-   <button class="nav-item" id="measureBtn"><span class="nav-icon">↔</span>Medir distancia</button>
-   <button class="nav-item" id="regulationBtn"><span class="nav-icon">⚖</span>Regulación pesquera</button>
+  <div class="side-heading">HERRAMIENTAS DEL MAPA</div>
+  <nav class="nav-list tool-nav">
+   <button class="nav-item" id="addPointBtn"><span class="nav-icon">＋</span><span>Guardar un punto</span></button>
+   <button class="nav-item" id="measureBtn"><span class="nav-icon">↔</span><span>Medir distancia</span></button>
+   <button class="nav-item" id="regulationBtn"><span class="nav-icon">⚖</span><span>Normativa de pesca</span></button>
   </nav>
   <div id="adminSection" hidden>
-   <div class="section-rule"></div><div class="side-heading">Administración territorial</div>
+   <div class="section-rule"></div><div class="side-heading">GESTIÓN DE TERRITORIO</div>
    <nav class="nav-list">
-    <button class="nav-item" id="territoryBtn"><span class="nav-icon">⌂</span>Mis territorios</button>
-    <button class="nav-item" id="accessBtn"><span class="nav-icon">◇</span>Accesos y permisos</button>
+    <button class="nav-item" id="territoryBtn"><span class="nav-icon">⌂</span><span>Mis territorios</span></button>
+    <button class="nav-item" id="accessBtn"><span class="nav-icon">◇</span><span>Accesos y permisos</span></button>
    </nav>
   </div>
-  <div class="section-rule"></div>
-  <div class="side-heading">Fuentes y recursos</div>
-  <nav class="nav-list">
-   <a class="nav-item" href="https://pescarecreativa.sernapesca.cl/" target="_blank" rel="noopener"><span class="nav-icon">↗</span>Comprar licencia de pesca</a>
-   <a class="nav-item" href="https://www.sernapesca.cl/" target="_blank" rel="noopener"><span class="nav-icon">↗</span>SERNAPESCA</a>
-   <a class="nav-item" href="https://dga.mop.gob.cl/sistema-hidrometrico-en-linea/" target="_blank" rel="noopener"><span class="nav-icon">↗</span>Sistema Hidrométrico DGA</a>
-   <a class="nav-item" href="https://dga.mop.gob.cl/estadisticas-estaciones-dga/" target="_blank" rel="noopener"><span class="nav-icon">↗</span>Estadísticas estaciones DGA</a>
-   <a class="nav-item" href="https://dga.mop.gob.cl/visualizadores/" target="_blank" rel="noopener"><span class="nav-icon">↗</span>Visualizadores DGA</a>
-  </nav>
-  <div style="font-size:9px;color:var(--muted);line-height:1.7;padding:8px 3px">AnglerMap · Patagonia<br>Cartografía y datos territoriales en desarrollo.</div>
+  <details class="resource-details"><summary><span>↗</span> Fuentes oficiales y recursos</summary>
+   <nav class="nav-list">
+    <a class="nav-item" href="https://pescarecreativa.sernapesca.cl/" target="_blank" rel="noopener"><span class="nav-icon">↗</span>Comprar licencia de pesca</a>
+    <a class="nav-item" href="https://www.sernapesca.cl/" target="_blank" rel="noopener"><span class="nav-icon">↗</span>SERNAPESCA</a>
+    <a class="nav-item" href="https://dga.mop.gob.cl/sistema-hidrometrico-en-linea/" target="_blank" rel="noopener"><span class="nav-icon">↗</span>Sistema Hidrométrico DGA</a>
+    <a class="nav-item" href="https://dga.mop.gob.cl/estadisticas-estaciones-dga/" target="_blank" rel="noopener"><span class="nav-icon">↗</span>Estadísticas estaciones DGA</a>
+    <a class="nav-item" href="https://dga.mop.gob.cl/visualizadores/" target="_blank" rel="noopener"><span class="nav-icon">↗</span>Visualizadores DGA</a>
+   </nav>
+  </details>
+  <div class="side-footer">ANGLERMAP <span>·</span> PATAGONIA</div>
  </div>
 </aside>
 
