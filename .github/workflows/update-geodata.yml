@@ -50,7 +50,6 @@ jobs:
 
           required = [
               "data/magallanes/communes.geojson",
-              "data/magallanes/provinces.geojson",
               "data/magallanes/waterbodies.geojson",
               "data/magallanes/dga_stations.geojson",
               "data/metadata/sources.json"
