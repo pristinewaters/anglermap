@@ -1,5 +1,6 @@
 
 import hashlib
+import math
 import json
 import re
 from numbers import Integral
@@ -897,6 +898,37 @@ def query_dga_stations(commune_union):
     return output, metadata
 
 
+def geodesic_line_length_km(geometry):
+    """Longitud aproximada de una geometría lineal WGS84, en kilómetros."""
+    if geometry is None or geometry.is_empty:
+        return 0.0
+    if isinstance(geometry, LineString):
+        lines = [geometry]
+    elif isinstance(geometry, MultiLineString):
+        lines = list(geometry.geoms)
+    elif isinstance(geometry, GeometryCollection):
+        lines = []
+        for part in geometry.geoms:
+            if isinstance(part, LineString):
+                lines.append(part)
+            elif isinstance(part, MultiLineString):
+                lines.extend(part.geoms)
+    else:
+        return 0.0
+
+    radius_km = 6371.0088
+    total = 0.0
+    for line in lines:
+        coords = list(line.coords)
+        for first, second in zip(coords, coords[1:]):
+            lon1, lat1 = math.radians(first[0]), math.radians(first[1])
+            lon2, lat2 = math.radians(second[0]), math.radians(second[1])
+            dlat, dlon = lat2 - lat1, lon2 - lon1
+            a = math.sin(dlat / 2) ** 2 + math.cos(lat1) * math.cos(lat2) * math.sin(dlon / 2) ** 2
+            total += 2 * radius_km * math.asin(min(1.0, math.sqrt(a)))
+    return total
+
+
 def query_mop_roads(commune_union):
     """Descarga caminos MOP y genera una única capa GeoJSON de accesos."""
     features, fields, metadata = fetch_features(
@@ -1143,6 +1175,10 @@ def main():
         road_ids = set()
         road_surface_counts = {}
         road_classification_counts = {}
+        road_surface_lengths_km = {}
+        road_classification_lengths_km = {}
+        regional_communal_access_km = 0.0
+        total_road_length_km = 0.0
         for feature in roads:
             props = feature["properties"]
             commune = props["communes"][0]
@@ -1151,8 +1187,15 @@ def main():
                 road_ids.add(props["road_id"])
             surface = props.get("surface") or "Sin clasificación de carpeta"
             classification = props.get("classification") or "Sin clasificación vial"
+            length_km = geodesic_line_length_km(shape(feature["geometry"]))
+            total_road_length_km += length_km
             road_surface_counts[surface] = road_surface_counts.get(surface, 0) + 1
             road_classification_counts[classification] = road_classification_counts.get(classification, 0) + 1
+            road_surface_lengths_km[surface] = road_surface_lengths_km.get(surface, 0.0) + length_km
+            road_classification_lengths_km[classification] = road_classification_lengths_km.get(classification, 0.0) + length_km
+            normalized_classification = normalize(classification)
+            if "regional comunal" in normalized_classification or "regional de acceso" in normalized_classification:
+                regional_communal_access_km += length_km
 
         station_commune_counts = {}
         station_type_counts = {}
@@ -1238,6 +1281,13 @@ def main():
             },
             "counts": {
                 **counts,
+                "roads_unique_source_features": len(road_ids),
+                "roads_total_length_km": round(total_road_length_km, 2),
+                "roads_regional_communal_and_access_length_km": round(regional_communal_access_km, 2),
+                "roads_by_surface": dict(sorted(road_surface_counts.items())),
+                "roads_by_surface_length_km": {key: round(value, 2) for key, value in sorted(road_surface_lengths_km.items())},
+                "roads_by_classification": dict(sorted(road_classification_counts.items())),
+                "roads_by_classification_length_km": {key: round(value, 2) for key, value in sorted(road_classification_lengths_km.items())},
                 "waterbodies_unique_entities": unique_waterbody_count,
                 "waterbodies_by_category": category_counts,
                 "waterbodies_by_commune": commune_counts,
