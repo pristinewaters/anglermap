@@ -105,6 +105,76 @@
   .tm-main{scroll-behavior:smooth}
   @media(max-width:760px){.tm-nav{position:sticky;top:0;z-index:5;align-items:center;scroll-snap-type:x proximity}.tm-nav-group{display:flex;gap:4px;align-items:center;flex-shrink:0;margin:0}.tm-nav-group .tm-nav-label{display:none}.tm-nav button{scroll-snap-align:start;min-height:38px}.tm-nav button span{display:inline}.tm-nav button.active{box-shadow:inset 0 -3px #55d9e8}}
   `;
+
+  /* Territory Manager redesign: task navigation across the top, spacious work area */
+  #tm-shell{background:#071521f7;backdrop-filter:blur(16px)}
+  .tm-head{height:66px;padding:0 clamp(14px,2.5vw,34px);gap:14px;background:#081a28;border-bottom:1px solid #203d50}
+  .tm-brand{font-size:17px;letter-spacing:1.2px}
+  .tm-head small{font-size:9px;letter-spacing:1.25px;text-transform:uppercase}
+  .tm-head .tm-icon-btn{margin-left:auto}
+  .tm-close{font-size:11px;padding:10px 14px;border-radius:10px;background:#15384b}
+  .tm-layout{display:flex;flex-direction:column;min-height:0;flex:1}
+  .tm-nav{display:flex;align-items:center;gap:5px;padding:8px clamp(12px,2.5vw,34px);border-right:0;border-bottom:1px solid #203d50;background:#0a1d2b;overflow-x:auto;scrollbar-width:thin}
+  .tm-nav-group{display:flex;align-items:center;gap:4px;margin:0;flex-shrink:0}
+  .tm-nav-label{display:none}
+  .tm-nav button{width:auto;min-height:39px;margin:0;padding:9px 13px;white-space:nowrap;border-radius:9px;font-size:11px}
+  .tm-nav button.active{background:#173d51;border-color:#2c5b72;box-shadow:inset 0 -2px #55d9e8;color:#e9fbff}
+  .tm-main{max-width:1500px;padding:clamp(18px,2.5vw,34px);overflow:auto}
+  .tm-kicker{font-size:9px;letter-spacing:1.8px}
+  .tm-title{font-size:clamp(24px,2.3vw,32px);letter-spacing:-.5px;margin:6px 0 4px}
+  .tm-desc{font-size:11px;line-height:1.45;margin:0 0 14px;max-width:680px;color:#91a9b8}
+  .tm-toolbar{margin:4px 0 14px}
+  .tm-hero{min-height:112px;padding:22px 24px;border-radius:15px;background:linear-gradient(110deg,#123b50 0%,#102a3c 56%,#102537 100%);border-color:#2a566c}
+  .tm-hero h2{font-size:22px;letter-spacing:-.3px}
+  .tm-hero p{font-size:10px}
+  .tm-grid{gap:9px;margin:13px 0}
+  .tm-card{padding:13px 15px;border-radius:11px;background:#0e2332;border-color:#203f52}
+  .tm-card small{font-size:9px;margin-bottom:7px;color:#91a9b8}
+  .tm-value{font-size:23px;letter-spacing:-.5px}
+  .tm-card p{font-size:9px;margin-top:5px;color:#809aaa}
+  .tm-pilot-grid{grid-template-columns:minmax(0,1.55fr) minmax(290px,.9fr);gap:12px}
+  .tm-pilot-panel{padding:15px;border-radius:12px;background:#0b2030;border-color:#203f52}
+  .tm-pilot-panel h3,.tm-section h3{font-size:12px;letter-spacing:.1px}
+  .tm-calendar{gap:5px}
+  .tm-day{min-height:54px;padding:7px 3px;border-radius:8px;background:#10283a;border-color:#25465a}
+  .tm-day strong{font-size:12px}
+  .tm-day small{font-size:8px}
+  .tm-slot{padding:10px 11px;border-radius:9px;background:#10283a;border-color:#25465a}
+  .tm-slot strong{font-size:11px}
+  .tm-slot small{font-size:9px}
+  .tm-pilot-item{padding:10px;border-radius:9px;background:#10283a;border-color:#25465a}
+  .tm-pilot-item strong{font-size:11px}
+  .tm-pilot-item small{font-size:9px}
+  .tm-btn{font-size:10px;padding:9px 11px;border-radius:9px}
+  .tm-btn.primary{background:#12657a;border-color:#258da2}
+  .tm-note{font-size:9px;padding:9px 12px;margin:12px 0;border-radius:9px}
+  .tm-row{padding:11px 12px;border-radius:9px;background:#0d2332;border-color:#203f52}
+  .tm-empty{padding:20px;border-radius:10px;font-size:11px}
+  .tm-import{border-radius:10px;background:#0d2332;border-color:#203f52}
+  .tm-form{gap:10px}
+  .tm-field input,.tm-field select,.tm-field textarea{border-radius:9px;background:#091b29;border-color:#2a4b60;font-size:11px}
+  .tm-tag{font-size:8px;letter-spacing:.3px}
+  @media(max-width:760px){
+    .tm-head{height:55px;padding:0 10px;gap:8px}
+    .tm-brand{font-size:14px}
+    .tm-head small{display:none}
+    .tm-close{padding:8px 10px;font-size:9px}
+    .tm-nav{padding:7px 8px;gap:4px}
+    .tm-nav button{min-height:36px;padding:8px 10px;font-size:10px}
+    .tm-main{padding:16px 11px}
+    .tm-grid{gap:7px}
+    .tm-card{padding:11px}
+    .tm-value{font-size:20px}
+    .tm-pilot-grid{grid-template-columns:1fr}
+    .tm-hero{padding:17px}
+    .tm-hero h2{font-size:19px}
+  }
+  @media(max-width:420px){
+    .tm-title{font-size:22px}
+    .tm-grid{grid-template-columns:repeat(2,minmax(0,1fr))}
+    .tm-nav button{padding:7px 9px}
+  }
+
   document.head.appendChild(style);
 
   const shell = document.createElement("section");
@@ -124,7 +194,7 @@
   document.querySelector(".map-area").appendChild(shell);
 
   const esc = value => String(value ?? "").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
-  const heading = (k,t,d) => `<div class="tm-kicker">${k}</div><h1 class="tm-title">${t}</h1><p class="tm-desc">${d}</p>`;
+  const heading = (k,t,d) => `<div class="tm-page-heading"><div class="tm-kicker">${k}</div><h1 class="tm-title">${t}</h1><p class="tm-desc">${d}</p></div>`;
   const empty = (symbol, message) => `<div class="tm-empty">${symbol}<br>${message}</div>`;
   const tag = text => `<span class="tm-tag">${esc(text)}</span>`;
   const row = (title, desc, status) => `<div class="tm-row"><div class="tm-row-main"><strong>${esc(title)}</strong><p>${esc(desc)}</p></div>${tag(status)}</div>`;
