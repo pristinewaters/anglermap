@@ -2,6 +2,7 @@
 import hashlib
 import json
 import re
+from numbers import Integral
 import time
 import unicodedata
 from datetime import datetime, timezone
@@ -18,9 +19,12 @@ from shapely.geometry import (
     MultiPolygon,
     GeometryCollection,
     Point,
-    LinearRing
+    LinearRing,
+    box
 )
 from shapely.ops import unary_union
+from shapely.geometry.polygon import orient
+from shapely.strtree import STRtree
 
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -60,15 +64,17 @@ TARGET_COMMUNES = {
 
 EXPECTED_COMMUNES = 9
 
-BATCH_SIZE = 20
+BATCH_SIZE = 500
 MAX_RETRIES = 4
 
 SESSION = requests.Session()
 SESSION.headers.update({
-    "User-Agent": "AnglerMap-Geodata/3.0"
+    "User-Agent": "AnglerMap-Geodata/3.3"
 })
 
 COMMUNE_GEOMETRIES = []
+COMMUNE_TREE = None
+COMMUNE_TREE_LOOKUP = {}
 
 
 def log(message):
@@ -87,7 +93,7 @@ def normalize(value):
     return re.sub(r"\s+", " ", value)
 
 
-def request_json(url, params=None):
+def request_json(url, params=None, method="GET"):
     params = dict(params or {})
     params.setdefault("f", "json")
 
@@ -95,11 +101,18 @@ def request_json(url, params=None):
 
     for attempt in range(MAX_RETRIES):
         try:
-            response = SESSION.get(
-                url,
-                params=params,
-                timeout=(25, 150)
-            )
+            if method.upper() == "POST":
+                response = SESSION.post(
+                    url,
+                    data=params,
+                    timeout=(20, 120)
+                )
+            else:
+                response = SESSION.get(
+                    url,
+                    params=params,
+                    timeout=(20, 120)
+                )
 
             if response.status_code == 429 or response.status_code >= 500:
                 raise requests.HTTPError(
@@ -108,7 +121,17 @@ def request_json(url, params=None):
 
             response.raise_for_status()
 
-            data = response.json()
+            try:
+                data = response.json()
+            except ValueError as parse_error:
+                body_preview = response.text[:500].replace("\n", " ")
+                raise RuntimeError(
+                    "Respuesta no JSON del servicio ArcGIS "
+                    + "(HTTP " + str(response.status_code)
+                    + ", Content-Type="
+                    + str(response.headers.get("Content-Type"))
+                    + "): " + body_preview
+                ) from parse_error
 
             if "error" in data:
                 raise RuntimeError(
@@ -276,17 +299,40 @@ def esri_to_shape(geometry):
     return result
 
 
-def fetch_ids(layer_url, where="1=1", geometry=None):
+def arcgis_polygon_geometry(geometry):
     """
-    Recupera IDs candidatos desde ArcGIS.
-
-    Si se proporciona una geometría Shapely, se consulta
-    utilizando exclusivamente su bounding box.
-
-    El filtro espacial exacto se realiza posteriormente
-    en Python contra las geometrías comunales reales.
+    Convierte Polygon/MultiPolygon Shapely a geometría ArcGIS.
+    Los anillos se orientan según la convención de ArcGIS:
+    exteriores horarios e interiores antihorarios.
     """
+    if geometry.is_empty:
+        return None
 
+    if geometry.geom_type == "Polygon":
+        polygons = [geometry]
+    elif geometry.geom_type == "MultiPolygon":
+        polygons = list(geometry.geoms)
+    else:
+        raise RuntimeError(
+            "La consulta espacial requiere Polygon/MultiPolygon; recibido: "
+            + geometry.geom_type
+        )
+
+    rings = []
+    for polygon in polygons:
+        polygon = orient(polygon, sign=-1.0)
+        rings.append([list(point) for point in polygon.exterior.coords])
+        for interior in polygon.interiors:
+            rings.append([list(point) for point in interior.coords])
+
+    return {
+        "rings": rings,
+        "spatialReference": {"wkid": 4326}
+    }
+
+
+def fetch_ids_single(layer_url, where="1=1", geometry=None):
+    """Consulta ArcGIS para un único rectángulo espacial."""
     params = {
         "where": where,
         "returnIdsOnly": "true"
@@ -297,22 +343,15 @@ def fetch_ids(layer_url, where="1=1", geometry=None):
             return []
 
         xmin, ymin, xmax, ymax = geometry.bounds
-
         envelope = {
             "xmin": xmin,
             "ymin": ymin,
             "xmax": xmax,
             "ymax": ymax,
-            "spatialReference": {
-                "wkid": 4326
-            }
+            "spatialReference": {"wkid": 4326}
         }
-
         params.update({
-            "geometry": json.dumps(
-                envelope,
-                separators=(",", ":")
-            ),
+            "geometry": json.dumps(envelope, separators=(",", ":")),
             "geometryType": "esriGeometryEnvelope",
             "inSR": "4326",
             "spatialRel": "esriSpatialRelIntersects"
@@ -320,10 +359,55 @@ def fetch_ids(layer_url, where="1=1", geometry=None):
 
     data = request_json(
         layer_url + "/query",
-        params
+        params,
+        method="GET"
     )
-
     return data.get("objectIds") or []
+
+
+def fetch_ids(layer_url, where="1=1", geometry=None):
+    """
+    Consulta por teselas espaciales pequeñas. Los servicios ArcGIS del MOP
+    fallan o agotan tiempo con envolventes extensas de comunas australes.
+    Cada tesela reduce el coste de la consulta remota; los IDs se deduplican
+    y la geometría se filtra exactamente después de descargar los features.
+    """
+    if geometry is None or geometry.is_empty:
+        return fetch_ids_single(layer_url, where, geometry)
+
+    xmin, ymin, xmax, ymax = geometry.bounds
+    tile_size = 0.5  # grados; aproximadamente 55 km en latitudes australes
+    x = xmin
+    tile_count = 0
+    ids = set()
+
+    while x < xmax:
+        y = ymin
+        x2 = min(x + tile_size, xmax)
+        while y < ymax:
+            y2 = min(y + tile_size, ymax)
+            tile = box(x, y, x2, y2)
+
+            if geometry.intersects(tile):
+                tile_count += 1
+                tile_ids = fetch_ids_single(layer_url, where, tile)
+                ids.update(tile_ids)
+
+                if tile_count % 10 == 0:
+                    log(
+                        "Teselas consultadas: " + str(tile_count)
+                        + " · IDs únicos: " + str(len(ids))
+                    )
+
+            y = y2
+        x = x2
+
+    log(
+        "Consulta espacial por teselas completada: "
+        + str(tile_count) + " teselas · "
+        + str(len(ids)) + " IDs únicos"
+    )
+    return sorted(ids)
 
 
 def fetch_batch(layer_url, ids, oid_field):
@@ -368,13 +452,28 @@ def fetch_batch(layer_url, ids, oid_field):
 def fetch_features(layer_url, where="1=1", geometry=None):
     metadata, oid_field, fields = layer_metadata(layer_url)
 
-    ids = fetch_ids(
-        layer_url,
-        where,
-        geometry
-    )
+    # Consultar por comuna evita que el bounding box conjunto
+    # abarque grandes superficies ajenas al territorio objetivo.
+    if geometry is not None and COMMUNE_GEOMETRIES:
+        candidate_ids = set()
 
-    ids = sorted(set(ids))
+        for commune in COMMUNE_GEOMETRIES:
+            commune_ids = fetch_ids(
+                layer_url,
+                where,
+                commune["geometry"]
+            )
+            candidate_ids.update(commune_ids)
+            log(
+                "Candidatos "
+                + commune["name"]
+                + ": "
+                + str(len(commune_ids))
+            )
+
+        ids = sorted(candidate_ids)
+    else:
+        ids = sorted(set(fetch_ids(layer_url, where, geometry)))
 
     log(
         layer_url
@@ -395,14 +494,15 @@ def fetch_features(layer_url, where="1=1", geometry=None):
             )
         )
 
-        log(
-            "Descargados "
-            + str(len(output))
-            + " / "
-            + str(len(ids))
-        )
+        if (start // BATCH_SIZE) % 10 == 0 or start + len(batch) == len(ids):
+            log(
+                "Descargados "
+                + str(len(output))
+                + " / "
+                + str(len(ids))
+            )
 
-        time.sleep(0.15)
+        time.sleep(0.05)
 
     if len(output) != len(ids):
         raise RuntimeError(
@@ -413,23 +513,69 @@ def fetch_features(layer_url, where="1=1", geometry=None):
     return output, fields, metadata
 
 
-def records_from_features(features):
+def records_from_features(features, label="geometrías"):
     output = []
+    total = len(features)
 
-    for feature in features:
+    log("Procesando " + str(total) + " " + label)
+
+    for index, feature in enumerate(features, start=1):
         geometry = esri_to_shape(
             feature.get("geometry")
         )
 
-        if geometry is None or geometry.is_empty:
-            continue
+        if geometry is not None and not geometry.is_empty:
+            output.append({
+                "geometry": geometry,
+                "properties": feature.get("attributes") or {}
+            })
 
-        output.append({
-            "geometry": geometry,
-            "properties": feature.get("attributes") or {}
-        })
+        if index % 5000 == 0 or index == total:
+            log(
+                "Procesamiento "
+                + label
+                + ": "
+                + str(index)
+                + " / "
+                + str(total)
+            )
 
     return output
+
+
+def build_commune_spatial_index():
+    global COMMUNE_TREE, COMMUNE_TREE_LOOKUP
+
+    geometries = [item["geometry"] for item in COMMUNE_GEOMETRIES]
+    COMMUNE_TREE = STRtree(geometries)
+    COMMUNE_TREE_LOOKUP = {
+        id(geometry): index
+        for index, geometry in enumerate(geometries)
+    }
+
+
+def intersecting_communes(geometry):
+    if COMMUNE_TREE is None:
+        return [
+            item for item in COMMUNE_GEOMETRIES
+            if geometry.intersects(item["geometry"])
+        ]
+
+    matches = []
+    for candidate in COMMUNE_TREE.query(geometry):
+        # Shapely 2 returns integer indices; Shapely 1 returns geometries.
+        if isinstance(candidate, Integral):
+            index = candidate
+        else:
+            index = COMMUNE_TREE_LOOKUP.get(id(candidate))
+            if index is None:
+                continue
+
+        commune = COMMUNE_GEOMETRIES[index]
+        if geometry.intersects(commune["geometry"]):
+            matches.append(commune)
+
+    return matches
 
 
 def geojson_feature(geometry, properties):
@@ -552,16 +698,20 @@ def get_communes():
 
 
 def get_provinces(commune_records):
-    features, fields, metadata = fetch_features(
-        URL_PROVINCES
-    )
-
-    records = records_from_features(features)
-
     commune_union = unary_union([
         record["geometry"]
         for record in commune_records
     ])
+
+    # La capa provincial contiene pocos registros. Descargarla completa
+    # evita enviar polígonos comunales extensos al servicio MOP, cuyo
+    # endpoint ha agotado el tiempo de espera al recibir consultas POST.
+    # El recorte exacto al territorio de las nueve comunas se realiza abajo.
+    features, fields, metadata = fetch_features(
+        URL_PROVINCES
+    )
+
+    records = records_from_features(features, "límites comunales")
 
     name_field = find_field(
         fields,
@@ -615,7 +765,7 @@ def query_water_layer(
     water_type,
     commune_union
 ):
-    # La consulta remota utiliza solamente el bounding box.
+    # La consulta remota usa intersección poligonal exacta por comuna.
     features, fields, metadata = fetch_features(
         layer_url,
         geometry=commune_union
@@ -644,7 +794,7 @@ def query_water_layer(
         ]
     )
 
-    records = records_from_features(features)
+    records = records_from_features(features, source_name)
     output = []
 
     for record in records:
@@ -688,11 +838,10 @@ def query_water_layer(
             stable.encode("utf-8")
         ).hexdigest()[:16]
 
-        communes = []
-
-        for commune in COMMUNE_GEOMETRIES:
-            if clipped.intersects(commune["geometry"]):
-                communes.append(commune["name"])
+        communes = [
+            commune["name"]
+            for commune in intersecting_communes(clipped)
+        ]
 
         output.append(
             geojson_feature(
@@ -724,7 +873,7 @@ def get_dga_stations(commune_union):
         geometry=commune_union
     )
 
-    records = records_from_features(features)
+    records = records_from_features(features, "estaciones DGA")
     output = []
 
     for record in records:
@@ -737,11 +886,10 @@ def get_dga_stations(commune_union):
 
         props = record["properties"]
 
-        communes = []
-
-        for commune in COMMUNE_GEOMETRIES:
-            if geom.intersects(commune["geometry"]):
-                communes.append(commune["name"])
+        communes = [
+            commune["name"]
+            for commune in intersecting_communes(geom)
+        ]
 
         output.append(
             geojson_feature(
@@ -812,7 +960,6 @@ def publish_atomically(temp_dir):
 
     files = [
         "communes.geojson",
-        "provinces.geojson",
         "waterbodies.geojson",
         "dga_stations.geojson"
     ]
@@ -867,7 +1014,7 @@ def publish_atomically(temp_dir):
 def main():
     global COMMUNE_GEOMETRIES
 
-    log("Inicio de AnglerMap Geodata 3.0")
+    log("Inicio de AnglerMap Geodata 3.3")
     log("Territorio: nueve comunas de Magallanes.")
     log("Fuentes: MOP, IGM y DGA. SNIA excluido.")
     log("Cabo de Hornos y Antártica excluidos.")
@@ -897,23 +1044,16 @@ def main():
             item["geometry"]
             for item in COMMUNE_GEOMETRIES
         ])
+        build_commune_spatial_index()
 
         write_geojson(
             temp_dir / "communes.geojson",
             commune_features
         )
 
-        # 2. Provincias MOP
-        log("Construyendo provincias")
-
-        province_features, province_meta = get_provinces(
-            commune_records
-        )
-
-        write_geojson(
-            temp_dir / "provinces.geojson",
-            province_features
-        )
+        # 2. Provincias temporalmente fuera del proceso.
+        # No son necesarias para la cobertura geográfica inicial.
+        log("Se omite temporalmente la capa provincial MOP.")
 
         # 3. Hidrografía IGM
         log("Consultando hidrografía lineal IGM")
@@ -1038,17 +1178,13 @@ def main():
                 temp_dir / "communes.geojson",
                 EXPECTED_COMMUNES
             ),
-            "provinces": validate_geojson(
-                temp_dir / "provinces.geojson",
-                1
-            ),
             "waterbodies": validate_geojson(
                 temp_dir / "waterbodies.geojson",
                 1
             ),
             "dga_stations": validate_geojson(
                 temp_dir / "dga_stations.geojson",
-                1
+                0
             )
         }
 
@@ -1073,7 +1209,7 @@ def main():
 
         metadata = {
             "application": "AnglerMap",
-            "version": "3.0",
+            "version": "3.2",
             "generated_at": datetime.now(
                 timezone.utc
             ).isoformat(),
@@ -1085,9 +1221,10 @@ def main():
                 "cape_horn_commune_included": False
             },
             "spatial_query_method": {
-                "remote_query": "bounding_box",
-                "remote_geometry_type": "esriGeometryEnvelope",
-                "local_filter": "exact_intersection_with_commune_geometries",
+                "remote_query": "exact_polygon_intersection_per_commune",
+                "remote_geometry_type": "esriGeometryPolygon",
+                "local_filter": "exact_intersection_and_clip_with_commune_union",
+                "commune_spatial_index": "STRtree",
                 "spatial_reference": "EPSG:4326"
             },
             "sources": {
@@ -1099,7 +1236,8 @@ def main():
                 "provinces": {
                     "institution": "MOP",
                     "url": URL_PROVINCES,
-                    "status": "required"
+                    "status": "deferred",
+                    "reason": "Capa administrativa complementaria; excluida temporalmente del proceso de generación."
                 },
                 "igm_rivers": {
                     "institution": "IGM",

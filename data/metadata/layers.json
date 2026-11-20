@@ -1,0 +1,68 @@
+{
+  "schema_version": 1,
+  "project": "AnglerMap",
+  "region": "Magallanes",
+  "updated_at": null,
+  "layers": [
+    {
+      "id": "communes",
+      "name": "Límites comunales",
+      "file": "magallanes/communes.geojson",
+      "group": "administrative",
+      "source": "Fuente oficial pendiente de consolidación",
+      "status": "pending",
+      "visible_by_default": false,
+      "style": {
+        "color": "#e8bd70",
+        "weight": 1.5,
+        "opacity": 0.9,
+        "fillOpacity": 0.04
+      }
+    },
+    {
+      "id": "waterbodies",
+      "name": "Ríos y cuerpos de agua",
+      "file": "magallanes/waterbodies.geojson",
+      "group": "hydrography",
+      "source": "Capas hidrográficas oficiales y complementarias",
+      "status": "pending",
+      "visible_by_default": false,
+      "style": {
+        "color": "#55d9e8",
+        "weight": 2,
+        "opacity": 0.9,
+        "fillOpacity": 0.12
+      }
+    },
+    {
+      "id": "dga_stations",
+      "name": "Estaciones DGA",
+      "file": "magallanes/dga_stations.geojson",
+      "group": "monitoring",
+      "source": "Dirección General de Aguas",
+      "status": "pending",
+      "visible_by_default": false,
+      "style": {
+        "color": "#e8bd70",
+        "weight": 2,
+        "opacity": 0.95,
+        "fillOpacity": 0.8
+      }
+    },
+    {
+      "id": "mop_hydrography",
+      "name": "Hidrografía MOP",
+      "file": "sources/mop/hydrography/waterbodies.geojson",
+      "group": "hydrography",
+      "source": "Ministerio de Obras Públicas",
+      "status": "planned",
+      "visible_by_default": false,
+      "style": {
+        "color": "#258ba8",
+        "weight": 2,
+        "opacity": 0.95,
+        "fillOpacity": 0.12
+      }
+    }
+  ]
+}

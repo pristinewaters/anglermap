@@ -1374,5 +1374,82 @@ console.info(
 );
 </script>
 
+<script>
+/* AnglerMap · Cargador modular de capas GeoJSON
+   Las capas se registran en data/metadata/layers.json.
+   Incorporar una fuente nueva no requiere modificar este módulo:
+   basta con publicar su GeoJSON y agregar una entrada al catálogo. */
+(async function initCatalogLayers(){
+  const catalogUrl = "data/metadata/layers.json";
+  const control = document.createElement("div");
+  control.id = "catalogLayers";
+  control.style.cssText = "position:absolute;z-index:460;left:15px;top:65px;max-width:245px;max-height:42vh;overflow:auto;background:#091b29ed;border:1px solid #385366;border-radius:10px;padding:10px 12px;color:#edf5f8;font:11px system-ui;backdrop-filter:blur(10px)";
+  control.innerHTML = '<strong style="display:block;color:#55d9e8;margin-bottom:7px">CAPAS CARTOGRÁFICAS</strong><div id="catalogLayerItems">Cargando catálogo…</div>';
+  const mapArea = document.querySelector(".map-area");
+  if (mapArea) mapArea.appendChild(control);
+
+  const items = control.querySelector("#catalogLayerItems");
+  const loaded = new Map();
+  const safe = value => String(value ?? "").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+
+  try {
+    const response = await fetch(catalogUrl, {cache:"no-store"});
+    if (!response.ok) throw new Error("Catálogo HTTP " + response.status);
+    const catalog = await response.json();
+    if (!Array.isArray(catalog.layers)) throw new Error("Catálogo sin arreglo layers");
+
+    items.innerHTML = "";
+    for (const layer of catalog.layers) {
+      const row = document.createElement("label");
+      row.style.cssText = "display:flex;align-items:center;gap:7px;padding:5px 0;border-top:1px solid #20394b;cursor:pointer";
+      const input = document.createElement("input");
+      input.type = "checkbox";
+      input.disabled = layer.status !== "available";
+      input.checked = false;
+      input.style.accentColor = "#55d9e8";
+      const name = document.createElement("span");
+      name.textContent = layer.name || layer.id;
+      name.style.flex = "1";
+      const status = document.createElement("small");
+      status.textContent = layer.status === "available" ? "lista" : layer.status === "planned" ? "futura" : "pendiente";
+      status.style.color = layer.status === "available" ? "#59d6a0" : "#91a9b8";
+      row.append(input, name, status);
+      items.appendChild(row);
+
+      if (layer.status !== "available" || !layer.file) continue;
+      input.disabled = false;
+      input.addEventListener("change", async () => {
+        try {
+          if (!loaded.has(layer.id)) {
+            status.textContent = "cargando";
+            const dataResponse = await fetch("data/" + layer.file.replace(/^\.\//,""), {cache:"no-store"});
+            if (!dataResponse.ok) throw new Error("GeoJSON HTTP " + dataResponse.status);
+            const geojson = await dataResponse.json();
+            if (geojson.type !== "FeatureCollection" || !Array.isArray(geojson.features)) throw new Error("GeoJSON inválido");
+            const geoLayer = L.geoJSON(geojson, {
+              style: layer.style || {color:"#55d9e8",weight:2},
+              pointToLayer: (feature, latlng) => L.circleMarker(latlng, {radius:5,color:(layer.style||{}).color||"#55d9e8",fillOpacity:.85})
+            });
+            loaded.set(layer.id, geoLayer);
+            status.textContent = "lista";
+          }
+          const geoLayer = loaded.get(layer.id);
+          if (input.checked) geoLayer.addTo(map);
+          else map.removeLayer(geoLayer);
+        } catch (error) {
+          input.checked = false;
+          status.textContent = "error";
+          console.error("AnglerMap layer " + layer.id, error);
+        }
+      });
+    }
+    if (!catalog.layers.length) items.textContent = "No hay capas registradas.";
+  } catch (error) {
+    items.textContent = "Catálogo no disponible";
+    console.error("AnglerMap catalog:", error);
+  }
+})();
+</script>
+
 </body>
 </html>
