@@ -9,9 +9,10 @@
   const read = () => {
     try {
       const value = JSON.parse(localStorage.getItem(STORE)) || {};
-      return { territories: [], rules: [], requests: [], imports: [], ...value,
+      return { territories: [], rules: [], requests: [], imports: [], pilot: {sections:[],accessPoints:[],bookings:[],operators:[],policies:[]}, ...value,
         territories: Array.isArray(value.territories) ? value.territories.map((t,i)=>({...t,id:t.id||"legacy-"+i})) : [],
-        imports: Array.isArray(value.imports) ? value.imports : [] };
+        imports: Array.isArray(value.imports) ? value.imports : [],
+        pilot: {sections:[],accessPoints:[],bookings:[],operators:[],policies:[],...(value.pilot||{})} };
     } catch (_) { return { territories: [], rules: [], requests: [], imports: [] }; }
   };
   const save = data => {
@@ -58,6 +59,21 @@
   .tm-field{display:grid;gap:6px}.tm-field.full{grid-column:1/-1}.tm-field label{font-size:10px;color:#a9bdc8}
   .tm-field input,.tm-field select,.tm-field textarea{width:100%;padding:11px;border:1px solid #35566a;border-radius:8px;background:#0a1b28;color:#edf5f8}
   .tm-actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:16px}
+  .tm-pilot-grid{display:grid;grid-template-columns:minmax(0,1.5fr) minmax(260px,1fr);gap:14px}
+  .tm-pilot-panel{background:#0e2433;border:1px solid #29485b;border-radius:12px;padding:15px;margin:12px 0}
+  .tm-pilot-panel h3{font-size:13px;margin:0 0 10px}
+  .tm-pilot-metric{font-size:24px;font-weight:800}
+  .tm-pilot-muted{color:#91a9b8;font-size:10px;line-height:1.5}
+  .tm-pilot-list{display:grid;gap:8px}
+  .tm-pilot-item{padding:11px;border:1px solid #29485b;border-radius:9px;background:#102638}
+  .tm-pilot-item strong{font-size:12px}.tm-pilot-item small{display:block;color:#91a9b8;margin-top:4px;line-height:1.5}
+  .tm-pilot-item button{margin:8px 5px 0 0}
+  .tm-pilot-checks{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:9px}
+  .tm-pilot-checks label{display:flex;gap:8px;align-items:flex-start;color:#c6d8e1;font-size:11px}
+  .tm-pilot-form{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
+  .tm-pilot-form .full{grid-column:1/-1}
+  @media(max-width:760px){.tm-pilot-grid{grid-template-columns:1fr}.tm-pilot-checks{grid-template-columns:1fr}}
+
   @media(max-width:760px){.tm-layout{grid-template-columns:1fr}.tm-nav{display:flex;overflow-x:auto;gap:4px;padding:8px;border-right:0;border-bottom:1px solid #294456}.tm-nav-label{display:none}.tm-nav button{width:auto;white-space:nowrap;padding:9px}.tm-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.tm-main{padding:18px 13px}.tm-head{height:52px;padding:0 12px}.tm-head small{display:none}.tm-title{font-size:21px}}
   @media(max-width:420px){.tm-form{grid-template-columns:1fr}.tm-field.full{grid-column:auto}.tm-row{align-items:flex-start;flex-wrap:wrap}.tm-tag{margin-left:auto}}
   `;
@@ -71,6 +87,7 @@
       <nav class="tm-nav" aria-label="Administración territorial">
         <div class="tm-nav-label">GESTIÓN TERRITORIAL</div>
         <button data-tm-tab="overview" class="active">⌂ Resumen</button>
+        <button data-tm-tab="rio-medio">〰 Río del Medio</button>
         <button data-tm-tab="territories">▱ Territorios</button>
         <button data-tm-tab="access">◇ Accesos y reglas</button>
         <button data-tm-tab="requests">⇄ Solicitudes</button>
@@ -132,6 +149,8 @@
         <div class="tm-list">${data.rules.length ? data.rules.map((r,i)=>row(r.sector,(r.territoryId ? (data.territories.find(t=>t.id===r.territoryId)?.name||"Territorio no disponible")+" · " : "Sin territorio vinculado · ")+r.type+" · "+(r.season||"Sin vigencia")+(r.notes?" · "+r.notes:""),"Borrador local")+ `<button class="tm-btn subtle" data-remove-rule="${i}">Eliminar</button>`).join("") : empty("◇","No hay condiciones registradas.")}</div>`;
       $("tm-rule-form").onsubmit=e=>{e.preventDefault();data.rules.push({territoryId:$("tm-territory").value||null,sector:$("tm-sector").value.trim(),type:$("tm-type").value,season:$("tm-season").value.trim(),capacity:$("tm-capacity").value,notes:$("tm-notes").value.trim()});if(save(data))render();};
       root.querySelectorAll("[data-remove-rule]").forEach(b=>b.onclick=()=>{data.rules.splice(Number(b.dataset.removeRule),1);save(data);render();});
+    } else if (tab === "rio-medio") {
+      renderRioMedio(root);
     } else if (tab === "requests") {
       root.innerHTML = heading("COORDINACIÓN", "Solicitudes", "Este espacio está preparado para revisar solicitudes de ingreso, coordinación con guías y disponibilidad. La recepción real requiere cuentas y un servicio backend.") +
         `<div class="tm-note">Las solicitudes que aparecen aquí son registros locales de demostración; no se envían a propietarios ni a terceros.</div>
