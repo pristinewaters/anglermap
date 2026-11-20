@@ -63,12 +63,12 @@ TARGET_COMMUNES = {
 
 EXPECTED_COMMUNES = 9
 
-BATCH_SIZE = 100
+BATCH_SIZE = 500
 MAX_RETRIES = 4
 
 SESSION = requests.Session()
 SESSION.headers.update({
-    "User-Agent": "AnglerMap-Geodata/3.2"
+    "User-Agent": "AnglerMap-Geodata/3.3"
 })
 
 COMMUNE_GEOMETRIES = []
@@ -120,7 +120,17 @@ def request_json(url, params=None, method="GET"):
 
             response.raise_for_status()
 
-            data = response.json()
+            try:
+                data = response.json()
+            except ValueError as parse_error:
+                body_preview = response.text[:500].replace("\n", " ")
+                raise RuntimeError(
+                    "Respuesta no JSON del servicio ArcGIS "
+                    + "(HTTP " + str(response.status_code)
+                    + ", Content-Type="
+                    + str(response.headers.get("Content-Type"))
+                    + "): " + body_preview
+                ) from parse_error
 
             if "error" in data:
                 raise RuntimeError(
@@ -322,36 +332,43 @@ def arcgis_polygon_geometry(geometry):
 
 def fetch_ids(layer_url, where="1=1", geometry=None):
     """
-    Recupera IDs mediante intersección espacial exacta en ArcGIS.
-    Se envía la geometría comunal como POST para evitar límites
-    de longitud de URL en polígonos extensos.
+    Recupera IDs usando una envolvente por comuna (GET liviano).
+    La envolvente reduce candidatos; el recorte/intersección exactos
+    se realizan localmente con Shapely después de descargar geometrías.
+    Evita enviar polígonos administrativos complejos al endpoint ArcGIS,
+    que ha respondido con payloads no JSON ante consultas POST extensas.
     """
     params = {
         "where": where,
         "returnIdsOnly": "true"
     }
-    method = "GET"
 
     if geometry is not None:
-        arcgis_geometry = arcgis_polygon_geometry(geometry)
-        if arcgis_geometry is None:
+        if geometry.is_empty:
             return []
 
+        xmin, ymin, xmax, ymax = geometry.bounds
+        envelope = {
+            "xmin": xmin,
+            "ymin": ymin,
+            "xmax": xmax,
+            "ymax": ymax,
+            "spatialReference": {"wkid": 4326}
+        }
         params.update({
             "geometry": json.dumps(
-                arcgis_geometry,
+                envelope,
                 separators=(",", ":")
             ),
-            "geometryType": "esriGeometryPolygon",
+            "geometryType": "esriGeometryEnvelope",
             "inSR": "4326",
             "spatialRel": "esriSpatialRelIntersects"
         })
-        method = "POST"
 
     data = request_json(
         layer_url + "/query",
         params,
-        method=method
+        method="GET"
     )
 
     return data.get("objectIds") or []
@@ -961,7 +978,7 @@ def publish_atomically(temp_dir):
 def main():
     global COMMUNE_GEOMETRIES
 
-    log("Inicio de AnglerMap Geodata 3.1")
+    log("Inicio de AnglerMap Geodata 3.3")
     log("Territorio: nueve comunas de Magallanes.")
     log("Fuentes: MOP, IGM y DGA. SNIA excluido.")
     log("Cabo de Hornos y Antártica excluidos.")
