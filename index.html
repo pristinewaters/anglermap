@@ -543,7 +543,8 @@ function renderZones(filter=""){
   return;
  }
  zoneOrder.forEach((zone,index)=>{
-  const searchTerm=amCatalogNormalize(filter);\n  const waters=RIVERS.filter(r=>r.communes.includes(zone)&&(!searchTerm||amCatalogNormalize([r.name,...r.aliases].join(" ")).includes(searchTerm)));
+  const searchTerm=amCatalogNormalize(filter);
+  const waters=RIVERS.filter(r=>r.communes.includes(zone)&&(!searchTerm||amCatalogNormalize([r.name,...r.aliases].join(" ")).includes(searchTerm)));
   if(!waters.length)return;
   const section=document.createElement("section");
   section.className="zone"+(index===0||filter?" open":"");
