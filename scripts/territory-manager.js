@@ -161,9 +161,9 @@
 
   shell.querySelectorAll("[data-tm-tab]").forEach(b=>b.addEventListener("click",()=>{tab=b.dataset.tmTab;render();}));
   $("tm-close").onclick=close;
-  $("profileSelect").addEventListener("change",e=>{
+  $("profileSelect").onchange=e=>{
     if(e.target.value==="admin")open(); else close();
-  });
+  };
   $("territoryBtn").onclick=()=>{tab="territories";open();};
   $("accessBtn").onclick=()=>{tab="access";open();};
   document.addEventListener("keydown",e=>{if(e.key==="Escape"&&shell.classList.contains("open"))close();});
