@@ -49,19 +49,19 @@
     panel.id = "amAuthPanel";
     panel.style.cssText = "padding:14px;margin:0 0 15px;background:#102638;border:1px solid #35566a;border-radius:11px";
     panel.innerHTML = `
-      <div style="font-weight:800;margin-bottom:5px">Cuenta AnglerMap</div>
-      <div id="amAuthStatus" style="font-size:11px;color:#a9bdc8;margin-bottom:10px">${configured ? "Inicia sesión para sincronizar tu perfil y usarlo en otros dispositivos." : "Autenticación preparada. Falta conectar el proyecto Supabase para activar cuentas."}</div>
-      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
-        <input id="amAuthPassword" type="password" minlength="8" autocomplete="current-password" placeholder="Contraseña (mín. 8)" style="min-width:0;padding:10px;background:#091b28;color:#edf5f8;border:1px solid #35566a;border-radius:8px">
-        <div style="display:flex;gap:6px;flex-wrap:wrap">
+      <div style="font-weight:800">Cuenta AnglerMap</div>
+      <div id="amAuthStatus" style="font-size:11px;color:#a9bdc8;line-height:1.5">${configured ? "Inicia sesión para sincronizar tu perfil y usarlo en otros dispositivos." : "Autenticación preparada. Falta conectar Supabase para activar cuentas."}</div>
+      <div class="am-auth-credentials">
+        <input id="amAuthPassword" type="password" minlength="8" autocomplete="current-password" placeholder="Contraseña (mínimo 8 caracteres)">
+        <div class="am-auth-actions">
           <button type="button" id="amAuthSignIn" class="action-btn">Iniciar sesión</button>
           <button type="button" id="amAuthSignUp" class="action-btn primary">Crear cuenta</button>
         </div>
       </div>
-      <div style="display:flex;gap:8px;margin-top:8px;flex-wrap:wrap">
+      <div class="am-auth-secondary">
         <button type="button" id="amAuthReset" class="action-btn">Recuperar contraseña</button>
         <button type="button" id="amAuthSignOut" class="action-btn" hidden>Cerrar sesión</button>
-      </div>`;
+      </div>`
     body.prepend(panel);
     const status = panel.querySelector("#amAuthStatus");
     const email = document.getElementById("amProfileEmail");

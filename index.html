@@ -3,8 +3,8 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<meta name="theme-color" content="#081521">
-<title>AnglerMap | Explore Patagonia</title>
+<meta name="theme-color" content="#ffffff">
+<title>AnglerMap | Explora ríos de Patagonia</title>
 <link rel="preconnect" href="https://unpkg.com">
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
 <style>
@@ -264,6 +264,234 @@ button:focus-visible,input:focus-visible,select:focus-visible{outline:2px solid 
  .detail-panel{bottom:78px;max-height:58%}
 }
 
+
+/* Profile dialog layout fix: auth controls remain in their own rows and never cover profile fields. */
+.profile-dialog{display:flex;flex-direction:column;max-height:92dvh;overflow:hidden}
+.profile-dialog-body{min-height:0;overflow-y:auto;overscroll-behavior:contain}
+.profile-dialog-body #amAuthPanel{position:relative;display:grid;grid-template-columns:minmax(0,1fr);gap:10px;width:100%;margin:0 0 18px!important;padding:14px!important;clear:both}
+.profile-dialog-body #amAuthPanel .am-auth-credentials{display:grid;grid-template-columns:minmax(0,1fr);gap:8px;width:100%}
+.profile-dialog-body #amAuthPanel input{display:block;width:100%;min-width:0;max-width:100%;height:42px;margin:0}
+.profile-dialog-body #amAuthPanel .am-auth-actions{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;width:100%}
+.profile-dialog-body #amAuthPanel .am-auth-secondary{display:flex;gap:8px;flex-wrap:wrap;width:100%}
+.profile-dialog-body #amAuthPanel button{min-width:0;white-space:normal;margin:0}
+@media(max-width:520px){.profile-modal{padding:8px}.profile-dialog{max-height:96dvh}.profile-dialog-body{padding:12px}.profile-dialog-body #amAuthPanel .am-auth-actions{grid-template-columns:1fr}}
+
+/* AnglerMap · navegación transversal y accesibilidad */
+:root{--am-focus:#7ce7f2}
+:where(button,a,input,select,textarea,[tabindex]):focus-visible{outline:3px solid var(--am-focus)!important;outline-offset:3px!important}
+.nav-item,.map-control,.map-tool,.icon-btn,.menu-btn{transition:background .16s ease,border-color .16s ease,color .16s ease,transform .16s ease}
+.nav-item:active,.map-control:active,.map-tool:active,.icon-btn:active{transform:scale(.98)}
+.profile-select{min-width:174px}
+.help-btn{height:38px;min-width:38px;padding:0 10px;border:1px solid var(--line);border-radius:10px;background:#102638;color:var(--cyan);font-weight:800}
+.help-btn:hover{background:#17364a;border-color:var(--cyan)}
+.am-guide{position:fixed;z-index:5000;inset:0;display:none;align-items:center;justify-content:center;padding:18px;background:#020a12c9;backdrop-filter:blur(7px)}
+.am-guide.open{display:flex}
+.am-guide-card{width:min(620px,100%);max-height:min(86dvh,760px);overflow:auto;background:#0d1e2b;border:1px solid #315064;border-radius:18px;box-shadow:0 24px 90px #000b}
+.am-guide-head{display:flex;justify-content:space-between;align-items:flex-start;gap:14px;padding:20px 22px;border-bottom:1px solid var(--line)}
+.am-guide-head h2{margin:5px 0 0;font-size:20px}.am-guide-kicker{font-size:10px;letter-spacing:1.5px;color:var(--cyan);font-weight:800}
+.am-guide-body{padding:20px 22px}.am-guide-intro{margin:0 0 17px;color:#b5c8d2;line-height:1.6;font-size:13px}
+.am-guide-steps{display:grid;gap:9px;counter-reset:guide}
+.am-guide-step{display:grid;grid-template-columns:32px 1fr;gap:12px;align-items:start;padding:12px;border:1px solid #29485b;border-radius:12px;background:#102638}
+.am-guide-step:before{counter-increment:guide;content:counter(guide);width:28px;height:28px;display:grid;place-items:center;border-radius:50%;background:#17465a;color:var(--cyan);font-weight:800}
+.am-guide-step strong{display:block;font-size:12px;margin:1px 0 4px}.am-guide-step span{display:block;color:#9fb5c2;font-size:11px;line-height:1.5}
+.am-guide-foot{display:flex;justify-content:space-between;gap:10px;align-items:center;padding:14px 22px;border-top:1px solid var(--line)}
+.am-guide-foot small{color:var(--muted);font-size:10px}
+@media(max-width:600px){.profile-select{min-width:0;max-width:135px}.help-btn{height:35px;min-width:35px;padding:0 8px}.am-guide{padding:8px}.am-guide-head,.am-guide-body{padding:16px}.am-guide-foot{padding:12px 16px}}
+@media(prefers-reduced-motion:reduce){*,*::before,*::after{scroll-behavior:auto!important;transition:none!important;animation:none!important}}
+
+/* Rediseño visible de navegación global — mapa y fuentes geográficas intactos */
+:root{--sidebar-width:286px}
+.app{grid-template-rows:62px minmax(0,1fr)}
+.topbar{height:62px;padding:0 16px;gap:13px}
+.brand{min-width:190px}.brand-name{font-size:18px}
+.workspace{grid-template-columns:286px minmax(0,1fr)}
+.sidebar{background:#0b1b28}
+.side-scroll{padding:14px 13px 20px}
+.side-intro{display:flex;align-items:center;gap:11px;padding:7px 7px 16px;margin-bottom:7px}
+.side-intro-mark{width:34px;height:34px;display:grid;place-items:center;border-radius:10px;background:#15394b;color:var(--cyan);font-size:11px;font-weight:850}
+.side-intro strong{display:block;font-size:13px;letter-spacing:.1px}
+.side-intro small{display:block;color:var(--muted);font-size:10px;margin-top:3px}
+.side-heading{margin:11px 5px 7px;font-size:9px;letter-spacing:1.25px;color:#8ca7b7}
+.side-heading-row{display:flex;justify-content:space-between;align-items:center}
+.nav-list{gap:3px;margin-bottom:12px}
+.nav-item{min-height:39px;padding:8px 10px;gap:10px;border-radius:9px;font-size:11px;color:#c5d6df}
+.nav-item>span:nth-child(2){min-width:0}
+.nav-item.active{background:#15394b;border-color:#2b5268;box-shadow:inset 3px 0 var(--cyan);color:#fff}
+.nav-item.active .nav-icon{color:var(--cyan)}
+.nav-icon{font-size:15px;width:19px}
+.nav-hint{margin-left:auto;color:#7fa0b2;font-size:9px}
+.nav-count{margin-left:auto;min-width:20px;text-align:center;padding:3px 6px;background:#17384b;border-radius:20px}
+.section-rule{margin:11px 0;border-color:#1b3445}
+.zone{margin-bottom:5px;border-radius:9px}
+.zone-head{padding:9px 10px;font-size:11px}
+.zone-body{padding:3px}
+.water-item{padding:8px;font-size:11px}
+.tool-nav .nav-item{min-height:36px}
+.resource-details{margin:13px 2px 5px;border-top:1px solid var(--line);padding-top:11px}
+.resource-details summary{cursor:pointer;list-style:none;color:#9fb7c5;font-size:10px;padding:6px 5px}
+.resource-details summary::-webkit-details-marker{display:none}
+.resource-details summary span{color:var(--cyan);margin-right:7px}
+.resource-details[open] summary{margin-bottom:8px;color:#eaf5f8}
+.resource-details .nav-item{min-height:32px;font-size:10px}
+.side-footer{padding:12px 5px 3px;color:#607e8e;font-size:9px;letter-spacing:1.4px}
+.side-footer span{color:var(--cyan)}
+.help-btn{min-width:66px;padding:0 13px;font-size:11px;letter-spacing:.2px}
+.map-controls{gap:3px;padding:4px}
+.map-control{padding:8px 10px;font-size:10px}
+.map-tools{gap:5px}
+.map-tool{width:36px;height:36px}
+.map-bottom{max-width:50%;gap:5px}
+.map-chip{padding:6px 8px;font-size:9px}
+.detail-panel{width:min(350px,calc(100% - 30px))}
+@media(max-width:900px){.workspace{grid-template-columns:260px minmax(0,1fr)}}
+@media(max-width:700px){
+ .app{grid-template-rows:56px minmax(0,1fr)}
+ .topbar{height:56px;padding:0 9px;gap:8px}
+ .brand{min-width:0;gap:7px}.logo{width:31px;height:31px}.brand-name{font-size:15px}.brand-sub{font-size:7px;letter-spacing:1px}
+ .search-wrap{max-width:none}.search-wrap input{height:36px;font-size:11px;padding-left:34px}.search-icon{top:7px;left:10px}
+ .top-actions{gap:5px}.profile-select{max-width:118px;height:34px;padding:0 6px;font-size:10px}.help-btn{min-width:44px;height:34px;padding:0 7px;font-size:10px}.icon-btn{height:34px;width:34px}
+ .workspace{grid-template-columns:minmax(0,1fr);grid-template-rows:minmax(0,1fr)}
+ .sidebar{position:absolute;z-index:900;top:56px;bottom:0;left:0;width:min(320px,88vw);transform:translateX(-105%);transition:transform .22s ease;box-shadow:18px 0 45px #0008}
+ .sidebar.open{transform:translateX(0)}
+ .side-scroll{padding:12px}
+ .map-controls{top:9px;right:9px;left:9px;justify-content:flex-start;overflow-x:auto;flex-wrap:nowrap;max-width:calc(100% - 18px)}
+ .map-control{white-space:nowrap;flex-shrink:0;padding:8px}
+ .map-tools{top:58px;right:9px}
+ .map-bottom{left:9px;top:auto;bottom:12px;max-width:calc(100% - 18px)}
+ .map-chip{font-size:8px;padding:5px 7px}
+ .weather-dock{max-width:calc(100% - 18px)}
+ .detail-panel{top:58px;left:9px;max-height:calc(100% - 130px)}
+}
+@media(prefers-reduced-motion:reduce){.sidebar{transition:none}}
+
+/* ANGLERMAP MAP-FIRST SHELL v2 — drawer navigation, not a permanent dashboard sidebar */
+.app{grid-template-rows:70px minmax(0,1fr);background:#071521}
+.topbar{height:70px;padding:0 22px;gap:18px;background:rgba(7,21,33,.97);border-bottom:1px solid #1b3547;box-shadow:0 5px 24px #0002}
+.menu-btn{display:grid!important;width:40px;height:40px;flex:0 0 40px;border-radius:12px;background:#112b3d;border-color:#2b4d62;color:#dff5fa}
+.brand{min-width:185px;gap:10px}
+.logo{width:37px;height:37px}
+.brand-name{font-size:18px;letter-spacing:1.2px}
+.brand-sub{font-size:8px;letter-spacing:2.1px}
+.search-wrap{max-width:660px;margin-left:12px}
+.search-wrap input{height:43px;border-radius:13px;background:#102638;border:1px solid #29485b;padding-left:44px;font-size:12px}
+.search-wrap input::placeholder{color:#88a3b3}
+.search-icon{left:15px;top:10px}
+.top-actions{gap:8px}
+.profile-select{height:40px;border-radius:11px;padding:0 13px;background:#102638;border-color:#29485b;font-size:11px}
+.icon-btn{height:40px;width:40px;border-radius:11px;background:#102638;border-color:#29485b}
+.help-btn{height:40px;min-width:62px;border-radius:11px;background:#153b50;border:1px solid #32647b;color:#dffaff;font-weight:700}
+.workspace{position:relative;display:block;min-height:0;overflow:hidden;background:#0a1b28}
+.map-area{position:absolute;inset:0;background:#102735}
+#map{position:absolute;inset:0}
+.sidebar{position:absolute;z-index:800;left:14px;top:14px;bottom:14px;width:306px;visibility:hidden;transform:translateX(calc(-100% - 22px));border:1px solid #31536a;border-radius:17px;background:rgba(8,24,37,.97);box-shadow:0 18px 60px #0008;backdrop-filter:blur(18px);transition:transform .22s ease,visibility .22s;overflow:hidden}
+.sidebar.open{visibility:visible;transform:translateX(0)}
+.side-scroll{padding:17px 15px 20px}
+.side-intro{padding:7px 7px 18px}
+.side-intro-mark{width:38px;height:38px;border-radius:12px;background:#153d52}
+.side-intro strong{font-size:14px}
+.side-intro small{font-size:10px}
+.side-heading{font-size:9px;letter-spacing:1.35px;margin:13px 5px 8px}
+.nav-item{min-height:42px;padding:9px 11px;border-radius:10px;font-size:12px}
+.nav-item.active{background:linear-gradient(100deg,#17445a,#123246);border-color:#28546a;box-shadow:inset 3px 0 #58d8e7}
+.resource-details{margin-top:16px}
+.map-controls{top:16px;right:16px;left:auto;display:flex;flex-wrap:nowrap;gap:4px;padding:5px;border-radius:13px;background:rgba(7,22,34,.91);border:1px solid #3a5a6d;box-shadow:0 8px 26px #0004;backdrop-filter:blur(14px)}
+.map-control{padding:10px 12px;border-radius:9px;font-size:10px;white-space:nowrap}
+.map-control.active{background:#17465b;color:#70e1ed}
+.map-tools{top:78px;right:17px;gap:6px}
+.map-tool{width:40px;height:40px;border-radius:12px;background:rgba(7,22,34,.92);border-color:#3a5a6d}
+.map-bottom{top:auto;bottom:16px;left:16px;max-width:calc(100% - 420px);gap:6px}
+.map-chip{border-radius:9px;padding:7px 10px;background:rgba(7,22,34,.88);border-color:#355367;font-size:9px;backdrop-filter:blur(12px)}
+.weather-dock{left:50%;right:auto;bottom:14px;transform:translateX(-50%);width:min(760px,calc(100% - 460px));border-radius:15px;background:rgba(8,25,39,.96);border-color:#355d73;box-shadow:0 15px 45px #0008}
+.weather-dock.minimized{left:16px;right:auto;bottom:16px;transform:none;width:260px}
+.detail-panel{left:16px;top:16px;width:360px;max-height:calc(100% - 32px);border-radius:17px;background:rgba(8,25,39,.97);border-color:#35576b;box-shadow:0 18px 55px #0009}
+.detail-top{padding:19px}
+.detail-title{font-size:25px}
+.detail-content{padding:17px}
+.am-guide-card{border-radius:18px}
+@media(max-width:900px){
+ .app{grid-template-rows:62px minmax(0,1fr)}
+ .topbar{height:62px;padding:0 12px;gap:9px}
+ .brand{min-width:150px}.brand-name{font-size:16px}.brand-sub{display:none}
+ .search-wrap{margin-left:0;max-width:none}
+ .workspace{display:block}
+ .sidebar{top:10px;bottom:10px;left:10px;width:min(310px,calc(100vw - 38px))}
+ .map-controls{top:10px;left:10px;right:10px;max-width:calc(100% - 20px);overflow-x:auto}
+ .map-tools{top:62px;right:10px}
+ .map-bottom{bottom:10px;left:10px;max-width:calc(100% - 20px)}
+ .weather-dock{width:calc(100% - 20px);bottom:10px}
+ .weather-dock.minimized{left:10px;bottom:10px;width:250px}
+}
+@media(max-width:600px){
+ .app{grid-template-rows:56px minmax(0,1fr)}
+ .topbar{height:56px;padding:0 8px;gap:6px}
+ .menu-btn,.icon-btn{width:34px;height:34px;flex-basis:34px}
+ .brand{min-width:0;gap:6px}.logo{width:30px;height:30px}.brand-name{font-size:14px}
+ .search-wrap{min-width:60px}.search-wrap input{height:35px;font-size:10px;padding-left:31px}
+ .search-icon{left:9px;top:7px}
+ .top-actions{gap:4px}.profile-select{max-width:94px;height:34px;padding:0 5px;font-size:9px}
+ .help-btn{min-width:40px;height:34px;padding:0 6px;font-size:9px}
+ .map-controls{gap:2px;padding:4px}.map-control{padding:8px 9px;font-size:9px}
+ .map-tools{top:58px;right:9px}.map-tool{width:35px;height:35px}
+ .map-chip{font-size:8px;padding:5px 7px}
+ .weather-dock{width:calc(100% - 18px);bottom:9px}
+ .weather-dock.minimized{left:9px;bottom:9px}
+ .detail-panel{left:9px;top:58px;width:min(350px,calc(100% - 18px));max-height:calc(100% - 125px)}
+}
+@media(prefers-reduced-motion:reduce){.sidebar{transition:none}}
+
+/* Interface finishing: explicit role switch, accessible drawer controls and map-first hierarchy */
+.role-switch{display:flex;align-items:center;gap:7px;padding:4px 7px 4px 10px;border:1px solid #29485b;border-radius:12px;background:#0d2232}
+.role-switch>span{font-size:8px;letter-spacing:1.2px;font-weight:800;color:#7794a5}
+.role-switch .profile-select{height:32px;border:0;background:transparent;padding:0 5px;font-size:10px;max-width:118px}
+.side-intro{position:relative;padding-right:37px}
+.sidebar-close{position:absolute;right:2px;top:6px;width:29px;height:29px;border-radius:8px;border:1px solid #29485b;background:#102b3d;color:#bcd0da;font-size:19px;line-height:1}
+.sidebar-close:hover{color:#fff;border-color:#55d9e8}
+.topbar .brand{flex-shrink:0}
+.map-area{isolation:isolate}
+.map-controls{max-width:calc(100% - 32px)}
+.map-chip{color:#a9c0cc}
+.detail-panel,.general-panel{backdrop-filter:blur(18px)}
+@media(max-width:600px){
+ .role-switch{gap:3px;padding:3px 4px 3px 6px}
+ .role-switch>span{display:none}
+ .role-switch .profile-select{max-width:87px;font-size:9px}
+ .side-intro{padding-right:38px}
+}
+
+/* AnglerMap 2026 · experiencia principal clara, mapa primero y navegación simple */
+:root{--bg:#f5f7fa;--panel:#fff;--panel2:#f1f5f9;--panel3:#e8eef5;--line:#dce4ec;--text:#172b3d;--muted:#64788a;--cyan:#1683b8;--blue:#176eaa;--gold:#b7812d;--danger:#b84e43;--radius:12px;--am-focus:#1683b8}
+html,body{background:#f5f7fa;color:#172b3d}body{font-size:13px}.app{grid-template-rows:62px minmax(0,1fr)}
+.topbar{background:#fff;color:#172b3d;border-bottom:1px solid #dce4ec;box-shadow:0 1px 5px #1d355008;padding:0 18px;gap:13px}
+.brand-name{color:#142b40}.brand-name span{color:#1683b8}.brand-sub{color:#718397}
+.logo path:first-child{stroke:#1683b8}.logo path:nth-child(2){stroke:#b7812d}.logo path:nth-child(3){stroke:#1683b8}
+.menu-btn,.icon-btn{background:#f5f8fb;color:#25435a;border-color:#dce4ec}.search-wrap input{background:#f5f8fb;color:#172b3d;border-color:#dce4ec}.search-wrap input::placeholder{color:#8293a3}.search-icon{color:#718397}
+.role-switch{background:#f6f9fc;border-color:#dce4ec}.role-switch>span{color:#718397}.role-switch .profile-select{color:#1b354a}.profile-select{background:#fff;color:#1b354a;border-color:#dce4ec}
+.help-btn{background:#f3f8fc;color:#176eaa;border-color:#dce4ec}
+.workspace{grid-template-columns:278px minmax(0,1fr)}.sidebar{visibility:visible;width:auto;position:relative;inset:auto;transform:none;background:#fff;border-right:1px solid #dce4ec;box-shadow:none}
+.side-scroll{padding:15px 13px 24px;scrollbar-color:#c8d5e0 transparent}.side-intro{color:#1a3449}.side-intro small{color:#718397}
+.side-heading{color:#718397}.side-heading small{color:#1683b8}.nav-item{color:#40586c}.nav-item:hover,.nav-item.active{background:#edf6fb;border-color:#d8eaf5;color:#145d8b}.nav-item.active .nav-icon{color:#1683b8}
+.nav-icon{color:#8294a4}.nav-hint,.nav-count{color:#718397}.section-rule{background:#e6ebf0}
+.zone{background:#fff;border-color:#e2e8ef}.zone-head{background:#f7f9fb;color:#263f54}.zone-head:hover{background:#eef5fa}.zone-head small{color:#718397}.zone-arrow{color:#1683b8}
+.water-item{color:#40586c}.water-item:hover,.water-item.selected{background:#edf6fb;color:#145d8b}.water-dot{background:#1683b8}.water-item small{color:#8293a3}
+.map-area{background:#e8eef3}#map{background:#e8eef3}.map-controls{background:#fff;border-color:#dce4ec;box-shadow:0 3px 14px #1d355018}.map-control{color:#526a7d}.map-control.active{background:#eaf5fb;color:#126b9e}
+.map-tool{background:#fff;border-color:#dce4ec;color:#29465c;box-shadow:0 2px 8px #1d355014}.map-tool:hover,.map-tool.active{border-color:#1683b8;color:#1683b8}.map-chip{background:#fff;border-color:#dce4ec;color:#526a7d}.map-chip b{color:#1683b8}
+.detail-panel{background:#fff;border-color:#dce4ec;color:#172b3d;box-shadow:0 12px 40px #1d355022}.detail-top{border-bottom-color:#e6ebf0}.detail-kicker{color:#1683b8}.detail-sub,.detail-description{color:#5c7184}
+.close-btn{background:#f2f6f9;color:#38536a;border-color:#dce4ec}.detail-tab{color:#64788a}.detail-tab.active{background:#edf6fb;color:#126b9e}.detail-warning{background:#fff8eb;border-color:#f0dfbd;color:#765a2c}
+.action-btn{background:#f4f8fb;color:#31536d;border-color:#dce4ec}.action-btn.primary{background:#176eaa;border-color:#176eaa;color:#fff}.info-card,.panel-row{background:#f8fafc;border-color:#e2e8ef}.info-card p,.panel-row p{color:#64788a}
+.panel-content{color:#172b3d}.panel-subtitle{color:#718397}.empty-state{color:#718397}
+.weather-dock{background:#fff;border-color:#dce4ec;box-shadow:0 5px 22px #1d355020;color:#172b3d}.weather-dock-head{border-bottom-color:#e6ebf0}
+.weather-brand{color:#24455f}.weather-brand span{color:#1683b8}.weather-location,.weather-updated{color:#718397}.weather-dock-btn{background:#f3f7fa;border-color:#dce4ec;color:#36546c}
+.weather-current{border-right-color:#e6ebf0}.weather-current-desc{color:#64788a}.weather-current-desc b{color:#172b3d}.weather-metric{border-right-color:#e6ebf0}.weather-metric span{color:#718397}.weather-metric b{color:#29465c}
+.weather-hour{background:#f7f9fb;border-color:#e2e8ef}.weather-hour small{color:#718397}.weather-hour span{color:#1683b8}.weather-foot{border-top-color:#e6ebf0;color:#8293a3}.weather-loading{color:#718397}
+.leaflet-popup-content-wrapper,.leaflet-popup-tip{background:#fff;color:#172b3d}.leaflet-bar a{background:#fff!important;color:#29465c!important;border-color:#dce4ec!important}.leaflet-control-scale-line{background:#ffffffeb;color:#29465c;border-color:#9aabba}.leaflet-control-attribution{color:#64788a!important}
+.profile-modal{background:#172b3d66}.profile-dialog{background:#fff;border-color:#dce4ec;box-shadow:0 20px 70px #172b3d30;color:#172b3d}.profile-dialog-head{border-bottom-color:#e6ebf0}
+.profile-field label,.profile-group-title{color:#64788a}.profile-field input,.profile-field select{background:#f8fafc;color:#172b3d;border-color:#dce4ec}.profile-option{background:#f5f8fb;border-color:#dce4ec;color:#38536a}
+.profile-footnote{background:#f5f8fb;border-color:#dce4ec;color:#64788a}.profile-dialog-body #amAuthPanel{background:#f5f8fb!important;border-color:#dce4ec!important}.profile-dialog-body #amAuthPanel input{background:#fff;color:#172b3d;border-color:#dce4ec}
+.am-guide{background:#172b3d66}.am-guide-card{background:#fff;border-color:#dce4ec;color:#172b3d}.am-guide-head,.am-guide-foot{border-color:#e6ebf0}.am-guide-kicker{color:#1683b8}.side-footer{color:#8293a3}
+@media(min-width:901px){.workspace{grid-template-columns:278px minmax(0,1fr)}.workspace.menu-open{grid-template-columns:278px minmax(0,1fr)}.sidebar{visibility:visible}.menu-btn{display:grid!important}}
+@media(max-width:900px){.app{grid-template-rows:62px minmax(0,1fr)}.workspace{grid-template-columns:1fr}.sidebar{position:absolute;z-index:900;top:62px;bottom:0;left:0;width:min(320px,88vw);transform:translateX(-103%);visibility:visible;background:#fff;box-shadow:12px 0 35px #172b3d22}.sidebar.open{transform:translateX(0)}.workspace.menu-open{grid-template-columns:1fr}}
+@media(max-width:600px){.app{grid-template-rows:54px minmax(0,1fr)}.topbar{height:54px;background:#fff}.sidebar{top:54px}.map-controls{background:#fff}.detail-panel{background:#fff}.weather-dock{background:#fff}}
+
 </style>
 </head>
 <body>
@@ -281,11 +509,12 @@ button:focus-visible,input:focus-visible,select:focus-visible{outline:2px solid 
  <div class="search-wrap"><span class="search-icon">⌕</span><input id="globalSearch" placeholder="Buscar río, lago o sector..."></div>
  <div class="top-actions">
   <button class="icon-btn" id="userProfileBtn" title="Crear cuenta o editar mi perfil" aria-label="Mi perfil">♙</button>
-  <select class="profile-select" id="profileSelect" aria-label="Perfil de demostración">
-   <option value="angler">Pescador recreativo</option>
-   <option value="operator">Operador turístico</option>
-   <option value="admin">Administrador territorial</option>
-  </select>
+  <label class="role-switch"><span>VISTA</span><select class="profile-select" id="profileSelect" aria-label="Cambiar vista de usuario">
+   <option value="angler">Pescador</option>
+   <option value="operator">Operador</option>
+   <option value="admin">Administrador</option>
+  </select></label>
+  <button class="help-btn" id="amHelpBtn" title="Guía rápida de navegación" aria-label="Abrir guía rápida">Guía</button>
   <button class="icon-btn" id="locateBtn" title="Mi ubicación" aria-label="Mi ubicación">◎</button>
  </div>
 </header>
@@ -293,40 +522,41 @@ button:focus-visible,input:focus-visible,select:focus-visible{outline:2px solid 
 <div class="workspace">
 <aside class="sidebar" id="sidebar">
  <div class="side-scroll">
-  <div class="side-heading">Explorar <small>MAGALLANES</small></div>
-  <nav class="nav-list">
-   <button class="nav-item active" data-view="explore"><span class="nav-icon">⌖</span>Explorar aguas</button>
-   <button class="nav-item" data-view="saved"><span class="nav-icon">☆</span>Mis aguas<span class="nav-count" id="savedCount">0</span></button>
-   <button class="nav-item" data-view="points"><span class="nav-icon">⌁</span>Mis puntos<span class="nav-count" id="pointCount">0</span></button>
-   <button class="nav-item" data-view="logbook"><span class="nav-icon">▤</span>Bitácora</button>
+  <div class="side-intro"><span class="side-intro-mark">AM</span><div><strong>Explora Patagonia</strong><small>Mapa y herramientas de pesca</small></div><button class="sidebar-close" id="sidebarClose" aria-label="Cerrar menú">×</button></div>
+  <div class="side-heading">TU ESPACIO</div>
+  <nav class="nav-list primary-nav" aria-label="Tu espacio">
+   <button class="nav-item active" data-view="explore"><span class="nav-icon">⌖</span><span>Explorar mapa</span><span class="nav-hint">Inicio</span></button>
+   <button class="nav-item" data-view="saved"><span class="nav-icon">☆</span><span>Mis aguas</span><span class="nav-count" id="savedCount">0</span></button>
+   <button class="nav-item" data-view="points"><span class="nav-icon">⌁</span><span>Mis puntos</span><span class="nav-count" id="pointCount">0</span></button>
+   <button class="nav-item" data-view="logbook"><span class="nav-icon">▤</span><span>Mi bitácora</span></button>
   </nav>
   <div class="section-rule"></div>
-  <div class="side-heading">Aguas por territorio <small id="waterCount">CARGANDO…</small></div>
+  <div class="side-heading side-heading-row"><span>AGUAS DE MAGALLANES</span><small id="waterCount">CARGANDO…</small></div>
   <div id="zones"></div>
   <div class="section-rule"></div>
-  <div class="side-heading">Herramientas</div>
-  <nav class="nav-list">
-   <button class="nav-item" id="addPointBtn"><span class="nav-icon">＋</span>Guardar punto en el mapa</button>
-   <button class="nav-item" id="measureBtn"><span class="nav-icon">↔</span>Medir distancia</button>
-   <button class="nav-item" id="regulationBtn"><span class="nav-icon">⚖</span>Regulación pesquera</button>
+  <div class="side-heading">HERRAMIENTAS DEL MAPA</div>
+  <nav class="nav-list tool-nav">
+   <button class="nav-item" id="addPointBtn"><span class="nav-icon">＋</span><span>Guardar un punto</span></button>
+   <button class="nav-item" id="measureBtn"><span class="nav-icon">↔</span><span>Medir distancia</span></button>
+   <button class="nav-item" id="regulationBtn"><span class="nav-icon">⚖</span><span>Normativa de pesca</span></button>
   </nav>
   <div id="adminSection" hidden>
-   <div class="section-rule"></div><div class="side-heading">Administración territorial</div>
+   <div class="section-rule"></div><div class="side-heading">GESTIÓN DE TERRITORIO</div>
    <nav class="nav-list">
-    <button class="nav-item" id="territoryBtn"><span class="nav-icon">⌂</span>Mis territorios</button>
-    <button class="nav-item" id="accessBtn"><span class="nav-icon">◇</span>Accesos y permisos</button>
+    <button class="nav-item" id="territoryBtn"><span class="nav-icon">⌂</span><span>Mis territorios</span></button>
+    <button class="nav-item" id="accessBtn"><span class="nav-icon">◇</span><span>Accesos y permisos</span></button>
    </nav>
   </div>
-  <div class="section-rule"></div>
-  <div class="side-heading">Fuentes y recursos</div>
-  <nav class="nav-list">
-   <a class="nav-item" href="https://pescarecreativa.sernapesca.cl/" target="_blank" rel="noopener"><span class="nav-icon">↗</span>Comprar licencia de pesca</a>
-   <a class="nav-item" href="https://www.sernapesca.cl/" target="_blank" rel="noopener"><span class="nav-icon">↗</span>SERNAPESCA</a>
-   <a class="nav-item" href="https://dga.mop.gob.cl/sistema-hidrometrico-en-linea/" target="_blank" rel="noopener"><span class="nav-icon">↗</span>Sistema Hidrométrico DGA</a>
-   <a class="nav-item" href="https://dga.mop.gob.cl/estadisticas-estaciones-dga/" target="_blank" rel="noopener"><span class="nav-icon">↗</span>Estadísticas estaciones DGA</a>
-   <a class="nav-item" href="https://dga.mop.gob.cl/visualizadores/" target="_blank" rel="noopener"><span class="nav-icon">↗</span>Visualizadores DGA</a>
-  </nav>
-  <div style="font-size:9px;color:var(--muted);line-height:1.7;padding:8px 3px">AnglerMap · Patagonia<br>Cartografía y datos territoriales en desarrollo.</div>
+  <details class="resource-details"><summary><span>↗</span> Fuentes oficiales y recursos</summary>
+   <nav class="nav-list">
+    <a class="nav-item" href="https://pescarecreativa.sernapesca.cl/" target="_blank" rel="noopener"><span class="nav-icon">↗</span>Comprar licencia de pesca</a>
+    <a class="nav-item" href="https://www.sernapesca.cl/" target="_blank" rel="noopener"><span class="nav-icon">↗</span>SERNAPESCA</a>
+    <a class="nav-item" href="https://dga.mop.gob.cl/sistema-hidrometrico-en-linea/" target="_blank" rel="noopener"><span class="nav-icon">↗</span>Sistema Hidrométrico DGA</a>
+    <a class="nav-item" href="https://dga.mop.gob.cl/estadisticas-estaciones-dga/" target="_blank" rel="noopener"><span class="nav-icon">↗</span>Estadísticas estaciones DGA</a>
+    <a class="nav-item" href="https://dga.mop.gob.cl/visualizadores/" target="_blank" rel="noopener"><span class="nav-icon">↗</span>Visualizadores DGA</a>
+   </nav>
+  </details>
+  <div class="side-footer">ANGLERMAP <span>·</span> PATAGONIA</div>
  </div>
 </aside>
 
@@ -385,7 +615,7 @@ button:focus-visible,input:focus-visible,select:focus-visible{outline:2px solid 
    <div class="detail-title" id="detailTitle">Nombre del río</div><div class="detail-sub" id="detailZone">Zona</div>
   </div>
   <div class="detail-content">
-   <div class="detail-tabs"><button class="detail-tab active" data-tab="overview">Resumen</button><button class="detail-tab" data-tab="conditions">Condiciones</button><button class="detail-tab" data-tab="access">Territorio</button></div>
+   <div class="detail-tabs"><button class="detail-tab active" data-tab="overview">Resumen</button><button class="detail-tab" data-tab="conditions">Pesca Premium</button><button class="detail-tab" data-tab="access">Territorio</button></div>
    <div id="tabOverview">
     <p class="detail-description" id="detailDescription"></p>
     <div class="detail-warning" id="detailWarning"></div>
@@ -393,7 +623,7 @@ button:focus-visible,input:focus-visible,select:focus-visible{outline:2px solid 
    <div id="tabConditions" hidden>
     <div class="info-card"><b>Condiciones meteorológicas</b><p id="riverWeather">Consulta las condiciones del mapa.</p></div>
     <div class="info-card"><b>Datos hidrológicos DGA</b><p id="riverDga">Activa la capa de estaciones DGA para consultar mediciones disponibles.</p></div>
-    <div class="info-card"><b>Pesca y especies</b><p>Las especies, temporadas y técnicas deberán incorporarse con fuentes oficiales y validación local para cada tramo.</p></div>
+    <div class="info-card"><b>AnglerMap Premium · Información específica del río</b><p>Contenido previsto: especies, temporadas, características de cada tramo, técnicas, condiciones de pesca y puntos de interés validados. Esta ficha aún no contiene información técnica verificada para este río.</p><p style="margin-top:8px"><strong>Acceso Premium:</strong> función comercial en desarrollo. No se realizan cobros ni se activa una suscripción en esta demostración.</p></div>
    </div>
    <div id="tabAccess" hidden>
     <div class="info-card"><b>Cartografía y ubicación</b><p id="detailGeometry"></p></div>
@@ -411,6 +641,14 @@ button:focus-visible,input:focus-visible,select:focus-visible{outline:2px solid 
 </div>
 </div>
 
+
+<section class="am-guide" id="amGuide" aria-hidden="true">
+ <div class="am-guide-card" role="dialog" aria-modal="true" aria-labelledby="amGuideTitle">
+  <header class="am-guide-head"><div><div class="am-guide-kicker">ANGLERMAP · GUÍA RÁPIDA</div><h2 id="amGuideTitle">Todo empieza en el mapa</h2></div><button class="close-btn" id="amGuideClose" aria-label="Cerrar guía">×</button></header>
+  <div class="am-guide-body"><p class="am-guide-intro" id="amGuideIntro">Explora aguas, abre una ficha y encuentra las herramientas desde el menú.</p><div class="am-guide-steps" id="amGuideSteps"></div></div>
+  <footer class="am-guide-foot"><small>Puedes cambiar de perfil cuando quieras desde la barra superior.</small><button class="action-btn primary" id="amGuideDone">Entendido</button></footer>
+ </div>
+</section>
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script>
 // Catálogo dinámico construido desde geometrías hidrográficas oficiales.
@@ -473,9 +711,21 @@ async function loadHydroCatalog() {
    });
   });
   RIVERS=[...grouped.values()].sort((x,y)=>x.name.localeCompare(y.name,"es"));
+  // Dibuja el inventario hidrográfico oficial ya cargado y permite abrir cada ficha desde el mapa.
+  if(window.anglerHydroMapLayer){map.removeLayer(window.anglerHydroMapLayer);}
+  const mapFeatures=[...new Map(RIVERS.flatMap(r=>r.features).map(feature=>[feature.properties.waterbody_id+"|"+JSON.stringify(feature.geometry),feature])).values()];
+  window.anglerHydroMapLayer=L.geoJSON({type:"FeatureCollection",features:mapFeatures},{
+    style:feature=>({color:feature.properties.water_category==="river"?"#1683b8":"#54a6c8",weight:feature.properties.water_category==="river"?2.1:1.5,opacity:.86,fillColor:"#58a9cf",fillOpacity:.09}),
+    onEachFeature:(feature,layer)=>{
+      const water=RIVERS.find(r=>r.id===feature.properties.waterbody_id);
+      if(!water)return;
+      layer.bindTooltip(water.name,{sticky:true,direction:"top",opacity:.92});
+      layer.on("click",()=>openRiver(water,(feature.properties.communes||[])[0]||null));
+    }
+  }).addTo(map);
   hydroCatalogState="ready";
   const count=document.getElementById("waterCount");
-  if(count)count.textContent=RIVERS.length+" AGUAS";
+  if(count)count.textContent=RIVERS.length.toLocaleString("es-CL")+" aguas";
  }catch(error){
   console.error("AnglerMap: no se pudo cargar el inventario DGA.",error);
   RIVERS=[];hydroCatalogState="unavailable";
@@ -732,8 +982,8 @@ function openRiver(r,focusCommune=null){
  $("detailKicker").textContent="Ficha de agua · "+r.categoryLabel;
  $("detailTitle").textContent=r.name;
  $("detailZone").textContent=(focusCommune?"Enfoque: "+focusCommune+" · ":"")+r.communes.join(" · ")+" · Magallanes";
- $("detailDescription").textContent=[r.categoryLabel,focusCommune?"Tramo seleccionado en "+focusCommune:""].filter(Boolean).join(" · ")+".";
- $("detailWarning").textContent="La geometría DGA identifica el cuerpo de agua, pero no acredita acceso público, permiso de pesca ni condiciones actuales del cauce.";
+ $("detailDescription").textContent=[r.categoryLabel,focusCommune?"Tramo seleccionado en "+focusCommune:"","Ficha básica incluida en el explorador gratuito"].filter(Boolean).join(" · ")+".";
+ $("detailWarning").textContent="La cartografía identifica el cuerpo de agua, pero no acredita acceso público, permiso de pesca ni condiciones actuales del cauce.";
  $("detailGeometry").textContent="Fuente: "+(r.sources.join("; ")||"DGA")+". Geometrías disponibles: "+r.features.length+". "+(r.aliases.length?"Nombre alternativo registrado: "+r.aliases.join(", ")+". ":"")+(r.toponymyNotes.length?r.toponymyNotes.join(" "):"");
  $("riverWeather").textContent="La meteorología corresponde al centro actual del mapa y no necesariamente a este cuerpo de agua. Mueve el mapa hasta el sector de interés para consultar el pronóstico local.";
  $("riverDga").textContent="Las estaciones DGA se muestran en una capa independiente. La estación más cercana no se atribuye automáticamente a este río o lago; abre su marcador para consultar tipo, ubicación y, cuando exista, medición operacional.";
@@ -1009,7 +1259,7 @@ setInterval(()=>loadWeather(),30*60*1000);
 /* Barra meteorológica: minimizar y restaurar */
 const weatherDock=$("weatherDock");
 const weatherMinimize=$("weatherMinimize");
-let weatherMinimized=readStore("anglerMapWeatherMinimized",false);
+let weatherMinimized=readStore("anglerMapWeatherMinimized",true);
 function setWeatherMinimized(value){
  weatherMinimized=value;
  weatherDock.classList.toggle("minimized",value);
@@ -1670,6 +1920,8 @@ console.info(
   window.setTimeout(()=>map.invalidateSize({pan:false}),230);
  }
  menu.addEventListener("click",()=>setMenu(!workspace.classList.contains("menu-open")));
+ const closeMenu=document.getElementById("sidebarClose");
+ if(closeMenu)closeMenu.addEventListener("click",()=>setMenu(false));
  document.addEventListener("keydown",e=>{if(e.key==="Escape")setMenu(false)});
  const zones=document.getElementById("zones");
  zones.addEventListener("click",e=>{if(e.target.closest(".water-item"))setMenu(false)});
@@ -1700,6 +1952,22 @@ console.info(
 })();
 </script>
 
+
+<script>
+/* Guía contextual: misma cartografía, orientación según el perfil activo. */
+(function(){
+ const $=id=>document.getElementById(id), modal=$("amGuide"), role=$("profileSelect");
+ if(!modal||!role)return;
+ const content={
+  angler:{intro:"Encuentra un lugar, revisa su información y organiza tu próxima salida.",steps:[["Explora el mapa","Acércate a ríos, lagos y lagunas. Usa la búsqueda para encontrar un nombre o comuna."],["Abre la ficha del agua","Selecciona un resultado para ver geometría disponible, condiciones y antecedentes de acceso."],["Guarda tus lugares","Añade aguas a Mis aguas o marca puntos personales para volver a encontrarlos."],["Prepara tu salida","Consulta meteorología, caminos y estaciones DGA. Confirma siempre permisos y normativa antes de ingresar."]]},
+  operator:{intro:"Usa el mapa para descubrir territorios y gestionar solicitudes de acceso para tus clientes.",steps:[["Busca el destino","Explora el mapa y abre la ficha del río, lago o sector que te interesa."],["Revisa las condiciones","Comprueba si existe administración territorial, convenio y reglas de ingreso."],["Solicita acceso","Cuando el territorio lo permita, envía una solicitud con fecha, sector y cantidad de pescadores."],["Sigue el estado","Revisa aprobación, cupos y confirmación. Una solicitud no equivale a autorización de ingreso."]]},
+  admin:{intro:"Administra el acceso al territorio sin perder de vista el mapa compartido.",steps:[["Abre Mis territorios","Desde el menú principal entra al módulo de administración territorial."],["Define sectores y accesos","Delimita áreas, registra entradas y salidas y revisa la geometría antes de habilitarla."],["Configura reglas y cupos","Establece temporadas, condiciones de pesca y límites por sector."],["Gestiona solicitudes","Revisa operadores y pescadores, aprueba o rechaza solicitudes y controla reservas e ingresos."]]} };
+ function open(){const c=content[role.value]||content.angler;$("amGuideIntro").textContent=c.intro;$("amGuideSteps").innerHTML=c.steps.map(x=>'<div class="am-guide-step"><div><strong>'+x[0]+'</strong><span>'+x[1]+'</span></div></div>').join("");modal.classList.add("open");modal.setAttribute("aria-hidden","false");$("amGuideClose").focus();}
+ function close(){modal.classList.remove("open");modal.setAttribute("aria-hidden","true");$("amHelpBtn").focus();}
+ $("amHelpBtn").addEventListener("click",open);$("amGuideClose").addEventListener("click",close);$("amGuideDone").addEventListener("click",close);
+ modal.addEventListener("click",e=>{if(e.target===modal)close();});document.addEventListener("keydown",e=>{if(e.key==="Escape"&&modal.classList.contains("open"))close();if(e.key==="?"&&!modal.classList.contains("open")&&!/INPUT|TEXTAREA|SELECT/.test(document.activeElement?.tagName||""))open();});
+})();
+</script>
 <script src="scripts/territory-manager.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="scripts/supabase-config.js"></script>

@@ -6,15 +6,18 @@ Plataforma cartográfica de exploración para pesca recreativa en la Región de 
 
 https://pristinewaters.github.io/anglermap/
 
-## Modelo de plataforma y arquitectura funcional
+## Producto y modelo de plataforma
 
-AnglerMap se organiza en tres pilares conectados por una infraestructura cartográfica compartida:
+**El mapa y la exploración de aguas son el producto central de AnglerMap.** La administración territorial y las reservas son capacidades complementarias que utilizan la misma cartografía.
 
-- **Administrador de territorio:** gestiona cuerpos de agua, sectores, accesos, cupos, temporadas, reglas, solicitudes, equipo e ingresos.
-- **Operador turístico:** utiliza sus acuerdos comerciales para solicitar sectores, fechas y cupos para sus clientes.
-- **Pescador recreativo:** descubre lugares en el mapa, consulta condiciones y solicita acceso a sectores administrados.
+- **Explorador gratuito:** permite navegar por los ríos, esteros, lagos y lagunas cargados, buscar por nombre o comuna y seleccionar cuerpos de agua desde el mapa.
+- **AnglerMap Premium (modelo comercial proyectado):** entrega información específica y validada de cada río: especies, temporadas, características de tramos, técnicas, condiciones y puntos de interés. La suscripción y los cobros aún no están implementados.
+- **Administrador de territorio:** visualiza y organiza predios, límites, sectores, accesos, condiciones, cupos y solicitudes.
+- **Operador turístico:** podrá gestionar solicitudes y participantes en territorios donde tenga un convenio autorizado.
 
-Los tres perfiles utilizan la misma base geoespacial y un motor común de permisos, disponibilidad, reservas, pagos, notificaciones y control de ingreso/salida.
+Los perfiles utilizan una infraestructura cartográfica compartida, con permisos y vistas diferentes. El acceso público, los derechos de paso y las autorizaciones de pesca nunca se infieren de la mera presencia de un río o camino en el mapa.
+
+El piloto de Río del Medio demuestra el módulo de administración territorial; no define la pantalla principal del producto.
 
 La definición funcional completa, los flujos, estados, modelo de datos conceptual, principios de pago, seguridad y hoja de ruta están en [Arquitectura del ecosistema AnglerMap](docs/ANGLERMAP-ECOSYSTEM-ARCHITECTURE.md).
 

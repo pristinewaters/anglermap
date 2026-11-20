@@ -94,7 +94,126 @@
 
   @media(max-width:760px){.tm-layout{grid-template-columns:1fr}.tm-nav{display:flex;overflow-x:auto;gap:4px;padding:8px;border-right:0;border-bottom:1px solid #294456}.tm-nav-label{display:none}.tm-nav button{width:auto;white-space:nowrap;padding:9px}.tm-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.tm-main{padding:18px 13px}.tm-head{height:52px;padding:0 12px}.tm-head small{display:none}.tm-title{font-size:21px}}
   @media(max-width:420px){.tm-form{grid-template-columns:1fr}.tm-field.full{grid-column:auto}.tm-row{align-items:flex-start;flex-wrap:wrap}.tm-tag{margin-left:auto}}
+
+  /* Navegación agrupada: etiquetas cortas, estados claros y adaptación móvil. */
+  .tm-nav{overflow:auto;scrollbar-width:thin;scrollbar-color:#29485b transparent}
+  .tm-nav-group{margin:0 0 13px}
+  .tm-nav-label{padding:10px 10px 6px;font-size:9px;letter-spacing:1.2px;color:#7895a6;font-weight:800}
+  .tm-nav button{min-height:40px;font-size:12px}
+  .tm-nav button:focus-visible,.tm-btn:focus-visible,.tm-close:focus-visible{outline:3px solid #7ce7f2;outline-offset:2px}
+  .tm-nav button.active{box-shadow:inset 3px 0 #55d9e8}
+  .tm-main{scroll-behavior:smooth}
+  @media(max-width:760px){.tm-nav{position:sticky;top:0;z-index:5;align-items:center;scroll-snap-type:x proximity}.tm-nav-group{display:flex;gap:4px;align-items:center;flex-shrink:0;margin:0}.tm-nav-group .tm-nav-label{display:none}.tm-nav button{scroll-snap-align:start;min-height:38px}.tm-nav button span{display:inline}.tm-nav button.active{box-shadow:inset 0 -3px #55d9e8}}
   `;
+
+  style.textContent += `
+/* Territory Manager redesign: task navigation across the top, spacious work area */
+  #tm-shell{background:#071521f7;backdrop-filter:blur(16px)}
+  .tm-head{height:66px;padding:0 clamp(14px,2.5vw,34px);gap:14px;background:#081a28;border-bottom:1px solid #203d50}
+  .tm-brand{font-size:17px;letter-spacing:1.2px}
+  .tm-head small{font-size:9px;letter-spacing:1.25px;text-transform:uppercase}
+  .tm-head .tm-icon-btn{margin-left:auto}
+  .tm-close{font-size:11px;padding:10px 14px;border-radius:10px;background:#15384b}
+  .tm-layout{display:flex;flex-direction:column;min-height:0;flex:1}
+  .tm-nav{display:flex;align-items:center;gap:5px;padding:8px clamp(12px,2.5vw,34px);border-right:0;border-bottom:1px solid #203d50;background:#0a1d2b;overflow-x:auto;scrollbar-width:thin}
+  .tm-nav-group{display:flex;align-items:center;gap:4px;margin:0;flex-shrink:0}
+  .tm-nav-label{display:none}
+  .tm-nav button{width:auto;min-height:39px;margin:0;padding:9px 13px;white-space:nowrap;border-radius:9px;font-size:11px}
+  .tm-nav button.active{background:#173d51;border-color:#2c5b72;box-shadow:inset 0 -2px #55d9e8;color:#e9fbff}
+  .tm-main{max-width:1500px;padding:clamp(18px,2.5vw,34px);overflow:auto}
+  .tm-kicker{font-size:9px;letter-spacing:1.8px}
+  .tm-title{font-size:clamp(24px,2.3vw,32px);letter-spacing:-.5px;margin:6px 0 4px}
+  .tm-desc{font-size:11px;line-height:1.45;margin:0 0 14px;max-width:680px;color:#91a9b8}
+  .tm-toolbar{margin:4px 0 14px}
+  .tm-hero{min-height:112px;padding:22px 24px;border-radius:15px;background:linear-gradient(110deg,#123b50 0%,#102a3c 56%,#102537 100%);border-color:#2a566c}
+  .tm-hero h2{font-size:22px;letter-spacing:-.3px}
+  .tm-hero p{font-size:10px}
+  .tm-grid{gap:9px;margin:13px 0}
+  .tm-card{padding:13px 15px;border-radius:11px;background:#0e2332;border-color:#203f52}
+  .tm-card small{font-size:9px;margin-bottom:7px;color:#91a9b8}
+  .tm-value{font-size:23px;letter-spacing:-.5px}
+  .tm-card p{font-size:9px;margin-top:5px;color:#809aaa}
+  .tm-pilot-grid{grid-template-columns:minmax(0,1.55fr) minmax(290px,.9fr);gap:12px}
+  .tm-pilot-panel{padding:15px;border-radius:12px;background:#0b2030;border-color:#203f52}
+  .tm-pilot-panel h3,.tm-section h3{font-size:12px;letter-spacing:.1px}
+  .tm-calendar{gap:5px}
+  .tm-day{min-height:54px;padding:7px 3px;border-radius:8px;background:#10283a;border-color:#25465a}
+  .tm-day strong{font-size:12px}
+  .tm-day small{font-size:8px}
+  .tm-slot{padding:10px 11px;border-radius:9px;background:#10283a;border-color:#25465a}
+  .tm-slot strong{font-size:11px}
+  .tm-slot small{font-size:9px}
+  .tm-pilot-item{padding:10px;border-radius:9px;background:#10283a;border-color:#25465a}
+  .tm-pilot-item strong{font-size:11px}
+  .tm-pilot-item small{font-size:9px}
+  .tm-btn{font-size:10px;padding:9px 11px;border-radius:9px}
+  .tm-btn.primary{background:#12657a;border-color:#258da2}
+  .tm-note{font-size:9px;padding:9px 12px;margin:12px 0;border-radius:9px}
+  .tm-row{padding:11px 12px;border-radius:9px;background:#0d2332;border-color:#203f52}
+  .tm-empty{padding:20px;border-radius:10px;font-size:11px}
+  .tm-import{border-radius:10px;background:#0d2332;border-color:#203f52}
+  .tm-form{gap:10px}
+  .tm-field input,.tm-field select,.tm-field textarea{border-radius:9px;background:#091b29;border-color:#2a4b60;font-size:11px}
+  .tm-tag{font-size:8px;letter-spacing:.3px}
+  @media(max-width:760px){
+    .tm-head{height:55px;padding:0 10px;gap:8px}
+    .tm-brand{font-size:14px}
+    .tm-head small{display:none}
+    .tm-close{padding:8px 10px;font-size:9px}
+    .tm-nav{padding:7px 8px;gap:4px}
+    .tm-nav button{min-height:36px;padding:8px 10px;font-size:10px}
+    .tm-main{padding:16px 11px}
+    .tm-grid{gap:7px}
+    .tm-card{padding:11px}
+    .tm-value{font-size:20px}
+    .tm-pilot-grid{grid-template-columns:1fr}
+    .tm-hero{padding:17px}
+    .tm-hero h2{font-size:19px}
+  }
+  @media(max-width:420px){
+    .tm-title{font-size:22px}
+    .tm-grid{grid-template-columns:repeat(2,minmax(0,1fr))}
+    .tm-nav button{padding:7px 9px}
+  }
+  `;
+
+
+  style.textContent += `
+  /* Territory Manager · sistema visual claro y coherente con el explorador */
+  #tm-shell{background:#f5f7fa!important;color:#172b3d!important;backdrop-filter:none!important}
+  #tm-shell .tm-head{background:#fff!important;border-bottom:1px solid #dce4ec!important;color:#172b3d!important}
+  #tm-shell .tm-brand{color:#17334a!important}.tm-brand span{color:#1683b8!important}
+  #tm-shell .tm-head small{color:#718397!important}
+  #tm-shell .tm-nav{background:#fff!important;border-bottom:1px solid #dce4ec!important}
+  #tm-shell .tm-nav button{color:#526a7d!important;background:transparent!important;border-color:transparent!important}
+  #tm-shell .tm-nav button:hover,#tm-shell .tm-nav button.active{background:#edf6fb!important;border-color:#d7e8f3!important;color:#145d8b!important;box-shadow:inset 0 -2px #1683b8!important}
+  #tm-shell .tm-main{color:#172b3d!important}
+  #tm-shell .tm-kicker{color:#1683b8!important}
+  #tm-shell .tm-title,#tm-shell .tm-section h3,#tm-shell .tm-pilot-panel h3{color:#172b3d!important}
+  #tm-shell .tm-desc,#tm-shell .tm-pilot-muted,#tm-shell .tm-row p,#tm-shell .tm-card p{color:#64788a!important}
+  #tm-shell .tm-card,#tm-shell .tm-pilot-panel,#tm-shell .tm-row,#tm-shell .tm-import,#tm-shell .tm-import-item,#tm-shell .tm-pilot-item{background:#fff!important;border-color:#dce4ec!important;color:#172b3d!important;box-shadow:0 2px 8px #1d355008!important}
+  #tm-shell .tm-card small,#tm-shell .tm-import-item small,#tm-shell .tm-pilot-item small{color:#718397!important}
+  #tm-shell .tm-value,#tm-shell .tm-pilot-metric,#tm-shell .tm-row strong,#tm-shell .tm-pilot-item strong{color:#172b3d!important}
+  #tm-shell .tm-hero{background:#edf6fb!important;border-color:#d7e8f3!important;color:#172b3d!important}
+  #tm-shell .tm-hero h2{color:#17334a!important}#tm-shell .tm-hero p{color:#526a7d!important}
+  #tm-shell .tm-btn,#tm-shell .tm-close{background:#f4f8fb!important;border-color:#dce4ec!important;color:#31536d!important}
+  #tm-shell .tm-btn.primary{background:#176eaa!important;border-color:#176eaa!important;color:#fff!important}
+  #tm-shell .tm-btn.subtle{background:#fff!important;color:#526a7d!important}
+  #tm-shell .tm-icon-btn{background:#f4f8fb!important;border-color:#dce4ec!important;color:#31536d!important}
+  #tm-shell .tm-tag{background:#f5f8fb!important;border-color:#dce4ec!important;color:#526a7d!important}
+  #tm-shell .tm-empty{background:#fff!important;border-color:#dce4ec!important;color:#718397!important}
+  #tm-shell .tm-note{background:#fff8eb!important;border-color:#f0dfbd!important;color:#765a2c!important}
+  #tm-shell .tm-field label,#tm-shell .tm-pilot-checks label{color:#526a7d!important}
+  #tm-shell .tm-field input,#tm-shell .tm-field select,#tm-shell .tm-field textarea,#tm-shell .tm-import input{background:#fff!important;border-color:#dce4ec!important;color:#172b3d!important}
+  #tm-shell .tm-day,#tm-shell .tm-slot{background:#fff!important;border-color:#dce4ec!important;color:#31536d!important}
+  #tm-shell .tm-day.selected{outline-color:#1683b8!important;background:#edf6fb!important}
+  #tm-shell .tm-modal{background:#edf6fb!important;border-color:#d7e8f3!important;color:#31536d!important}
+  #tm-shell .tm-status{background:#29966b!important}
+  #tm-shell button:focus-visible,#tm-shell input:focus-visible,#tm-shell select:focus-visible{outline:3px solid #1683b8!important;outline-offset:2px!important}
+  @media(max-width:760px){#tm-shell .tm-nav{background:#fff!important}#tm-shell .tm-nav button.active{box-shadow:inset 0 -3px #1683b8!important}}
+
+  `;
+
   document.head.appendChild(style);
 
   const shell = document.createElement("section");
@@ -103,25 +222,18 @@
     <header class="tm-head"><div class="tm-brand">ANGLER<span>MAP</span></div><small>· TERRITORY MANAGER</small><button class="tm-icon-btn" id="tm-settings" title="Configuración del territorio" aria-label="Configuración">⚙</button><button class="tm-close" id="tm-close">Volver al mapa ×</button></header>
     <div class="tm-layout">
       <nav class="tm-nav" aria-label="Administración territorial">
-        <div class="tm-nav-label">GESTIÓN TERRITORIAL</div>
-        <button data-tm-tab="overview" class="active">⌂ Resumen</button>
-        <button data-tm-tab="rio-medio">〰 Río del Medio</button>
-        <button data-tm-tab="territories">▱ Territorios</button>
-        <button data-tm-tab="access">◇ Accesos y reglas</button>
-        <button data-tm-tab="requests">⇄ Solicitudes</button>
-        <button data-tm-tab="operators">♧ Operadores</button>
-        <button data-tm-tab="team">♙ Equipo</button>
-        <button data-tm-tab="angler-portal">⌖ Portal pescador</button>
-        <button data-tm-tab="operator-portal">▣ Portal operador</button>
-        <button data-tm-tab="content">▤ Información</button>
-        <button data-tm-tab="settings">⚙ Configuración</button>
+        <div class="tm-nav-group"><div class="tm-nav-label">INICIO</div><button data-tm-tab="overview" class="active" title="Resumen general">⌂ <span>Resumen</span></button></div>
+        <div class="tm-nav-group"><div class="tm-nav-label">MI TERRITORIO</div><button data-tm-tab="rio-medio" title="Administrar Río del Medio">〰 <span>Río del Medio</span></button><button data-tm-tab="territories" title="Territorios y sectores">▱ <span>Territorios</span></button><button data-tm-tab="access" title="Accesos y condiciones">◇ <span>Accesos y reglas</span></button></div>
+        <div class="tm-nav-group"><div class="tm-nav-label">OPERACIÓN</div><button data-tm-tab="requests" title="Solicitudes de ingreso">⇄ <span>Solicitudes</span></button><button data-tm-tab="operators" title="Operadores y convenios">♧ <span>Operadores</span></button><button data-tm-tab="team" title="Equipo de trabajo">♙ <span>Equipo</span></button></div>
+        <div class="tm-nav-group"><div class="tm-nav-label">EXPERIENCIA DE USUARIOS</div><button data-tm-tab="angler-portal" title="Vista del pescador">⌖ <span>Vista pescador</span></button><button data-tm-tab="operator-portal" title="Vista del operador">▣ <span>Vista operador</span></button><button data-tm-tab="content" title="Información pública">▤ <span>Información pública</span></button></div>
+        <div class="tm-nav-group"><div class="tm-nav-label">PREFERENCIAS</div><button data-tm-tab="settings" title="Configuración">⚙ <span>Configuración</span></button></div>
       </nav>
       <main class="tm-main" id="tm-content" tabindex="-1"></main>
     </div>`;
   document.querySelector(".map-area").appendChild(shell);
 
   const esc = value => String(value ?? "").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
-  const heading = (k,t,d) => `<div class="tm-kicker">${k}</div><h1 class="tm-title">${t}</h1><p class="tm-desc">${d}</p>`;
+  const heading = (k,t,d) => `<div class="tm-page-heading"><div class="tm-kicker">${k}</div><h1 class="tm-title">${t}</h1><p class="tm-desc">${d}</p></div>`;
   const empty = (symbol, message) => `<div class="tm-empty">${symbol}<br>${message}</div>`;
   const tag = text => `<span class="tm-tag">${esc(text)}</span>`;
   const row = (title, desc, status) => `<div class="tm-row"><div class="tm-row-main"><strong>${esc(title)}</strong><p>${esc(desc)}</p></div>${tag(status)}</div>`;
