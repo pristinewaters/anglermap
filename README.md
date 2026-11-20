@@ -13,7 +13,7 @@ La aplicación se ejecuta como sitio estático desde `index.html`. No requiere i
 ### Funciones disponibles
 
 - Mapa interactivo con cartografía satelital, topográfica y OpenStreetMap.
-- Catálogo hidrográfico generado desde GeoJSON, agrupado por las nueve comunas y con categorías de ríos/esteros, lagos y lagunas.
+- Catálogo hidrográfico generado desde GeoJSON, agrupado por las nueve comunas y con categorías de ríos/esteros, lagos, lagunas y embalses.
 - Búsqueda de aguas y fichas informativas con procedencia, provincias y unidades hidrográficas DGA asociadas espacialmente.
 - Selección de un cuerpo de agua con enfoque automático de su geometría cartográfica disponible.
 - OpenStreetMap / Overpass como fuente complementaria cuando falta geometría estática validada.
