@@ -412,9 +412,9 @@ function amWaterCategory(props) {
  // La red de drenajes DGA puede codificar lagos/lagunas como "river".
  // El subtipo hidrográfico tiene prioridad sobre esa clasificación genérica.
  const subtype=amCatalogNormalize(props.subtype||"");
- if (/^(lago|lake)\\b/.test(subtype)) return "lake";
- if (/^laguna\\b/.test(subtype)) return "lagoon";
- if (/^embalse\\b/.test(subtype)) return "reservoir";
+ if (/^(lago|lake)\b/.test(subtype)) return "lake";
+ if (/^laguna\b/.test(subtype)) return "lagoon";
+ if (/^embalse\b/.test(subtype)) return "reservoir";
  const declared = String(props.water_category || "").toLowerCase();
  if (declared === "river" || declared === "lake" || declared === "lagoon" || declared === "reservoir") return declared;
  const label = amCatalogNormalize([props.name,props.subtype,props.water_type].join(" "));
@@ -439,8 +439,8 @@ async function loadHydroCatalog() {
    const normalizedSubtype=amCatalogNormalize(p.subtype||"");
    // La capa DGA incluye líneas de costa y entidades insulares, no aguas.
    const isCoastline=normalizedSubtype.includes("linea de costa");
-   const isIsland=/\\b(isla|islas|islote|islotes)\\b/.test(normalizedName)||
-    /\\b(isla|islas|islote|islotes)\\b/.test(normalizedSubtype);
+   const isIsland=/\b(isla|islas|islote|islotes)\b/.test(normalizedName)||
+    /\b(isla|islas|islote|islotes)\b/.test(normalizedSubtype);
    if(isCoastline||isIsland)return;
    const labels={river:"Río / estero",lake:"Lago",lagoon:"Laguna"};
    // Una entrada por nombre, categoría y comuna. Los OBJECTID DGA
@@ -449,7 +449,7 @@ async function loadHydroCatalog() {
     const key=normalizedName+"|"+category+"|"+amCatalogNormalize(commune);
     let item=grouped.get(key);
     if(!item){
-     item={id:key,name,category,categoryLabel:p.category_label||labels[category]||"Agua",communes:[commune],sources:[],aliases:[],toponymyNotes:[],features:[]};
+     item={id:key,name,category,categoryLabel:labels[category]||p.category_label||"Agua",communes:[commune],sources:[],aliases:[],toponymyNotes:[],features:[]};
      grouped.set(key,item);
     }
     item.sources=[...new Set(item.sources.concat(p.official_source||[]))].sort();
