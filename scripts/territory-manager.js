@@ -121,7 +121,7 @@
         </div>
         <div class="tm-note">MODO DE DEMOSTRACIÓN: los datos se guardan solo en este navegador. Aún no existe verificación de titularidad, usuarios, backend ni validez jurídica. Los datos de esta vista no modifican la cartografía oficial.</div>
         <div class="tm-section"><h3>Actividad reciente</h3><button class="tm-btn subtle" data-go="territories">Ver territorios →</button></div>
-        ${data.territories.length ? data.territories.slice(-3).reverse().map(t=>row(t.name, t.commune+" · "+t.points.length+" vértices", "Borrador local")).join("") : empty("⌂","Todavía no hay territorios incorporados. Comienza creando un borrador desde el mapa.")}`;
+        ${data.territories.length ? data.territories.slice(-3).reverse().map(t=>row(t.name, t.waterbody+" · "+t.commune+" · "+t.points.length+" vértices", "Borrador local")).join("") : empty("⌂","Todavía no hay territorios incorporados. Comienza creando un borrador desde el mapa.")}`;
     } else if (tab === "territories") {
       root.innerHTML = heading("DELIMITACIÓN Y FICHAS", "Territorios", "Crea borradores de áreas de gestión y organiza sus sectores. La geometría que dibujes aquí es privada y no reemplaza límites ni capas oficiales.") +
         `<div class="tm-actions"><button class="tm-btn primary" id="tm-draw">＋ Delimitar en el mapa</button><button class="tm-btn" id="tm-manual">Crear ficha sin polígono</button></div>
@@ -131,7 +131,7 @@
         <div class="tm-note">Los archivos importados se guardan solo en este navegador. Se muestran como referencia pendiente de validación; no acreditan propiedad, deslindes vigentes, titularidad ni derechos de acceso. Se conserva el nombre del archivo y la fuente declarada.</div>
         <div class="tm-import-list">${data.imports.length ? data.imports.map((item,i)=>`<div class="tm-import-item"><div><strong>${esc(item.name)}</strong><small>${esc(item.fileName)} · ${esc(item.format)} · ${item.featureCount} elementos · Fuente: ${esc(item.source||"No declarada")} · Pendiente de validar</small></div><button class="tm-btn subtle" data-zoom-import="${i}">Ver en mapa</button><button class="tm-btn subtle" data-remove-import="${i}">Quitar</button></div>`).join("") : empty("▧","Todavía no has importado archivos geográficos.")}</div>
         <div class="tm-section"><h3>Mis territorios</h3>${tag(data.territories.length+" registros")}</div>
-        <div class="tm-list">${data.territories.length ? data.territories.map((t,i)=>row(t.name,t.commune+" · "+(t.points.length>=3?"Polígono local":"Sin geometría") , "Pendiente de validar")+`<div class="tm-actions"><button class="tm-btn subtle" data-remove-territory="${i}">Eliminar borrador</button></div>`).join("") : empty("▱","Aún no has registrado territorios.")}</div>`;
+        <div class="tm-list">${data.territories.length ? data.territories.map((t,i)=>row(t.name,(t.waterbody||"Cuerpo de agua por asociar")+" · "+t.commune+" · "+(t.points.length>=3?"Polígono local":"Sin geometría") , "Pendiente de validar")+`<div class="tm-actions"><button class="tm-btn subtle" data-remove-territory="${i}">Eliminar borrador</button></div>`).join("") : empty("▱","Aún no has registrado territorios.")}</div>`;
       $("tm-draw").onclick = startDrawing;
       $("tm-manual").onclick = () => createTerritory([]);
       $("tm-import-btn").onclick = importTerritoryFile;
@@ -424,7 +424,8 @@
     const name=prompt("Nombre del territorio o sector:");
     if(!name || !name.trim()) return;
     const commune=prompt("Comuna:", "Por definir") || "Por definir";
-    data=read(); data.territories.push({id:"ter-"+Date.now(),name:name.trim(),commune:commune.trim(),points:points.map(p=>[p.lat,p.lng]),createdAt:new Date().toISOString(),status:"draft"});
+    const waterbody=prompt("Cuerpo de agua asociado (río, lago o laguna):","Por definir") || "Por definir";
+    data=read(); data.territories.push({id:"ter-"+Date.now(),name:name.trim(),commune:commune.trim(),waterbody:waterbody.trim(),points:points.map(p=>[p.lat,p.lng]),createdAt:new Date().toISOString(),status:"draft"});
     save(data); draft=null; if(draftLayer){map.removeLayer(draftLayer);draftLayer=null;} tab="territories";render();
   }
   function startDrawing() {
