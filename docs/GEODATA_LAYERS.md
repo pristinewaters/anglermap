@@ -21,7 +21,7 @@ data/
 - Responsable: Dirección de Vialidad, Ministerio de Obras Públicas.
 - Incluye caminos nacionales, regionales, provinciales, comunales y regionales de acceso según la descripción del servicio.
 - La ficha describe datos disponibles a enero de 2021. La capa registra `NOMBRE_CAMINO`, `ROL`, `CLASIFICACION`, `CARPETA` y `RVO`, por lo que permite distinguir la jerarquía vial y la carpeta (pavimento, ripio, suelo natural y otras categorías). Incluye caminos nacionales, internacionales, regionales principales, provinciales, comunales, regionales de acceso y caminos en proceso de enrolamiento.
-- La cobertura de 179 features de la primera descarga no se considera exhaustiva por sí sola. Se contrasta con los dimensionamientos oficiales MOP por longitud y carpeta de rodadura, además de la ficha regional IDE Magallanes. La cifra de registros no equivale al número total de rutas ni demuestra cobertura completa.
+- La cobertura de 179 features de la primera descarga no se considera exhaustiva por sí sola. Se contrasta con los dimensionamientos oficiales MOP por longitud y carpeta de rodadura, además de la ficha regional IDE Magallanes. La cifra de registros no equivale al número total de rutas ni demuestra cobertura completa. El proceso calcula longitud geodésica aproximada total y por clasificación/carpeta, separando caminos regionales comunales y de acceso para compararlos con el benchmark estadístico MOP 2025 (1.678,203 km a diciembre de 2024). La comparación es de consistencia, no una igualdad exigible: las fechas y definiciones cartográficas pueden diferir.
 - Es cartografía de referencia; no confirma transitabilidad actual, derecho de paso, servidumbre ni acceso a predios privados.
 - Producto: `roads.geojson`, recortado y segmentado por comuna.
 
@@ -77,6 +77,11 @@ data/
 ## Validación y publicación
 
 El workflow descarga, valida y publica los tres GeoJSON y sus metadatos. Una capa solo pasa a estado `available` cuando el archivo existe, contiene geometrías válidas y supera la validación. Los archivos se preparan antes de reemplazar la versión publicada.
+
+## Contraste de vialidad MOP
+
+- [Red Vial Nacional · Dimensionamiento y Características 2025](https://vialidad.mop.gob.cl/uploads/sites/9/2025/08/Red-Vial-Nacional-Dimensionamiento-y-Caracteristicas-Ano-2025.pdf): estadísticas de longitud por carpeta y categoría; informa 1.678,203 km de caminos regionales comunales y de acceso en Magallanes a diciembre de 2024.
+- [IDE Magallanes · Red Vial Región de Magallanes](https://idemagallanes.cl/magallanes/catalog/79/Red%20Vial%20Regi%C3%B3n%20de%20Magallanes): ficha regional de Dirección de Vialidad MOP, recurso vectorial SHP creado en noviembre de 2024 y marcado En Desarrollo; se utiliza como contraste documental, no como segunda capa de publicación.
 
 ## Fuentes DGA complementarias
 
