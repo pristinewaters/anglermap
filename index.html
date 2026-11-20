@@ -486,6 +486,15 @@ async function loadHydroCatalog() {
 }
 
 
+const $=id=>document.getElementById(id);
+const zoneOrder=["Punta Arenas","Laguna Blanca","Río Verde","San Gregorio","Natales","Torres del Paine","Porvenir","Primavera","Timaukel"];
+const readStore=(key,fallback)=>{
+ try{return JSON.parse(localStorage.getItem(key))??fallback}catch(e){return fallback}
+};
+const saveStore=(key,value)=>{
+ try{localStorage.setItem(key,JSON.stringify(value))}
+ catch(e){alert("No fue posible guardar los datos en este navegador.")}
+};
 const AM_PROFILE_KEY="anglerMapUserProfileV1";
 let amUserProfile=readStore(AM_PROFILE_KEY,null);
 function openUserProfile(){
@@ -521,15 +530,7 @@ function applyProfileFilters(){
 }
 $("userProfileBtn").onclick=openUserProfile;
 if(amUserProfile){$("userProfileBtn").title="Perfil: "+amUserProfile.name;}
-\nconst $=id=>document.getElementById(id);
-const zoneOrder=["Punta Arenas","Laguna Blanca","Río Verde","San Gregorio","Natales","Torres del Paine","Porvenir","Primavera","Timaukel"];
-const readStore=(key,fallback)=>{
- try{return JSON.parse(localStorage.getItem(key))??fallback}catch(e){return fallback}
-};
-const saveStore=(key,value)=>{
- try{localStorage.setItem(key,JSON.stringify(value))}
- catch(e){alert("No fue posible guardar los datos en este navegador.")}
-};
+\n
 let favorites=readStore("anglerMapFavorites",[]);
 let savedPoints=readStore("anglerMapPoints",[]);
 let selectedRiver=null,addPointMode=false,measureMode=false;
