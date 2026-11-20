@@ -486,6 +486,8 @@ async function loadHydroCatalog() {
   console.error("AnglerMap: no se pudo cargar el inventario hidrográfico.",error);
   RIVERS = [];
   hydroCatalogState = "unavailable";
+  const waterCount = document.getElementById("waterCount");
+  if (waterCount) waterCount.textContent = "SIN DATOS";
  }
  if (typeof renderZones === "function") renderZones(document.getElementById("globalSearch")?.value || "");
 }
