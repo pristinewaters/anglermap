@@ -911,11 +911,6 @@ def query_water_layer(
             stable.encode("utf-8")
         ).hexdigest()[:16]
 
-        communes = [
-            commune["name"]
-            for commune in intersecting_communes(clipped)
-        ]
-
         output.append(
             geojson_feature(
                 clipped,
