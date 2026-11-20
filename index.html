@@ -338,7 +338,7 @@ button:focus-visible,input:focus-visible,select:focus-visible{outline:2px solid 
 
  <section class="weather-dock" id="weatherDock">
   <div class="weather-dock-head" id="weatherDragHandle">
-   <div class="weather-brand">ANGLER<span>MAP</span> WEATHER</div>
+   <div class="weather-brand" id="weatherTitle">Centro del mapa</div>
    <div class="weather-location" id="weatherPlace">Centro del mapa</div>
    <div class="weather-updated" id="weatherUpdated">Consultando...</div>
    <button class="weather-dock-btn" id="weatherMinimize" title="Minimizar" aria-label="Minimizar meteorología">−</button>
@@ -433,16 +433,14 @@ async function loadHydroCatalog() {
    const normalizedSubtype=amCatalogNormalize(p.subtype||"");
    // El inventario poligonal DGA puede incluir islas/islotes.
    // No son aguas pescables ni deben contaminar el catálogo de ríos y lagos.
-   const isIsland=(category==="lake"||category==="lagoon")&&(
-    /\b(isla|islas|islote|islotes)\b/.test(normalizedSubtype)||
-    /^(isla|islote)\s/.test(normalizedName)
-   );
+   const isIsland=/(^|\b)(isla|islas|islote|islotes)(\b|$)/.test(normalizedName)||
+    /(^|\b)(isla|islas|islote|islotes)(\b|$)/.test(normalizedSubtype);
    if(isIsland)return;
    const labels={river:"Río / estero",lake:"Lago",lagoon:"Laguna"};
    // Una entrada por nombre, categoría y comuna. Los OBJECTID DGA
    // identifican segmentos fuente, no necesariamente cursos de agua distintos.
    communes.forEach(commune=>{
-    const key=normalizedName+"|"+category+"|"+amCatalogNormalize(commune);
+    const key=normalizedName+"|"+amCatalogNormalize(commune);
     let item=grouped.get(key);
     if(!item){
      item={id:key,name,category,categoryLabel:p.category_label||labels[category]||"Agua",communes:[commune],sources:[],aliases:[],toponymyNotes:[],features:[]};
@@ -451,7 +449,12 @@ async function loadHydroCatalog() {
     item.sources=[...new Set(item.sources.concat(p.official_source||[]))].sort();
     item.aliases=[...new Set(item.aliases.concat(p.aliases||[]))];
     if(p.toponymy_note)item.toponymyNotes.push(p.toponymy_note);
-    item.features.push({type:"Feature",geometry:feature.geometry,properties:{waterbody_id:key,name:p.name,official_id:p.official_id,category_label:p.category_label,official_source:p.official_source,water_type:p.water_type,water_category:category,subtype:p.subtype||null,communes:[commune]}});
+    const geometryKey=JSON.stringify(feature.geometry);
+    if(!item._geometryKeys)item._geometryKeys=new Set();
+    if(!item._geometryKeys.has(geometryKey)){
+     item._geometryKeys.add(geometryKey);
+     item.features.push({type:"Feature",geometry:feature.geometry,properties:{waterbody_id:key,name:p.name,official_id:p.official_id,category_label:p.category_label,official_source:p.official_source,water_type:p.water_type,water_category:category,subtype:p.subtype||null,communes:[commune]}});
+    }
    });
   });
   RIVERS=[...grouped.values()].sort((x,y)=>x.name.localeCompare(y.name,"es"));
@@ -673,6 +676,7 @@ loadHydroCatalog();
 
 function openRiver(r,focusCommune=null){
  selectedRiver=r;
+ $("weatherTitle").textContent=r.name;
  $("generalPanel").classList.remove("show");
  $("detailKicker").textContent="Ficha de agua · "+r.categoryLabel;
  $("detailTitle").textContent=r.name;
@@ -698,7 +702,7 @@ function openRiver(r,focusCommune=null){
  $("tabOverview").hidden=false;$("tabConditions").hidden=true;$("tabAccess").hidden=true;
  renderZones($("globalSearch").value);
 }
-$("closeDetail").onclick=()=>$("detailPanel").classList.remove("show");
+$("closeDetail").onclick=()=>{$("detailPanel").classList.remove("show");selectedRiver=null;$("weatherTitle").textContent="Centro del mapa";};
 
 document.querySelectorAll(".detail-tab").forEach(button=>{
  button.onclick=()=>{
