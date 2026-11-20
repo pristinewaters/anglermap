@@ -429,18 +429,30 @@ async function loadHydroCatalog() {
    const communes=Array.isArray(p.communes)?p.communes.filter(Boolean):[];
    if(!name||name==="Cuerpo de agua sin nombre"||!communes.length||!feature.geometry)return;
    const category=amWaterCategory(p);
-   const key=String(p.waterbody_id||"").trim()||amCatalogNormalize(name)+"|"+category;
-   let item=grouped.get(key);
-   if(!item){
-    const labels={river:"Río / estero",lake:"Lago",lagoon:"Laguna"};
-    item={id:key,name,category,categoryLabel:p.category_label||labels[category]||"Agua",communes:[],sources:[],aliases:[],toponymyNotes:[],features:[]};
-    grouped.set(key,item);
-   }
-   item.communes=[...new Set(item.communes.concat(communes))].sort((x,y)=>zoneOrder.indexOf(x)-zoneOrder.indexOf(y));
-   item.sources=[...new Set(item.sources.concat(p.official_source||[]))].sort();
-   item.aliases=[...new Set(item.aliases.concat(p.aliases||[]))];
-   if(p.toponymy_note)item.toponymyNotes.push(p.toponymy_note);
-   item.features.push({type:"Feature",geometry:feature.geometry,properties:{waterbody_id:p.waterbody_id,name:p.name,official_id:p.official_id,category_label:p.category_label,official_source:p.official_source,water_type:p.water_type,water_category:category,communes:p.communes||[]}});
+   const normalizedName=amCatalogNormalize(name);
+   const normalizedSubtype=amCatalogNormalize(p.subtype||"");
+   // El inventario poligonal DGA puede incluir islas/islotes.
+   // No son aguas pescables ni deben contaminar el catálogo de ríos y lagos.
+   const isIsland=(category==="lake"||category==="lagoon")&&(
+    /\b(isla|islas|islote|islotes)\b/.test(normalizedSubtype)||
+    /^(isla|islote)\s/.test(normalizedName)
+   );
+   if(isIsland)return;
+   const labels={river:"Río / estero",lake:"Lago",lagoon:"Laguna"};
+   // Una entrada por nombre, categoría y comuna. Los OBJECTID DGA
+   // identifican segmentos fuente, no necesariamente cursos de agua distintos.
+   communes.forEach(commune=>{
+    const key=normalizedName+"|"+category+"|"+amCatalogNormalize(commune);
+    let item=grouped.get(key);
+    if(!item){
+     item={id:key,name,category,categoryLabel:p.category_label||labels[category]||"Agua",communes:[commune],sources:[],aliases:[],toponymyNotes:[],features:[]};
+     grouped.set(key,item);
+    }
+    item.sources=[...new Set(item.sources.concat(p.official_source||[]))].sort();
+    item.aliases=[...new Set(item.aliases.concat(p.aliases||[]))];
+    if(p.toponymy_note)item.toponymyNotes.push(p.toponymy_note);
+    item.features.push({type:"Feature",geometry:feature.geometry,properties:{waterbody_id:key,name:p.name,official_id:p.official_id,category_label:p.category_label,official_source:p.official_source,water_type:p.water_type,water_category:category,subtype:p.subtype||null,communes:[commune]}});
+   });
   });
   RIVERS=[...grouped.values()].sort((x,y)=>x.name.localeCompare(y.name,"es"));
   hydroCatalogState="ready";
