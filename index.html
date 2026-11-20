@@ -332,7 +332,8 @@ button:focus-visible,input:focus-visible,select:focus-visible{outline:2px solid 
  <div class="map-bottom">
   <div class="map-chip"><b>●</b> Puntos personales</div>
   <div class="map-chip">Cartografía de referencia</div>
-  <div class="map-chip" id="dgaStatus">Capas oficiales · MOP / DGA</div>
+  <div class="map-chip" id="roadStatus">MOP: caminos no cargados</div>
+  <div class="map-chip" id="dgaStatus">DGA: estaciones no cargadas</div>
  </div>
 
  <section class="weather-dock" id="weatherDock">
@@ -491,7 +492,7 @@ $("osmBtn").onclick=()=>setBase(osm,"osmBtn");
 
 async function loadRoads(){
  if(roadsLoaded)return;
- $("dgaStatus").textContent="MOP: cargando caminos…";
+ $("roadStatus").textContent="MOP: cargando caminos…";
  try{
   const response=await fetch("data/magallanes/roads.geojson",{cache:"no-store"});
   if(!response.ok)throw new Error("Red vial MOP HTTP "+response.status);
@@ -504,9 +505,9 @@ async function loadRoads(){
    layer.bindPopup("<strong>"+String(name).replace(/[&<>]/g,"")+"</strong>"+(details?"<br>"+String(details).replace(/[&<>]/g,""):""));
   }}).addTo(roadsLayer);
   roadsLoaded=true;
-  $("dgaStatus").textContent="MOP: "+data.features.length+" tramos viales";
+  $("roadStatus").textContent="MOP: "+data.features.length+" tramos viales";
  }catch(error){
-  $("dgaStatus").textContent="MOP: sin datos";
+  $("roadStatus").textContent="MOP: sin datos";
   console.error("AnglerMap MOP roads:",error);
  }
 }
@@ -678,7 +679,9 @@ function openRiver(r,focusCommune=null){
   selectedWaterLayer=L.geoJSON({type:"FeatureCollection",features:featuresToFocus},{style:{color:"#55d9e8",weight:4,opacity:1,fillColor:"#55d9e8",fillOpacity:.16}}).addTo(map);
   const bounds=selectedWaterLayer.getBounds();
   if(bounds.isValid())map.fitBounds(bounds,{padding:[55,55],maxZoom:13});
- }else amLocateRiver(r);
+ }else{
+  $("detailGeometry").textContent="La fuente oficial no entrega una geometría disponible para esta entidad. No se sustituirá por una ubicación aproximada de OpenStreetMap.";
+ }
  document.querySelectorAll(".detail-tab").forEach((button,index)=>button.classList.toggle("active",index===0));
  $("tabOverview").hidden=false;$("tabConditions").hidden=true;$("tabAccess").hidden=true;
  renderZones($("globalSearch").value);
@@ -1497,27 +1500,6 @@ window.openRiver = function(river) {
   amOriginalOpenRiver(river);
 };
 
-/* Botón para volver a consultar la cartografía desde la ficha. */
-
-const amRetryButton = document.createElement("button");
-
-amRetryButton.className = "action-btn";
-amRetryButton.textContent = "↻ Actualizar ubicación cartográfica";
-amRetryButton.style.marginTop = "9px";
-amRetryButton.style.width = "100%";
-
-amRetryButton.onclick = () => {
-  if (selectedRiver) {
-    amLocateRiver(selectedRiver);
-  }
-};
-
-const amGeometryCard = $("detailGeometry").closest(".info-card");
-
-if (amGeometryCard) {
-  amGeometryCard.appendChild(amRetryButton);
-}
-
 console.info(
   "AnglerMap: módulo de vinculación cartográfica de ríos activado."
 );
@@ -1565,6 +1547,8 @@ console.info(
       row.append(input, name, status);
       items.appendChild(row);
 
+      // Capas principales con renderizadores dedicados: evitar una segunda instancia.
+      if (["roads", "dga_stations", "waterbodies"].includes(layer.id)) continue;
       if (layer.status !== "available" || !layer.file) continue;
       input.disabled = false;
       input.addEventListener("change", async () => {
@@ -1591,6 +1575,10 @@ console.info(
           console.error("AnglerMap layer " + layer.id, error);
         }
       });
+      if (layer.visible_by_default === true) {
+        input.checked = true;
+        input.dispatchEvent(new Event("change"));
+      }
     }
     if (!catalog.layers.length) items.textContent = "No hay capas registradas.";
   } catch (error) {
@@ -1644,5 +1632,6 @@ console.info(
 })();
 </script>
 
+<script src="scripts/territory-manager.js"></script>
 </body>
 </html>
