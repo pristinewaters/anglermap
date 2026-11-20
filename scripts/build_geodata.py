@@ -70,18 +70,6 @@ EXPECTED_COMMUNES = 9
 
 # Relación administrativa oficial comuna → provincia, usada como respaldo
 # si la capa geométrica provincial MOP no está disponible.
-COMMUNE_PROVINCE = {
-    "punta arenas": "Magallanes",
-    "laguna blanca": "Magallanes",
-    "rio verde": "Magallanes",
-    "san gregorio": "Magallanes",
-    "natales": "Última Esperanza",
-    "torres del paine": "Última Esperanza",
-    "porvenir": "Tierra del Fuego",
-    "primavera": "Tierra del Fuego",
-    "timaukel": "Tierra del Fuego"
-}
-
 BATCH_SIZE = 100
 MAX_RETRIES = 4
 
@@ -93,7 +81,6 @@ SESSION.headers.update({
 COMMUNE_GEOMETRIES = []
 COMMUNE_TREE = None
 COMMUNE_TREE_LOOKUP = {}
-PROVINCE_GEOMETRIES = []
 
 
 def log(message):
@@ -574,26 +561,6 @@ def build_commune_spatial_index():
     }
 
 
-def intersecting_provinces(geometry):
-    matches = [
-        item["name"]
-        for item in PROVINCE_GEOMETRIES
-        if geometry.intersects(item["geometry"])
-    ]
-
-    if matches:
-        return sorted(set(matches))
-
-    # Respaldo DPA: las nueve comunas objetivo pertenecen a una única
-    # provincia cada una. Evita perder la clasificación provincial si
-    # el servicio de polígonos MOP no responde.
-    return sorted({
-        COMMUNE_PROVINCE.get(normalize(commune["name"]))
-        for commune in intersecting_communes(geometry)
-        if COMMUNE_PROVINCE.get(normalize(commune["name"]))
-    })
-
-
 def intersecting_communes(geometry):
     if COMMUNE_TREE is None:
         return [
@@ -770,68 +737,6 @@ def get_communes():
 
     return output, records, metadata, source_info
 
-def get_provinces(commune_records):
-    commune_union = unary_union([
-        record["geometry"]
-        for record in commune_records
-    ])
-
-    # La capa provincial contiene pocos registros. Descargarla completa
-    # evita enviar polígonos comunales extensos al servicio MOP, cuyo
-    # endpoint ha agotado el tiempo de espera al recibir consultas POST.
-    # El recorte exacto al territorio de las nueve comunas se realiza abajo.
-    features, fields, metadata = fetch_features(
-        URL_PROVINCES
-    )
-
-    records = records_from_features(features, "límites comunales")
-
-    name_field = find_field(
-        fields,
-        [
-            "NOM_PROV",
-            "PROVINCIA",
-            "NOMBRE_PROVINCIA"
-        ]
-    )
-
-    output = []
-
-    for record in records:
-        geometry = record["geometry"]
-
-        if not geometry.intersects(commune_union):
-            continue
-
-        clipped = geometry.intersection(commune_union)
-
-        if clipped.is_empty:
-            continue
-
-        props = record["properties"]
-
-        output.append(
-            geojson_feature(
-                clipped,
-                {
-                    "name": (
-                        props.get(name_field)
-                        if name_field else "Provincia"
-                    ),
-                    "official_id": props.get("OBJECTID"),
-                    "source": "MOP · Límites administrativos"
-                }
-            )
-        )
-
-    if not output:
-        raise RuntimeError(
-            "No se pudieron construir las provincias."
-        )
-
-    return output, metadata
-
-
 def query_water_layer(layer_url, source_name, water_type, commune_union):
     """Descarga y recorta una subcapa DGA de drenajes o lagos."""
     features, fields, metadata = fetch_features(
@@ -964,119 +869,6 @@ def query_mop_roads(commune_union):
                 "source_url": URL_MOP_ROADS,
                 "source_attributes": props
             }))
-    return output, metadata
-
-
-def query_dga_hydro_units(layer_url, level, name_field_name, commune_union):
-    """Descarga unidades BNA DGA y las recorta a las nueve comunas objetivo."""
-    features, fields, metadata = fetch_features(layer_url, geometry=commune_union)
-    name_field = find_field(fields, [name_field_name])
-    code_field = find_field(fields, {
-        "basin": ["COD_CUEN"],
-        "subbasin": ["COD_SUBC"],
-        "subsubbasin": ["COD_SSUBC"]
-    }[level])
-    records = records_from_features(features, "unidades hidrográficas DGA")
-    output = []
-
-    for record in records:
-        geometry = record["geometry"]
-        if not geometry.intersects(commune_union):
-            continue
-        clipped = geometry.intersection(commune_union)
-        if clipped.is_empty:
-            continue
-        props = record["properties"]
-        communes = sorted(set(
-            item["name"] for item in intersecting_communes(clipped)
-        ))
-        output.append(geojson_feature(clipped, {
-            "unit_id": level + "|" + str(props.get(code_field) or props.get("OBJECTID")),
-            "unit_level": level,
-            "name": str(props.get(name_field) or "Unidad hidrográfica sin nombre"),
-            "code": props.get(code_field) if code_field else None,
-            "basin_code": props.get("COD_CUEN"),
-            "subbasin_code": props.get("COD_SUBC"),
-            "subsubbasin_code": props.get("COD_SSUBC"),
-            "communes": communes,
-            "provinces": sorted(set(intersecting_provinces(clipped))),
-            "official_source": "DGA · Banco Nacional de Aguas (capa IDE publicada por SMA)",
-            "source_url": layer_url,
-            "official_id": props.get("OBJECTID"),
-            "source_attributes": props
-        }))
-    return output, metadata
-
-
-def enrich_waterbodies_with_hydro_units(water_features, hydro_units):
-    """Asocia cuencas y subunidades BNA mediante intersección espacial."""
-    prepared = [
-        (shape(feature["geometry"]), feature["properties"])
-        for feature in hydro_units
-    ]
-    for feature in water_features:
-        geometry = shape(feature["geometry"])
-        matches = []
-        for unit_geometry, props in prepared:
-            if geometry.intersects(unit_geometry):
-                matches.append({
-                    "level": props.get("unit_level"),
-                    "name": props.get("name"),
-                    "code": props.get("code"),
-                    "basin_code": props.get("basin_code"),
-                    "subbasin_code": props.get("subbasin_code"),
-                    "subsubbasin_code": props.get("subsubbasin_code")
-                })
-        feature["properties"]["hydro_units"] = matches
-        for level, key in (
-            ("basin", "basins"),
-            ("subbasin", "subbasins"),
-            ("subsubbasin", "subsubbasins")
-        ):
-            feature["properties"][key] = sorted({
-                item["name"] for item in matches
-                if item["level"] == level and item.get("name")
-            })
-    return water_features
-
-
-def get_dga_stations(commune_union):
-    # Recuperación de candidatos mediante bounding box.
-    features, fields, metadata = fetch_features(
-        URL_DGA_STATIONS,
-        geometry=commune_union
-    )
-
-    records = records_from_features(features, "estaciones DGA")
-    output = []
-
-    for record in records:
-        geom = record["geometry"]
-
-        # Las estaciones se conservan solamente si están
-        # dentro o intersectan el territorio comunal real.
-        if not geom.intersects(commune_union):
-            continue
-
-        props = record["properties"]
-
-        communes = [
-            commune["name"]
-            for commune in intersecting_communes(geom)
-        ]
-
-        output.append(
-            geojson_feature(
-                geom,
-                {
-                    "official_source": "DGA · Red Hidrométrica Nacional",
-                    "official_id": props.get("OBJECTID"),
-                    "communes": sorted(set(communes)),
-                    "attributes": props
-                }
-            )
-        )
-
     return output, metadata
 
 
