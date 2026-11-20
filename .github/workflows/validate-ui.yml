@@ -1,0 +1,67 @@
+name: Validate AnglerMap interface
+
+on:
+  push:
+    paths:
+      - "index.html"
+      - "data/metadata/layers.json"
+      - ".github/workflows/validate-ui.yml"
+  pull_request:
+    paths:
+      - "index.html"
+      - "data/metadata/layers.json"
+      - ".github/workflows/validate-ui.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  validate-ui:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v5
+
+      - name: Configure Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+
+      - name: Validate inline JavaScript
+        run: |
+          python - <<'PY'
+          import re
+          from pathlib import Path
+
+          html = Path("index.html").read_text(encoding="utf-8")
+          if "const RIVERS=[" in html:
+              raise SystemExit("The manual water inventory must not return.")
+
+          scripts = re.findall(r"<script>(.*?)</script>", html, re.S)
+          if not scripts:
+              raise SystemExit("No inline JavaScript blocks were found.")
+
+          for index, source in enumerate(scripts):
+              Path(f"/tmp/anglermap-{index}.js").write_text(source, encoding="utf-8")
+          print(f"Extracted {len(scripts)} inline JavaScript blocks.")
+          PY
+
+          for file in /tmp/anglermap-*.js; do
+            node --check "$file"
+          done
+
+      - name: Validate map layer catalogue
+        run: |
+          python - <<'PY'
+          import json
+          from pathlib import Path
+
+          catalog = json.loads(Path("data/metadata/layers.json").read_text(encoding="utf-8"))
+          assert isinstance(catalog.get("layers"), list), "Missing layers array"
+          ids = [layer.get("id") for layer in catalog["layers"]]
+          assert len(ids) == len(set(ids)), "Duplicate layer IDs"
+          required = {"communes", "provinces", "waterbodies", "dga_hydro_units", "dga_stations"}
+          missing = required.difference(ids)
+          assert not missing, f"Missing required layers: {sorted(missing)}"
+          print(f"Layer catalogue valid: {len(ids)} layers.")
+          PY
