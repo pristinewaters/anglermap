@@ -81,7 +81,16 @@ $('revenueBars').innerHTML=[['Octubre',48],['Noviembre',70],['Diciembre',85],['E
 function notify(title,email,phone){let channels=[];if($('notifyAdminEmail')?.checked)channels.push('Correo admin');if($('notifyAdminWhatsApp')?.checked)channels.push('WhatsApp admin');channels.push('Correo solicitante');notifications.unshift({title,email,phone,channels:channels.join(' · '),when:new Date().toLocaleString('es-CL')});renderNotifications()}
 function renderNotifications(){if(!$('notificationLog'))return;$('notificationLog').innerHTML=notifications.map(n=>'<div style="padding:11px 0;border-bottom:1px solid var(--line);font-size:11px"><b>'+n.title+'</b><div class="muted" style="margin-top:4px">'+n.when+'</div><div class="muted">'+n.channels+'</div></div>').join('')||'<div class="empty">Aún no hay notificaciones registradas.</div>'}
 function saveChannels(){alert('Preferencias guardadas solo en esta demostración. Para enviar mensajes reales hay que conectar correo transaccional y WhatsApp Business Platform.')}
-function submitBooking(e){e.preventDefault();let date=$('guestDate').value,section=$('guestSection').value,count=Number($('guestCount').value),name=$('guestName').value.trim(),email=$('guestEmail').value.trim(),phone=$('guestPhone').value.trim(),license=$('licenseNo').value.trim(),payment=$('guestPayment').value;if(!date||!name||!email||!phone||!license)return; if(used(date,section)+count>capacity){$('bookingResult').innerHTML='<div class="notice">No hay cupos suficientes para esa fecha y sector. Prueba con otro sector o fecha.</div>';return}let id='RM-'+String(Date.now()).slice(-6);let r={id,date,section,name,email,phone,license,count,status:'Pendiente',paid:false,payment};reservations.push(r);let total=count*price;notify('Nueva solicitud '+id+' · '+section+' · '+count+' pescador(es)',email,phone);$('bookingResult').innerHTML='<div class="notice"><b>Orden de reserva generada: '+id+'</b><br>'+dateFmt(date)+' · '+section+' · '+count+' pescador(es)<br>Total: 
-</script></body></html>+fmt(total)+' CLP<br>Medio de pago: '+payment+'<br><span style="color:var(--gold)">Estado: pendiente de pago (demostración).</span><br>La confirmación definitiva se emite una vez validado el pago.</div>';e.target.reset();refresh()}
-\nfunction init(){refresh();renderCalendar()}init();
+function submitBooking(e){
+e.preventDefault();
+let date=$('guestDate').value,section=$('guestSection').value,count=Number($('guestCount').value),name=$('guestName').value.trim(),email=$('guestEmail').value.trim(),phone=$('guestPhone').value.trim(),license=$('licenseNo').value.trim(),payment=$('guestPayment').value;
+if(!date||!name||!email||!phone||!license)return;
+if(used(date,section)+count>capacity){$('bookingResult').innerHTML='<div class="notice">No hay cupos suficientes para esa fecha y sector. Prueba con otro sector o fecha.</div>';return}
+let id='RM-'+String(Date.now()).slice(-6);
+let r={id,date,section,name,email,phone,license,count,status:'Pendiente',paid:false,payment};reservations.push(r);
+let total=count*price;notify('Nueva solicitud '+id+' · '+section+' · '+count+' pescador(es)',email,phone);
+let msg='<div class="notice"><b>Orden de reserva generada: '+id+'</b><br>'+dateFmt(date)+' · '+section+' · '+count+' pescador(es)<br>Total: $'+fmt(total)+' CLP<br>Medio de pago: '+payment+'<br><span style="color:var(--gold)">Estado: pendiente de pago (demostración).</span><br>La confirmación definitiva se emite una vez validado el pago.</div>';
+$('bookingResult').innerHTML=msg;e.target.reset();refresh();
+}
+function init(){refresh();renderCalendar()}init();
 </script></body></html>
