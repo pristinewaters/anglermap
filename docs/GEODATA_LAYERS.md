@@ -38,6 +38,7 @@ Los directorios de fuentes son repositorios de origen/procesamiento. Los GeoJSON
 - `communes.geojson` y `provinces.geojson`: límites administrativos usados para recortar y clasificar las geometrías.
 
 La asociación de cada agua con unidades hidrográficas se calcula por intersección espacial entre geometrías. No se infiere un río a partir del nombre de una estación ni se asigna una comuna por la cuenca completa. Los cursos compartidos pueden figurar en más de una comuna cuando la geometría intersecta sus límites.
+Las geometrías de los cuerpos de agua se recortan por comuna. Así, al seleccionar un curso desde la lista de una comuna, el visor enfoca el segmento de ese territorio y no necesariamente la extensión completa del curso en varias comunas.
 
 La capa DGA de red de drenaje y las unidades BNA se publican en la IDE de la SMA con atribución explícita a DGA/Banco Nacional de Aguas. La procedencia y fecha de extracción se conservan en `sources.json` y en los atributos de cada entidad.
 
