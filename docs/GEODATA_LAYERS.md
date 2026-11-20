@@ -32,7 +32,7 @@ Los directorios de fuentes son repositorios de origen/procesamiento. Los GeoJSON
 
 ## Productos hidrográficos
 
-- `waterbodies.geojson`: geometrías lineales y poligonales de ríos/esteros, lagos y lagunas. Conserva nombre original, alias, tipo, atributos de origen, fuente, identificadores, comunas y provincias.
+- `waterbodies.geojson`: geometrías lineales y poligonales de ríos/esteros, lagos, lagunas y embalses. Conserva nombre original, alias, tipo, atributos de origen, fuente, identificadores, comunas y provincias.
 - `dga_hydro_units.geojson`: unidades BNA DGA separadas por nivel (cuenca, subcuenca y subsubcuenca), con códigos y nombres oficiales.
 - `dga_stations.geojson`: estaciones de monitoreo DGA. Son puntos de observación y no sustituyen la geometría de un curso de agua.
 - `communes.geojson` y `provinces.geojson`: límites administrativos usados para recortar y clasificar las geometrías.
@@ -48,7 +48,7 @@ La capa DGA de red de drenaje y las unidades BNA se publican en la IDE de la SMA
 - `waterbody_id`: identificador estable por registro y fuente.
 - `name`: nombre normalizado que usa el catálogo; `source_name` conserva el rótulo original.
 - `aliases` y `toponymy_status`: nombres alternativos y estado de conciliación toponímica.
-- `water_type` / `water_category`: tipo de geometría y categoría de interfaz (`river`, `lake`, `lagoon`).
+- `water_type` / `water_category`: tipo de geometría y categoría de interfaz (`river`, `lake`, `lagoon`, `reservoir`).
 - `official_source`, `official_id`, `source_attributes`: trazabilidad y atributos originales.
 - `communes`, `provinces`: unidades administrativas intersectadas por la geometría.
 - `hydro_units`, `basins`, `subbasins`, `subsubbasins`: unidades BNA intersectadas y sus nombres/códigos.
