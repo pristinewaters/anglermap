@@ -21,6 +21,8 @@ from shapely.geometry import (
     LinearRing
 )
 from shapely.ops import unary_union
+from shapely.geometry.polygon import orient
+from shapely.strtree import STRtree
 
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -69,6 +71,8 @@ SESSION.headers.update({
 })
 
 COMMUNE_GEOMETRIES = []
+COMMUNE_TREE = None
+COMMUNE_TREE_LOOKUP = {}
 
 
 def log(message):
@@ -87,7 +91,7 @@ def normalize(value):
     return re.sub(r"\s+", " ", value)
 
 
-def request_json(url, params=None):
+def request_json(url, params=None, method="GET"):
     params = dict(params or {})
     params.setdefault("f", "json")
 
@@ -95,11 +99,18 @@ def request_json(url, params=None):
 
     for attempt in range(MAX_RETRIES):
         try:
-            response = SESSION.get(
-                url,
-                params=params,
-                timeout=(15, 60)
-            )
+            if method.upper() == "POST":
+                response = SESSION.post(
+                    url,
+                    data=params,
+                    timeout=(15, 60)
+                )
+            else:
+                response = SESSION.get(
+                    url,
+                    params=params,
+                    timeout=(15, 60)
+                )
 
             if response.status_code == 429 or response.status_code >= 500:
                 raise requests.HTTPError(
@@ -276,51 +287,70 @@ def esri_to_shape(geometry):
     return result
 
 
+def arcgis_polygon_geometry(geometry):
+    """
+    Convierte Polygon/MultiPolygon Shapely a geometría ArcGIS.
+    Los anillos se orientan según la convención de ArcGIS:
+    exteriores horarios e interiores antihorarios.
+    """
+    if geometry.is_empty:
+        return None
+
+    if geometry.geom_type == "Polygon":
+        polygons = [geometry]
+    elif geometry.geom_type == "MultiPolygon":
+        polygons = list(geometry.geoms)
+    else:
+        raise RuntimeError(
+            "La consulta espacial requiere Polygon/MultiPolygon; recibido: "
+            + geometry.geom_type
+        )
+
+    rings = []
+    for polygon in polygons:
+        polygon = orient(polygon, sign=-1.0)
+        rings.append([list(point) for point in polygon.exterior.coords])
+        for interior in polygon.interiors:
+            rings.append([list(point) for point in interior.coords])
+
+    return {
+        "rings": rings,
+        "spatialReference": {"wkid": 4326}
+    }
+
+
 def fetch_ids(layer_url, where="1=1", geometry=None):
     """
-    Recupera IDs candidatos desde ArcGIS.
-
-    Si se proporciona una geometría Shapely, se consulta
-    utilizando exclusivamente su bounding box.
-
-    El filtro espacial exacto se realiza posteriormente
-    en Python contra las geometrías comunales reales.
+    Recupera IDs mediante intersección espacial exacta en ArcGIS.
+    Se envía la geometría comunal como POST para evitar límites
+    de longitud de URL en polígonos extensos.
     """
-
     params = {
         "where": where,
         "returnIdsOnly": "true"
     }
+    method = "GET"
 
     if geometry is not None:
-        if geometry.is_empty:
+        arcgis_geometry = arcgis_polygon_geometry(geometry)
+        if arcgis_geometry is None:
             return []
-
-        xmin, ymin, xmax, ymax = geometry.bounds
-
-        envelope = {
-            "xmin": xmin,
-            "ymin": ymin,
-            "xmax": xmax,
-            "ymax": ymax,
-            "spatialReference": {
-                "wkid": 4326
-            }
-        }
 
         params.update({
             "geometry": json.dumps(
-                envelope,
+                arcgis_geometry,
                 separators=(",", ":")
             ),
-            "geometryType": "esriGeometryEnvelope",
+            "geometryType": "esriGeometryPolygon",
             "inSR": "4326",
             "spatialRel": "esriSpatialRelIntersects"
         })
+        method = "POST"
 
     data = request_json(
         layer_url + "/query",
-        params
+        params,
+        method=method
     )
 
     return data.get("objectIds") or []
@@ -429,23 +459,69 @@ def fetch_features(layer_url, where="1=1", geometry=None):
     return output, fields, metadata
 
 
-def records_from_features(features):
+def records_from_features(features, label="geometrías"):
     output = []
+    total = len(features)
 
-    for feature in features:
+    log("Procesando " + str(total) + " " + label)
+
+    for index, feature in enumerate(features, start=1):
         geometry = esri_to_shape(
             feature.get("geometry")
         )
 
-        if geometry is None or geometry.is_empty:
-            continue
+        if geometry is not None and not geometry.is_empty:
+            output.append({
+                "geometry": geometry,
+                "properties": feature.get("attributes") or {}
+            })
 
-        output.append({
-            "geometry": geometry,
-            "properties": feature.get("attributes") or {}
-        })
+        if index % 5000 == 0 or index == total:
+            log(
+                "Procesamiento "
+                + label
+                + ": "
+                + str(index)
+                + " / "
+                + str(total)
+            )
 
     return output
+
+
+def build_commune_spatial_index():
+    global COMMUNE_TREE, COMMUNE_TREE_LOOKUP
+
+    geometries = [item["geometry"] for item in COMMUNE_GEOMETRIES]
+    COMMUNE_TREE = STRtree(geometries)
+    COMMUNE_TREE_LOOKUP = {
+        id(geometry): index
+        for index, geometry in enumerate(geometries)
+    }
+
+
+def intersecting_communes(geometry):
+    if COMMUNE_TREE is None:
+        return [
+            item for item in COMMUNE_GEOMETRIES
+            if geometry.intersects(item["geometry"])
+        ]
+
+    matches = []
+    for candidate in COMMUNE_TREE.query(geometry):
+        # Shapely 2 returns integer indices; Shapely 1 returns geometries.
+        if isinstance(candidate, int):
+            index = candidate
+        else:
+            index = COMMUNE_TREE_LOOKUP.get(id(candidate))
+            if index is None:
+                continue
+
+        commune = COMMUNE_GEOMETRIES[index]
+        if geometry.intersects(commune["geometry"]):
+            matches.append(commune)
+
+    return matches
 
 
 def geojson_feature(geometry, properties):
@@ -578,7 +654,7 @@ def get_provinces(commune_records):
         geometry=commune_union
     )
 
-    records = records_from_features(features)
+    records = records_from_features(features, "límites comunales")
 
     name_field = find_field(
         fields,
@@ -661,7 +737,7 @@ def query_water_layer(
         ]
     )
 
-    records = records_from_features(features)
+    records = records_from_features(features, source_name)
     output = []
 
     for record in records:
@@ -705,11 +781,10 @@ def query_water_layer(
             stable.encode("utf-8")
         ).hexdigest()[:16]
 
-        communes = []
-
-        for commune in COMMUNE_GEOMETRIES:
-            if clipped.intersects(commune["geometry"]):
-                communes.append(commune["name"])
+        communes = [
+            commune["name"]
+            for commune in intersecting_communes(clipped)
+        ]
 
         output.append(
             geojson_feature(
@@ -741,7 +816,7 @@ def get_dga_stations(commune_union):
         geometry=commune_union
     )
 
-    records = records_from_features(features)
+    records = records_from_features(features, "estaciones DGA")
     output = []
 
     for record in records:
@@ -754,11 +829,10 @@ def get_dga_stations(commune_union):
 
         props = record["properties"]
 
-        communes = []
-
-        for commune in COMMUNE_GEOMETRIES:
-            if geom.intersects(commune["geometry"]):
-                communes.append(commune["name"])
+        communes = [
+            commune["name"]
+            for commune in intersecting_communes(geom)
+        ]
 
         output.append(
             geojson_feature(
@@ -884,7 +958,7 @@ def publish_atomically(temp_dir):
 def main():
     global COMMUNE_GEOMETRIES
 
-    log("Inicio de AnglerMap Geodata 3.0")
+    log("Inicio de AnglerMap Geodata 3.1")
     log("Territorio: nueve comunas de Magallanes.")
     log("Fuentes: MOP, IGM y DGA. SNIA excluido.")
     log("Cabo de Hornos y Antártica excluidos.")
@@ -914,6 +988,7 @@ def main():
             item["geometry"]
             for item in COMMUNE_GEOMETRIES
         ])
+        build_commune_spatial_index()
 
         write_geojson(
             temp_dir / "communes.geojson",
@@ -1090,7 +1165,7 @@ def main():
 
         metadata = {
             "application": "AnglerMap",
-            "version": "3.0",
+            "version": "3.1",
             "generated_at": datetime.now(
                 timezone.utc
             ).isoformat(),
@@ -1102,9 +1177,10 @@ def main():
                 "cape_horn_commune_included": False
             },
             "spatial_query_method": {
-                "remote_query": "bounding_box",
-                "remote_geometry_type": "esriGeometryEnvelope",
-                "local_filter": "exact_intersection_with_commune_geometries",
+                "remote_query": "exact_polygon_intersection_per_commune",
+                "remote_geometry_type": "esriGeometryPolygon",
+                "local_filter": "exact_intersection_and_clip_with_commune_union",
+                "commune_spatial_index": "STRtree",
                 "spatial_reference": "EPSG:4326"
             },
             "sources": {
