@@ -778,10 +778,10 @@ def query_water_layer(layer_url, source_name, water_type, commune_union):
         raw_name = props.get(name_field) if name_field else None
         name = str(raw_name or "").strip()
         if not name:
-            # No inventar topónimos. La geometría anónima permanece en el
-            # GeoJSON para representación, pero no se convierte en entrada
-            # nominal del catálogo.
-            name = "Cuerpo de agua sin nombre"
+            # El catálogo inicial incluye exclusivamente cuerpos de agua
+            # nombrados en la fuente DGA. Los registros sin topónimo quedan
+            # fuera de esta versión de la plataforma.
+            continue
 
         communes = sorted({
             item["name"] for item in intersecting_communes(clipped)
@@ -1116,7 +1116,6 @@ def main():
         # segmentos comunales: un río que cruza tres comunas es una entidad.
         category_ids = {}
         commune_category_ids = {}
-        unnamed_segments = 0
         for feature in waters:
             props = feature["properties"]
             category = props["water_category"]
@@ -1125,9 +1124,6 @@ def main():
             commune = props["communes"][0]
             commune_category_ids.setdefault(commune, {})
             commune_category_ids[commune].setdefault(category, set()).add(water_id)
-            if props["name"] == "Cuerpo de agua sin nombre":
-                unnamed_segments += 1
-
         category_counts = {
             category: len(ids)
             for category, ids in sorted(category_ids.items())
@@ -1144,9 +1140,19 @@ def main():
         })
 
         road_commune_counts = {}
+        road_ids = set()
+        road_surface_counts = {}
+        road_classification_counts = {}
         for feature in roads:
-            commune = feature["properties"]["communes"][0]
+            props = feature["properties"]
+            commune = props["communes"][0]
             road_commune_counts[commune] = road_commune_counts.get(commune, 0) + 1
+            if props.get("road_id"):
+                road_ids.add(props["road_id"])
+            surface = props.get("surface") or "Sin clasificación de carpeta"
+            classification = props.get("classification") or "Sin clasificación vial"
+            road_surface_counts[surface] = road_surface_counts.get(surface, 0) + 1
+            road_classification_counts[classification] = road_classification_counts.get(classification, 0) + 1
 
         station_commune_counts = {}
         station_type_counts = {}
@@ -1159,7 +1165,7 @@ def main():
 
         metadata = {
             "application": "AnglerMap",
-            "version": "5.0",
+            "version": "5.1",
             "generated_at": datetime.now(timezone.utc).isoformat(),
             "geographic_scope": {
                 "region": "Magallanes y de la Antártica Chilena",
@@ -1183,7 +1189,9 @@ def main():
                     "url": URL_MOP_ROADS,
                     "metadata": "https://rest-sit.mop.gob.cl/arcgis/rest/services/VIALIDAD/Red_Vial_Chile_Base_gris/MapServer/3",
                     "status": "available",
-                    "data_vintage_note": "La ficha del servicio describe datos disponibles a enero de 2021; no equivale a confirmación en terreno de transitabilidad actual."
+                    "data_vintage_note": "La ficha del servicio describe datos disponibles a enero de 2021; no equivale a confirmación en terreno de transitabilidad actual.",
+                    "attributes_used": ["NOMBRE_CAMINO", "ROL", "CLASIFICACION", "CARPETA", "RVO"],
+                    "coverage_note": "La capa incluye caminos nacionales, internacionales, regionales principales, provinciales, comunales, regionales de acceso y caminos en proceso de enrolamiento. La cobertura se somete a contraste adicional antes de considerarla exhaustiva."
                 },
                 "waterbodies": {
                     "institution": "DGA",
@@ -1228,7 +1236,6 @@ def main():
             "counts": {
                 **counts,
                 "waterbodies_unique_entities": unique_waterbody_count,
-                "waterbodies_unnamed_segments": unnamed_segments,
                 "waterbodies_by_category": category_counts,
                 "waterbodies_by_commune": commune_counts,
                 "roads_by_commune": road_commune_counts,
