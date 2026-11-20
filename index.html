@@ -338,7 +338,7 @@ button:focus-visible,input:focus-visible,select:focus-visible{outline:2px solid 
 
  <section class="weather-dock" id="weatherDock">
   <div class="weather-dock-head" id="weatherDragHandle">
-   <div class="weather-brand">ANGLER<span>MAP</span> WEATHER</div>
+   <div class="weather-brand" id="weatherTitle">Meteorología local</div>
    <div class="weather-location" id="weatherPlace">Centro del mapa</div>
    <div class="weather-updated" id="weatherUpdated">Consultando...</div>
    <button class="weather-dock-btn" id="weatherMinimize" title="Minimizar" aria-label="Minimizar meteorología">−</button>
@@ -409,6 +409,12 @@ function amCatalogNormalize(value) {
 }
 
 function amWaterCategory(props) {
+ // La red de drenajes DGA puede codificar lagos/lagunas como "river".
+ // El subtipo hidrográfico tiene prioridad sobre esa clasificación genérica.
+ const subtype=amCatalogNormalize(props.subtype||"");
+ if (/^(lago|lake)\b/.test(subtype)) return "lake";
+ if (/^laguna\b/.test(subtype)) return "lagoon";
+ if (/^embalse\b/.test(subtype)) return "reservoir";
  const declared = String(props.water_category || "").toLowerCase();
  if (declared === "river" || declared === "lake" || declared === "lagoon" || declared === "reservoir") return declared;
  const label = amCatalogNormalize([props.name,props.subtype,props.water_type].join(" "));
@@ -431,13 +437,11 @@ async function loadHydroCatalog() {
    const category=amWaterCategory(p);
    const normalizedName=amCatalogNormalize(name);
    const normalizedSubtype=amCatalogNormalize(p.subtype||"");
-   // El inventario poligonal DGA puede incluir islas/islotes.
-   // No son aguas pescables ni deben contaminar el catálogo de ríos y lagos.
-   const isIsland=(category==="lake"||category==="lagoon")&&(
-    /\b(isla|islas|islote|islotes)\b/.test(normalizedSubtype)||
-    /^(isla|islote)\s/.test(normalizedName)
-   );
-   if(isIsland)return;
+   // La capa DGA incluye líneas de costa y entidades insulares, no aguas.
+   const isCoastline=normalizedSubtype.includes("linea de costa");
+   const isIsland=/\b(isla|islas|islote|islotes)\b/.test(normalizedName)||
+    /\b(isla|islas|islote|islotes)\b/.test(normalizedSubtype);
+   if(isCoastline||isIsland)return;
    const labels={river:"Río / estero",lake:"Lago",lagoon:"Laguna"};
    // Una entrada por nombre, categoría y comuna. Los OBJECTID DGA
    // identifican segmentos fuente, no necesariamente cursos de agua distintos.
@@ -445,7 +449,7 @@ async function loadHydroCatalog() {
     const key=normalizedName+"|"+category+"|"+amCatalogNormalize(commune);
     let item=grouped.get(key);
     if(!item){
-     item={id:key,name,category,categoryLabel:p.category_label||labels[category]||"Agua",communes:[commune],sources:[],aliases:[],toponymyNotes:[],features:[]};
+     item={id:key,name,category,categoryLabel:labels[category]||p.category_label||"Agua",communes:[commune],sources:[],aliases:[],toponymyNotes:[],features:[]};
      grouped.set(key,item);
     }
     item.sources=[...new Set(item.sources.concat(p.official_source||[]))].sort();
@@ -673,6 +677,7 @@ loadHydroCatalog();
 
 function openRiver(r,focusCommune=null){
  selectedRiver=r;
+ $("weatherTitle").textContent=r.name;
  $("generalPanel").classList.remove("show");
  $("detailKicker").textContent="Ficha de agua · "+r.categoryLabel;
  $("detailTitle").textContent=r.name;
@@ -924,6 +929,7 @@ async function loadWeather(lat=map.getCenter().lat,lon=map.getCenter().lng){
   }
 
   const center=map.getCenter();
+  $("weatherTitle").textContent=selectedRiver?.name||"Meteorología local";
   $("weatherPlace").textContent=lat.toFixed(2)+"°, "+lon.toFixed(2)+"°";
   $("weatherUpdated").textContent="Actualizado "+new Date().toLocaleTimeString("es-CL",{hour:"2-digit",minute:"2-digit"});
   if(selectedRiver){
