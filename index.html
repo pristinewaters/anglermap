@@ -189,6 +189,68 @@ button:focus-visible,input:focus-visible,select:focus-visible{outline:2px solid 
  .weather-hour{flex-basis:49px}
  .weather-foot{font-size:7px;padding:4px 9px 6px}
 }
+
+/* AnglerMap UX v2: mapa primero, controles bajo demanda */
+@media(min-width:901px){
+ .app{grid-template-rows:58px minmax(0,1fr)}
+ .workspace{grid-template-columns:0 minmax(0,1fr);transition:grid-template-columns .2s}
+ .workspace.menu-open{grid-template-columns:285px minmax(0,1fr)}
+ .sidebar{width:285px;visibility:hidden}
+ .workspace.menu-open .sidebar{visibility:visible}
+ .topbar{padding:0 16px;gap:12px}
+ .brand{min-width:190px}
+ .search-wrap{max-width:460px}
+}
+.menu-btn{display:grid!important;flex-shrink:0}
+.map-area{isolation:isolate}
+.map-controls{top:14px;right:14px;gap:3px;padding:4px;border-radius:12px}
+.map-control{padding:9px 12px;font-size:11px}
+.map-bottom{display:none!important}
+#catalogLayers{display:none!important}
+.detail-panel{left:auto;right:16px;top:16px;width:min(360px,calc(100% - 32px));max-height:calc(100% - 32px);border-radius:16px}
+.detail-title{font-size:21px}
+.weather-dock{left:14px;right:auto;bottom:14px;width:auto;max-width:min(460px,calc(100% - 28px));border-radius:13px}
+.weather-dock.minimized{width:auto;max-width:calc(100% - 28px)}
+.weather-dock-head{height:42px;cursor:pointer;border:0}
+.weather-dock.minimized .weather-dock-head{border:0}
+.weather-content{min-height:0;display:flex;flex-wrap:wrap}
+.weather-current{min-width:145px;padding:10px 14px;border-right:1px solid #29485b}
+.weather-current-temp{font-size:29px}
+.weather-metrics{flex:1 1 220px;overflow:visible;display:grid;grid-template-columns:repeat(2,minmax(90px,1fr))}
+.weather-metric{min-width:0;padding:8px 10px;gap:4px}
+.weather-hourly,.weather-foot{display:none!important}
+.weather-dock.minimized .weather-content{display:none}
+.weather-dock.minimized{box-shadow:0 8px 28px #0007}
+.map-tools{top:75px;right:14px}
+@media(max-width:900px){
+ .app{grid-template-rows:56px minmax(0,1fr)}
+ .topbar{height:56px}
+ .sidebar{top:56px}
+ .workspace{grid-template-columns:1fr}
+ .workspace.menu-open .sidebar{visibility:visible}
+ .map-controls{top:10px;right:8px}
+ .detail-panel{left:8px;right:8px;top:auto;bottom:88px;width:auto;max-height:55%}
+ .weather-dock{left:8px;bottom:8px;max-width:calc(100% - 16px)}
+ .weather-dock.minimized{width:auto}
+ .weather-content{display:flex}
+ .weather-current{min-width:125px}
+ .weather-metrics{grid-template-columns:repeat(2,minmax(78px,1fr))}
+ .weather-metric{padding:7px}
+ .map-tools{top:66px;right:8px}
+}
+@media(max-width:600px){
+ .app{grid-template-rows:54px minmax(0,1fr)}
+ .topbar{height:54px}
+ .brand-name{font-size:15px}
+ .sidebar{top:54px}
+ .weather-dock:not(.minimized){width:calc(100% - 16px)}
+ .weather-dock:not(.minimized) .weather-content{display:flex;flex-direction:row}
+ .weather-current{flex:0 0 42%;min-width:0}
+ .weather-metrics{flex:1 1 58%;display:grid;grid-template-columns:1fr 1fr}
+ .weather-metric:nth-child(n+3){display:none}
+ .detail-panel{bottom:78px;max-height:58%}
+}
+
 </style>
 </head>
 <body>
@@ -1448,6 +1510,59 @@ console.info(
     items.textContent = "Catálogo no disponible";
     console.error("AnglerMap catalog:", error);
   }
+})();
+</script>
+
+
+<script>
+/* UX: menú contextual y selección de río centrada en el mapa */
+(function(){
+ const workspace=document.querySelector(".workspace");
+ const menu=document.getElementById("menuBtn");
+ const sidebar=document.getElementById("sidebar");
+ function setMenu(open){
+  workspace.classList.toggle("menu-open",open);
+  sidebar.classList.toggle("open",open);
+  menu.setAttribute("aria-expanded",String(open));
+  window.setTimeout(()=>{ if(window.map) map.invalidateSize({pan:false}); },230);
+ }
+ menu.addEventListener("click",()=>setMenu(!workspace.classList.contains("menu-open")));
+ document.addEventListener("keydown",e=>{if(e.key==="Escape")setMenu(false)});
+ document.querySelectorAll(".water-item").forEach(item=>item.addEventListener("click",()=>setMenu(false)));
+ const dock=document.getElementById("weatherDock");
+ const min=document.getElementById("weatherMinimize");
+ dock.classList.add("minimized");
+ min.textContent="+";
+ min.setAttribute("aria-label","Mostrar meteorología");
+ min.addEventListener("click",e=>{
+  e.stopPropagation();
+  const collapsed=dock.classList.toggle("minimized");
+  min.textContent=collapsed?"+":"−";
+  min.setAttribute("aria-label",collapsed?"Mostrar meteorología":"Minimizar meteorología");
+ });
+ document.getElementById("weatherDragHandle").addEventListener("click",e=>{
+  if(e.target===min)return;
+  if(dock.classList.contains("minimized")){
+   dock.classList.remove("minimized");min.textContent="−";
+   min.setAttribute("aria-label","Minimizar meteorología");
+  }
+ });
+ const catalog=document.getElementById("catalogLayers");
+ if(catalog)catalog.remove();
+ const originalDraw=amDrawRiverGeometry;
+ amDrawRiverGeometry=function(data,river){
+  const center=originalDraw(data,river);
+  if(center && data.type==="line"){
+   const bounds=amRiverLayer.getBounds();
+   if(bounds.isValid()) map.fitBounds(bounds,{padding:[55,55],maxZoom:15,animate:true,duration:.7});
+  }else if(center && data.type==="reference" && data.geojson){
+   const bounds=amRiverLayer.getBounds();
+   if(bounds.isValid()) map.fitBounds(bounds,{padding:[55,55],maxZoom:15,animate:true,duration:.7});
+  }else if(center){
+   map.flyTo(center,13,{duration:.8});
+  }
+  return center;
+ };
 })();
 </script>
 
