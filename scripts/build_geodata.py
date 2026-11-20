@@ -741,6 +741,20 @@ def get_communes():
 
     return output, records, metadata, source_info
 
+def clean_source_attributes(properties):
+    """Conserva atributos de origen útiles, excluyendo códigos de cuencas."""
+    excluded = {
+        "cod_cuen", "cod_subc", "cod_ssubc", "codbna",
+        "cod_bna", "nom_cuen", "nom_subc", "nom_ssubc",
+        "supcuen", "suphoya"
+    }
+    return {
+        key: value
+        for key, value in (properties or {}).items()
+        if normalize(key) not in excluded
+    }
+
+
 def query_water_layer(layer_url, source_name, water_type, commune_union):
     """Descarga y recorta una subcapa DGA de drenajes o lagos."""
     features, fields, metadata = fetch_features(
@@ -835,7 +849,7 @@ def query_water_layer(layer_url, source_name, water_type, commune_union):
                 "subtype": subtype_text or None,
                 "official_source": "DGA · " + source_name,
                 "official_id": official_id,
-                "source_attributes": props,
+                "source_attributes": clean_source_attributes(props),
                 "communes": [commune["name"]],
                 "representative_point": representative_point(segment),
                 "geometry_status": "official_geometry",
