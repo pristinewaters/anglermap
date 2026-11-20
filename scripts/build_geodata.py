@@ -51,6 +51,10 @@ URL_MOP_ROADS = (
 URL_DGA_IDE = "https://ideserver.sma.gob.cl/arcgis/rest/services/IDE/Recursos_hidricos_glaciares/MapServer"
 URL_DGA_DRAINAGE = URL_DGA_IDE + "/2"
 URL_DGA_LAKES = URL_DGA_IDE + "/5"
+# Red Hidrométrica Nacional DGA: inventario puntual de estaciones de distintos tipos.
+URL_DGA_STATIONS = BASE + "/DGA/Red_Hidrometrica/MapServer/0"
+# Datos operacionales de estaciones fluviométricas (SNIA), para enriquecer popups.
+URL_DGA_LIVE_FLOW = "https://services3.arcgis.com/aSoEm9TBK2shtWjP/ArcGIS/rest/services/DGA_MONITOREO_CAUCE/FeatureServer/0"
 
 
 # Cabo de Hornos y Antártica quedan fuera del alcance.
@@ -773,31 +777,40 @@ def query_water_layer(layer_url, source_name, water_type, commune_union):
         subtype_normalized = normalize(subtype_text)
 
         if water_type == "river":
+            # No se filtra la red lineal DGA: se conserva cada elemento
+            # con nombre y tipo de origen. La etiqueta visible respeta TIPO.
             category = "river"
-            category_label = "Río / estero"
+            if "rio" in subtype_normalized:
+                category_label = "Río"
+            elif "estero" in subtype_normalized:
+                category_label = "Estero"
+            elif "chorrillo" in subtype_normalized:
+                category_label = "Chorrillo"
+            elif "arroyo" in subtype_normalized:
+                category_label = "Arroyo"
+            elif "quebrada" in subtype_normalized:
+                category_label = "Quebrada"
+            elif "canal" in subtype_normalized:
+                category_label = "Canal"
+            else:
+                category_label = "Curso de agua"
         else:
             # La capa DGA 5 es el inventario poligonal nacional de lagos.
-            # Distingue lagunas por el campo TIPO cuando está informado;
-            # no se reclasifican por nombre sin respaldo del atributo.
-            category = "lagoon" if "laguna" in subtype_normalized else "lake"
+            # Se respeta el campo TIPO; el nombre solo sirve como respaldo
+            # cuando el atributo de clasificación viene vacío.
+            lagoon_by_name = normalize(name).startswith("laguna ")
+            category = (
+                "lagoon"
+                if "laguna" in subtype_normalized
+                or (not subtype_normalized and lagoon_by_name)
+                else "lake"
+            )
             category_label = "Laguna" if category == "lagoon" else "Lago"
 
         source_feature_name = name
         aliases = []
         toponymy_status = "source_name"
         toponymy_note = None
-
-        # Corrección toponímica local corroborada: solo aplica al elemento
-        # que DGA entrega como Río Serrano dentro de Primavera.
-        if normalize(name) == "rio serrano" and "Primavera" in communes:
-            aliases = [name]
-            name = "Río del Oro"
-            toponymy_status = "corroborated_local_correction"
-            toponymy_note = (
-                "Nombre canónico Río del Oro, corroborado por carta IGM "
-                "Bahía Felipe (L-070, 1:50.000) y SIMBIO BNA 12806. "
-                "El nombre de origen se conserva como alias."
-            )
 
         official_id = props.get("OBJECTID")
         stable = source_name + "|" + str(official_id) + "|" + normalize(name)
@@ -828,6 +841,44 @@ def query_water_layer(layer_url, source_name, water_type, commune_union):
                 "geometry_status": "official_geometry",
                 "source_confidence": "official"
             }))
+
+    return output, metadata
+
+
+def query_dga_stations(commune_union):
+    """Descarga la Red Hidrométrica Nacional DGA como puntos independientes."""
+    features, fields, metadata = fetch_features(
+        URL_DGA_STATIONS,
+        geometry=commune_union
+    )
+    records = records_from_features(features, "estaciones Red Hidrométrica DGA")
+    output = []
+
+    for record in records:
+        geometry = record["geometry"]
+        if not geometry.intersects(commune_union):
+            continue
+        props = record["properties"]
+        communes = sorted({
+            item["name"] for item in intersecting_communes(geometry)
+        })
+        if not communes:
+            continue
+
+        station_id = props.get("ID_IDE") or props.get("OBJECTID")
+        output.append(geojson_feature(geometry, {
+            "station_id": str(station_id) if station_id is not None else None,
+            "station_name": props.get("NOM_ESTACION") or "Estación DGA sin nombre",
+            "station_type": props.get("TIPO_ESTACION"),
+            "vigencia": props.get("VIGENCIA"),
+            "place": props.get("LUGAR"),
+            "associated_lake": props.get("LAGO_ASOCIADO"),
+            "communes": communes,
+            "official_source": "DGA · Red Hidrométrica Nacional",
+            "source_url": URL_DGA_STATIONS,
+            "source_updated": "Julio 2022 según metadata del servicio",
+            "source_attributes": props
+        }))
 
     return output, metadata
 
@@ -926,7 +977,8 @@ def publish_atomically(temp_dir):
 
     files = [
         "roads.geojson",
-        "waterbodies.geojson"
+        "waterbodies.geojson",
+        "dga_stations.geojson"
     ]
 
     for filename in files:
@@ -979,8 +1031,8 @@ def publish_atomically(temp_dir):
 def main():
     global COMMUNE_GEOMETRIES
 
-    log("AnglerMap Geodata · arquitectura de dos capas")
-    log("MOP: caminos y accesos · DGA: ríos, esteros, lagos y lagunas.")
+    log("AnglerMap Geodata · tres capas temáticas")
+    log("MOP: caminos y accesos · DGA: cuerpos de agua · DGA: estaciones de monitoreo.")
     log("Territorio: nueve comunas de Magallanes; Antártica y Cabo de Hornos excluidos.")
 
     with TemporaryDirectory(prefix="anglermap-geodata-") as temporary:
@@ -1030,9 +1082,16 @@ def main():
         ))
         write_geojson(temp_dir / "waterbodies.geojson", waters)
 
+        # Capa 3: estaciones DGA. Son puntos de monitoreo independientes;
+        # no se utilizan sus nombres para nombrar ni crear cuerpos de agua.
+        log("Descargando Red Hidrométrica Nacional DGA")
+        stations, stations_meta = query_dga_stations(commune_union)
+        write_geojson(temp_dir / "dga_stations.geojson", stations)
+
         counts = {
             "roads": validate_geojson(temp_dir / "roads.geojson", 1),
-            "waterbodies": validate_geojson(temp_dir / "waterbodies.geojson", 1)
+            "waterbodies": validate_geojson(temp_dir / "waterbodies.geojson", 1),
+            "dga_stations": validate_geojson(temp_dir / "dga_stations.geojson", 1)
         }
         if not roads:
             raise RuntimeError("MOP no entregó caminos para el territorio objetivo.")
@@ -1054,6 +1113,15 @@ def main():
             commune = feature["properties"]["communes"][0]
             road_commune_counts[commune] = road_commune_counts.get(commune, 0) + 1
 
+        station_commune_counts = {}
+        station_type_counts = {}
+        for feature in stations:
+            props = feature["properties"]
+            station_type = props.get("station_type") or "Sin tipo informado"
+            station_type_counts[station_type] = station_type_counts.get(station_type, 0) + 1
+            for commune in props.get("communes", []):
+                station_commune_counts[commune] = station_commune_counts.get(commune, 0) + 1
+
         metadata = {
             "application": "AnglerMap",
             "version": "5.0",
@@ -1066,8 +1134,9 @@ def main():
                 "cape_horn_commune_included": False
             },
             "architecture": {
-                "roads": "Una capa temática MOP para caminos y accesos.",
-                "waterbodies": "Una capa temática DGA que consolida red de drenajes y lagos.",
+                "roads": "Capa MOP de caminos y accesos.",
+                "waterbodies": "Capa cartográfica DGA de cuerpos de agua: drenajes lineales y lagos poligonales.",
+                "dga_stations": "Capa puntual DGA de estaciones de la Red Hidrométrica Nacional; separada de los cuerpos de agua.",
                 "basins_subbasins": "Fuera de alcance.",
                 "igm_hydrography": "Fuera de alcance."
             },
@@ -1088,30 +1157,34 @@ def main():
                     "lakes_layer": URL_DGA_LAKES,
                     "status": "available",
                     "drainage_copyright": "DGA 2012 / MOP",
-                    "lakes_copyright": "DGA 2017"
+                    "lakes_copyright": "DGA 2017",
+                    "method": "Todos los registros intersectantes de las dos subcapas se conservan y se asignan por intersección geométrica a las comunas."
+                },
+                "dga_stations": {
+                    "institution": "DGA · División de Hidrología",
+                    "service": URL_DGA_STATIONS,
+                    "operational_flow_data_service": URL_DGA_LIVE_FLOW,
+                    "status": "available",
+                    "station_inventory_note": "Red Hidrométrica Nacional con estaciones fluviométricas, calidad de aguas, meteorológicas, niveles de lagos y embalses, sedimentometría, pozos, nivometría y glaciología. Metadata del servicio cartográfico: actualización julio 2022."
                 }
             },
             "counts": {
                 **counts,
                 "waterbodies_by_category": category_counts,
                 "waterbodies_by_commune": commune_counts,
-                "roads_by_commune": road_commune_counts
+                "roads_by_commune": road_commune_counts,
+                "dga_stations_by_commune": station_commune_counts,
+                "dga_stations_by_type": station_type_counts
             },
-            "toponymy_notes": [
-                {
-                    "source_name": "Río Serrano",
-                    "canonical_name": "Río del Oro",
-                    "commune": "Primavera",
-                    "status": "corroborated_local_correction",
-                    "note": "Se conserva el nombre de origen como alias; la geometría y la ficha DGA siguen siendo la fuente primaria."
-                }
-            ],
+            "toponymy_notes": [],
             "limitations": [
                 "La red de drenajes DGA representa la mayoría de las expresiones espaciales de drenaje, no necesariamente todas.",
                 "El inventario poligonal DGA de lagos se publica como dato 2017; puede no incluir todas las lagunas menores.",
                 "La red vial MOP es cartografía oficial, pero no confirma transitabilidad, mantención, barreras, permisos ni acceso público actual.",
                 "La presencia de un camino no acredita derecho de paso ni acceso legal a una propiedad.",
-                "La presencia de un cuerpo de agua no acredita acceso público ni permiso de pesca."
+                "La presencia de un cuerpo de agua no acredita acceso público ni permiso de pesca.",
+                "Las estaciones DGA son puntos de monitoreo; sus nombres no definen el nombre del río o lago donde se encuentran.",
+                "La Red Hidrométrica Nacional publicada en la capa cartográfica consultada tiene metadata de actualización julio 2022; validar vigencia de cada estación antes de interpretar su operación."
             ]
         }
         write_json(temp_dir / "sources.json", metadata)
@@ -1119,7 +1192,7 @@ def main():
             json.load(file)
 
         publish_atomically(temp_dir)
-        log("Publicación de las dos capas completada.")
+        log("Publicación de las tres capas completada.")
         log(json.dumps(metadata["counts"], ensure_ascii=False))
 
 
