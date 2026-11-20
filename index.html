@@ -1528,7 +1528,8 @@ console.info(
  }
  menu.addEventListener("click",()=>setMenu(!workspace.classList.contains("menu-open")));
  document.addEventListener("keydown",e=>{if(e.key==="Escape")setMenu(false)});
- document.querySelectorAll(".water-item").forEach(item=>item.addEventListener("click",()=>setMenu(false)));
+ const zones=document.getElementById("zones");
+ zones.addEventListener("click",e=>{if(e.target.closest(".water-item"))setMenu(false)});
  const dock=document.getElementById("weatherDock");
  const min=document.getElementById("weatherMinimize");
  dock.classList.add("minimized");
