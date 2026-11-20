@@ -107,7 +107,7 @@
         <div class="tm-section"><h3>Cartografía de referencia</h3>${tag(data.imports.length+" archivos")}</div>
         <div class="tm-import"><div><strong>Incorporar límites prediales o de estancias</strong><small>Formatos admitidos: GeoJSON (.geojson/.json) y KML (.kml). Máximo 10 MB y 10.000 elementos por archivo.</small></div><input id="tm-import-file" type="file" accept=".geojson,.json,.kml,application/geo+json,application/json,application/vnd.google-earth.kml+xml"><button class="tm-btn primary" id="tm-import-btn">Importar archivo</button></div>
         <div class="tm-note">Los archivos importados se guardan solo en este navegador. Se muestran como referencia pendiente de validación; no acreditan propiedad, deslindes vigentes, titularidad ni derechos de acceso. Se conserva el nombre del archivo y la fuente declarada.</div>
-        <div class="tm-import-list">${data.imports.length ? data.imports.map((item,i)=>`<div class="tm-import-item"><div><strong>${esc(item.name)}</strong><small>${esc(item.fileName)} · ${esc(item.format)} · ${item.featureCount} elementos · Pendiente de validar</small></div><button class="tm-btn subtle" data-zoom-import="${i}">Ver en mapa</button><button class="tm-btn subtle" data-remove-import="${i}">Quitar</button></div>`).join("") : empty("▧","Todavía no has importado archivos geográficos.")}</div>
+        <div class="tm-import-list">${data.imports.length ? data.imports.map((item,i)=>`<div class="tm-import-item"><div><strong>${esc(item.name)}</strong><small>${esc(item.fileName)} · ${esc(item.format)} · ${item.featureCount} elementos · Fuente: ${esc(item.source||"No declarada")} · Pendiente de validar</small></div><button class="tm-btn subtle" data-zoom-import="${i}">Ver en mapa</button><button class="tm-btn subtle" data-remove-import="${i}">Quitar</button></div>`).join("") : empty("▧","Todavía no has importado archivos geográficos.")}</div>
         <div class="tm-section"><h3>Mis territorios</h3>${tag(data.territories.length+" registros")}</div>
         <div class="tm-list">${data.territories.length ? data.territories.map((t,i)=>row(t.name,t.commune+" · "+(t.points.length>=3?"Polígono local":"Sin geometría") , "Pendiente de validar")+`<div class="tm-actions"><button class="tm-btn subtle" data-remove-territory="${i}">Eliminar borrador</button></div>`).join("") : empty("▱","Aún no has registrado territorios.")}</div>`;
       $("tm-draw").onclick = startDrawing;
@@ -209,9 +209,8 @@
     } catch(error) { alert("No se pudo importar el archivo: "+error.message); }
   }
   let importedLayer = L.layerGroup().addTo(map);
-  refreshImportedLayers();
-  function open() { shell.classList.add("open"); $("adminSection").hidden=false; render(); }
-  function close() { shell.classList.remove("open"); if(draft){draft=null; if(draftLayer){map.removeLayer(draftLayer);draftLayer=null;}} }
+  function open() { shell.classList.add("open"); $("adminSection").hidden=false; refreshImportedLayers(); render(); }
+  function close() { shell.classList.remove("open"); if(importedLayer)importedLayer.clearLayers(); if(draft){draft=null; if(draftLayer){map.removeLayer(draftLayer);draftLayer=null;}} }
   function createTerritory(points) {
     const name=prompt("Nombre del territorio o sector:");
     if(!name || !name.trim()) return;
