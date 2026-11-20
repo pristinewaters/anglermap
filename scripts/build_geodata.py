@@ -34,6 +34,9 @@ META = ROOT / "data" / "metadata"
 BASE = "https://rest-sit.mop.gob.cl/arcgis/rest/services"
 
 URL_COMMUNES = BASE + "/MAPA_BASE/LIMITES/MapServer/2"
+# Respaldo institucional DPA 2020 publicado por MINVU con datos coordinados por SUBDERE, IGM, DIFROL e INE.
+# Se utiliza solo si el servicio MOP no responde; no reemplaza la fuente MOP como referencia primaria.
+URL_COMMUNES_FALLBACK = "https://geoide.minvu.cl/server/rest/services/Hosted/DS19/FeatureServer/3"
 URL_PROVINCES = BASE + "/MAPA_BASE/LIMITES/MapServer/1"
 
 URL_IGM = BASE + "/MAPA_BASE/IGM50/MapServer"
@@ -619,9 +622,30 @@ def representative_point(geometry):
 
 
 def get_communes():
-    features, fields, metadata = fetch_features(
-        URL_COMMUNES
-    )
+    """
+    Fuente primaria: límites comunales MOP.
+    Respaldo: DPA 2020 institucional publicada por MINVU.
+    El respaldo se identifica explícitamente en properties y metadata.
+    """
+    source_url = URL_COMMUNES
+    source_label = "MOP · Límites administrativos"
+    source_status = "primary"
+
+    try:
+        features, fields, metadata = fetch_features(URL_COMMUNES)
+    except Exception as primary_error:
+        log(
+            "MOP límites comunales no disponible; activando respaldo DPA institucional: "
+            + str(primary_error)
+        )
+        source_url = URL_COMMUNES_FALLBACK
+        source_label = (
+            "IDE MINVU · DPA 2020 (SUBDERE, IGM, DIFROL e INE) · respaldo"
+        )
+        source_status = "fallback_dpa_2020"
+        features, fields, metadata = fetch_features(
+            URL_COMMUNES_FALLBACK
+        )
 
     name_field = find_field(
         fields,
@@ -636,11 +660,10 @@ def get_communes():
     if not name_field:
         raise RuntimeError(
             "No se encontró el campo de nombre comunal "
-            "en la capa MOP."
+            "en la fuente administrativa seleccionada."
         )
 
     records = records_from_features(features)
-
     selected = {}
 
     for record in records:
@@ -656,8 +679,8 @@ def get_communes():
 
     if missing:
         raise RuntimeError(
-            "La fuente MOP no permitió verificar todas "
-            "las comunas objetivo. Faltan: "
+            "La fuente administrativa seleccionada no permitió verificar "
+            "todas las comunas objetivo. Faltan: "
             + ", ".join(missing)
             + ". No se publicarán datos parciales."
         )
@@ -686,16 +709,29 @@ def get_communes():
                 geometry,
                 {
                     "name": display_name,
-                    "official_id": props.get("OBJECTID"),
-                    "commune_code": props.get("COD_COM"),
-                    "province_code": props.get("CODMOP_PROV"),
-                    "source": "MOP · Límites administrativos"
+                    "official_id": props.get("OBJECTID") or props.get("FID"),
+                    "commune_code": props.get("COD_COM") or props.get("CUT_COM"),
+                    "province_code": props.get("CODMOP_PROV") or props.get("CUT_PROV"),
+                    "source": source_label,
+                    "source_status": source_status
                 }
             )
         )
 
-    return output, records, metadata
+    source_info = {
+        "institution": "MOP" if source_status == "primary" else "IDE MINVU / SUBDERE / IGM / DIFROL / INE",
+        "url": source_url,
+        "status": source_status,
+        "primary_url": URL_COMMUNES,
+        "fallback_url": URL_COMMUNES_FALLBACK,
+        "note": (
+            "MOP respondió correctamente."
+            if source_status == "primary"
+            else "Respaldo DPA 2020; antigüedad y procedencia identificadas. Validar antes de usar como cartografía oficial vigente."
+        )
+    }
 
+    return output, records, metadata, source_info
 
 def get_provinces(commune_records):
     commune_union = unary_union([
@@ -1028,7 +1064,7 @@ def main():
         # 1. Límites administrativos MOP
         log("Descargando límites comunales MOP")
 
-        commune_features, commune_records, commune_meta = (
+        commune_features, commune_records, commune_meta, commune_source_info = (
             get_communes()
         )
 
@@ -1209,7 +1245,7 @@ def main():
 
         metadata = {
             "application": "AnglerMap",
-            "version": "3.2",
+            "version": "3.4",
             "generated_at": datetime.now(
                 timezone.utc
             ).isoformat(),
@@ -1228,11 +1264,7 @@ def main():
                 "spatial_reference": "EPSG:4326"
             },
             "sources": {
-                "administrative_boundaries": {
-                    "institution": "MOP",
-                    "url": URL_COMMUNES,
-                    "status": "required"
-                },
+                "administrative_boundaries": commune_source_info,
                 "provinces": {
                     "institution": "MOP",
                     "url": URL_PROVINCES,
