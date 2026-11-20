@@ -15,6 +15,10 @@ on:
 permissions:
   contents: write
 
+concurrency:
+  group: anglermap-geodata-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   build-geodata:
     runs-on: ubuntu-latest
