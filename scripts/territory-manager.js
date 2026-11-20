@@ -155,7 +155,7 @@
     if(!draft || !shell.classList.contains("open") || tab!=="territories") return;
     draft.push(e.latlng);
     if(draftLayer)map.removeLayer(draftLayer);
-    draftLayer=L.polygon(draft,{color:"#55d9e8",weight:2,dashArray:"6 5",fillColor:"#258ba8",fillOpacity:.18}).addTo(map);
+    draftLayer=(draft.length>=3?L.polygon(draft,{color:"#55d9e8",weight:2,dashArray:"6 5",fillColor:"#258ba8",fillOpacity:.18}):L.polyline(draft,{color:"#55d9e8",weight:2,dashArray:"6 5"})).addTo(map);
     if(draft.length>1)map.fitBounds(draftLayer.getBounds(),{padding:[80,80],maxZoom:13});
   });
 
