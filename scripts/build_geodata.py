@@ -937,6 +937,7 @@ def query_water_layer(
                     "subtype": subtype,
                     "official_source": source_name,
                     "official_id": official_id,
+                    "source_attributes": props,
                     "communes": communes,
                     "provinces": sorted(set(intersecting_provinces(clipped))),
                     "basin_code": props.get(basin_code_field) if basin_code_field else None,
@@ -989,7 +990,8 @@ def query_dga_hydro_units(layer_url, level, name_field_name, commune_union):
             "provinces": sorted(set(intersecting_provinces(clipped))),
             "official_source": "DGA · Banco Nacional de Aguas (capa IDE publicada por SMA)",
             "source_url": layer_url,
-            "official_id": props.get("OBJECTID")
+            "official_id": props.get("OBJECTID"),
+            "source_attributes": props
         }))
     return output, metadata
 
