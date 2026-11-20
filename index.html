@@ -286,7 +286,7 @@ button:focus-visible,input:focus-visible,select:focus-visible{outline:2px solid 
    <button class="nav-item" data-view="logbook"><span class="nav-icon">▤</span>Bitácora</button>
   </nav>
   <div class="section-rule"></div>
-  <div class="side-heading">Aguas por territorio <small>14 REGISTRADAS</small></div>
+  <div class="side-heading">Aguas por territorio <small id="waterCount">CARGANDO…</small></div>
   <div id="zones"></div>
   <div class="section-rule"></div>
   <div class="side-heading">Herramientas</div>
@@ -396,10 +396,8 @@ button:focus-visible,input:focus-visible,select:focus-visible{outline:2px solid 
 
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script>
-// Inventario inicial por comuna basado en cuencas MOP (Tabla 4-24 del Diagnóstico
-// del Plan de Riego de Magallanes) y nombres/localidades de estaciones DGA.
-// En cuencas compartidas el mismo río aparece en más de una comuna; no implica
-// que todo su trazado esté dentro de cada comuna ni acredita acceso de pesca.
+// Catálogo dinámico construido desde geometrías hidrográficas oficiales
+// y agrupado por comuna, categoría y unidad hidrográfica.
 let RIVERS = [];
 let hydroCatalogState = "loading";
 
@@ -482,6 +480,8 @@ async function loadHydroCatalog() {
 
   RIVERS = [...grouped.values()].sort((a,b)=>a.name.localeCompare(b.name,"es"));
   hydroCatalogState = "ready";
+  const waterCount = document.getElementById("waterCount");
+  if (waterCount) waterCount.textContent = RIVERS.length + " REGISTRADAS";
  } catch (error) {
   console.error("AnglerMap: no se pudo cargar el inventario hidrográfico.",error);
   RIVERS = [];
@@ -629,7 +629,7 @@ function setView(view){
  if(view==="explore"){renderZones($("globalSearch").value);return;}
  if(view==="saved"){
   const saved=RIVERS.filter(r=>favorites.includes(r.name));
-  const html=saved.length?saved.map(r=>`<div class="panel-row"><strong>${escapeHtml(r.name)}</strong><p>${escapeHtml(r.communes.join(" · "))}</p><button class="action-btn" style="margin-top:9px" onclick="openRiverByName('${escapeHtml(r.name)}')">Abrir ficha</button></div>`).join(""):'<div class="empty-state">☆<br>Todavía no tienes aguas guardadas.<br>Explora los ríos y utiliza «Guardar agua» para crear tu colección.</div>';
+  const html=saved.length?saved.map(r=>`<div class="panel-row"><strong>${escapeHtml(r.name)}</strong><p>${escapeHtml(r.communes.join(" · "))}</p><button class="action-btn" style="margin-top:9px" onclick="openRiverByName('${escapeHtml(r.name)}')">Abrir ficha</button></div>`).join(""):'<div class="empty-state">☆<br>Todavía no tienes aguas guardadas.<br>Explora ríos, lagos y lagunas y utiliza «Guardar agua» para crear tu colección.</div>';
   openGeneral("Mis aguas",saved.length+" aguas guardadas",html);
  }
  if(view==="points"){
