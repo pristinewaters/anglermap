@@ -200,7 +200,7 @@
   }
   function pilotRiverMatches() {
     if(typeof RIVERS==="undefined")return [];
-    return RIVERS.filter(w=>amCatalogNormalize(w.name)==="rio del medio"&&w.category==="river");
+    return RIVERS.filter(w=>amCatalogNormalize(w.name)==="rio del medio"&&w.category==="river"&&Array.isArray(w.communes)&&w.communes.includes("Laguna Blanca"));
   }
   function pilotLayers() {
     if(!pilotRiverLayer)pilotRiverLayer=L.layerGroup();
