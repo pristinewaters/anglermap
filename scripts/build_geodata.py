@@ -67,7 +67,7 @@ TARGET_COMMUNES = {
 
 EXPECTED_COMMUNES = 9
 
-BATCH_SIZE = 500
+BATCH_SIZE = 100
 MAX_RETRIES = 4
 
 SESSION = requests.Session()
@@ -417,6 +417,9 @@ def fetch_batch(layer_url, ids, oid_field):
     if not ids:
         return []
 
+    # Enviar objectIds en el cuerpo POST. Enviar cientos de IDs
+    # por GET genera URLs excesivamente largas que el proxy ArcGIS
+    # del MOP responde con HTTP 404, aunque la capa y los IDs existan.
     data = request_json(
         layer_url + "/query",
         {
@@ -424,7 +427,8 @@ def fetch_batch(layer_url, ids, oid_field):
             "outFields": "*",
             "returnGeometry": "true",
             "outSR": "4326"
-        }
+        },
+        method="POST"
     )
 
     if data.get("exceededTransferLimit"):
