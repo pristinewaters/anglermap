@@ -208,7 +208,7 @@
       if(save(current)){data=current;refreshImportedLayers();render();alert("Importación local completada. La capa queda pendiente de validación.");}
     } catch(error) { alert("No se pudo importar el archivo: "+error.message); }
   }
-  let importedLayer = L.layerGroup().addTo(map);
+
   function open() { shell.classList.add("open"); $("adminSection").hidden=false; refreshImportedLayers(); render(); }
   function close() { shell.classList.remove("open"); if(importedLayer)importedLayer.clearLayers(); if(draft){draft=null; if(draftLayer){map.removeLayer(draftLayer);draftLayer=null;}} }
   function createTerritory(points) {
