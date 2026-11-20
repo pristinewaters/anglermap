@@ -80,6 +80,20 @@ TARGET_COMMUNES = {
 
 EXPECTED_COMMUNES = 9
 
+# Relación administrativa oficial comuna → provincia, usada como respaldo
+# si la capa geométrica provincial MOP no está disponible.
+COMMUNE_PROVINCE = {
+    "punta arenas": "Magallanes",
+    "laguna blanca": "Magallanes",
+    "rio verde": "Magallanes",
+    "san gregorio": "Magallanes",
+    "natales": "Última Esperanza",
+    "torres del paine": "Última Esperanza",
+    "porvenir": "Tierra del Fuego",
+    "primavera": "Tierra del Fuego",
+    "timaukel": "Tierra del Fuego"
+}
+
 BATCH_SIZE = 100
 MAX_RETRIES = 4
 
@@ -573,11 +587,23 @@ def build_commune_spatial_index():
 
 
 def intersecting_provinces(geometry):
-    return [
+    matches = [
         item["name"]
         for item in PROVINCE_GEOMETRIES
         if geometry.intersects(item["geometry"])
     ]
+
+    if matches:
+        return sorted(set(matches))
+
+    # Respaldo DPA: las nueve comunas objetivo pertenecen a una única
+    # provincia cada una. Evita perder la clasificación provincial si
+    # el servicio de polígonos MOP no responde.
+    return sorted({
+        COMMUNE_PROVINCE.get(normalize(commune["name"]))
+        for commune in intersecting_communes(geometry)
+        if COMMUNE_PROVINCE.get(normalize(commune["name"]))
+    })
 
 
 def intersecting_communes(geometry):
@@ -898,10 +924,11 @@ def query_water_layer(
             name = "Río del Oro"
             toponymy_status = "locally_corrected"
             toponymy_note = (
-                "Corrección local aportada para el trazado de Primavera: "
-                "la cartografía de origen lo rotula Río Serrano, pero se "
-                "identifica localmente como Río del Oro. Mantener el rótulo "
-                "original como alias hasta completar contraste documental."
+                "Corrección toponímica corroborada: la carta IGM Bahía Felipe "
+                "(L-070, escala 1:50.000) incluye Río del Oro y cubre Primavera; "
+                "SIMBIO identifica la subsubcuenca Río del Oro, código BNA 12806, "
+                "con 13.907 ha dentro de Primavera. Se conserva el rótulo "
+                "cartográfico de origen como alias de trazabilidad."
             )
 
         subtype = (
@@ -912,11 +939,47 @@ def query_water_layer(
         subtype_normalized = normalize(subtype)
         name_normalized = normalize(name)
         effective_water_type = water_type
+        subtype_label = str(subtype).strip() if subtype is not None else None
 
-        if water_type == "lake" and source_name.startswith("MOP"):
-            # La capa MOP 17 es un sistema lacustre mixto: contiene ríos,
-            # esteros, embalses, lagos, lagunas, salares y glaciares.
-            # Solo se incorporan las clases hidrográficas pertinentes.
+        if layer_url == URL_IGM_RIVERS:
+            # IGM 1:50.000, capa 15: el código 10 es Río - Estero.
+            # Se excluyen acueductos, canales, quebradas secas,
+            # rompeolas y otras entidades que no son ríos/esteros.
+            if subtype_normalized not in ("10", "rio - estero"):
+                continue
+            water_category = "river"
+            effective_water_type = "river"
+            subtype_label = "Río - Estero"
+
+        elif layer_url == URL_IGM_WATERS:
+            # IGM 1:50.000, capa 18. Códigos oficiales TIPO:
+            # 1 Embalse, 4 Lago permanente, 5 Lago seco,
+            # 6 Lago temporal, 8 Represa, 9 Río - Estero, 11 Laguna.
+            # Se excluyen aluviones, islas, océano y zonas inundables.
+            igm_area_types = {
+                "1": ("reservoir", "reservoir", "Embalse"),
+                "4": ("lake", "lake", "Lago permanente"),
+                "5": ("lake", "lake", "Lago seco"),
+                "6": ("lake", "lake", "Lago temporal"),
+                "8": ("reservoir", "reservoir", "Represa"),
+                "9": ("river", "river", "Río - Estero"),
+                "11": ("lagoon", "lagoon", "Laguna"),
+                "embalse": ("reservoir", "reservoir", "Embalse"),
+                "lago permanente": ("lake", "lake", "Lago permanente"),
+                "lago seco": ("lake", "lake", "Lago seco"),
+                "lago temporal": ("lake", "lake", "Lago temporal"),
+                "represa": ("reservoir", "reservoir", "Represa"),
+                "rio - estero": ("river", "river", "Río - Estero"),
+                "laguna": ("lagoon", "lagoon", "Laguna")
+            }
+            mapped_type = igm_area_types.get(subtype_normalized)
+            if mapped_type is None:
+                continue
+            water_category, effective_water_type, subtype_label = mapped_type
+
+        elif water_type == "lake" and source_name.startswith("MOP"):
+            # La capa MOP 17 es mixta. Se conservan solo ríos/esteros,
+            # embalses, lagos y lagunas; se excluyen salares y glaciares.
             if subtype_normalized in ("rio", "estero", "rio - estero"):
                 water_category = "river"
                 effective_water_type = "river_or_stream"
@@ -931,6 +994,7 @@ def query_water_layer(
                 effective_water_type = "lagoon"
             else:
                 continue
+
         elif water_type in ("river", "river_or_stream"):
             water_category = "river"
         elif subtype_normalized == "embalse":
@@ -982,6 +1046,7 @@ def query_water_layer(
                         "water_type": effective_water_type,
                         "water_category": water_category,
                         "subtype": subtype,
+                        "subtype_label": subtype_label,
                         "official_source": source_name,
                         "official_id": official_id,
                         "source_attributes": props,
@@ -1400,6 +1465,18 @@ def main():
 
         # IGM aporta detalle cartográfico; MOP y DGA complementan
         # geometría, nombres e inventario de unidades hidrográficas.
+        required_hydro_levels = ("basin", "subbasin", "subsubbasin")
+        missing_hydro_levels = [
+            level for level in required_hydro_levels
+            if dga_status.get(level, {}).get("features", 0) < 1
+        ]
+        if missing_hydro_levels:
+            raise RuntimeError(
+                "No se publicará el catálogo sin las tres jerarquías "
+                "hidrográficas BNA DGA. Niveles sin datos: "
+                + ", ".join(missing_hydro_levels)
+            )
+
         all_waters = (
             igm_rivers + igm_lakes
             + mop_rivers + mop_lakes
@@ -1458,7 +1535,7 @@ def main():
             ),
             "dga_hydro_units": validate_geojson(
                 temp_dir / "dga_hydro_units.geojson",
-                0
+                3
             ),
             "dga_stations": validate_geojson(
                 temp_dir / "dga_stations.geojson",
@@ -1581,8 +1658,13 @@ def main():
                     "source_name": "Río Serrano",
                     "canonical_name": "Río del Oro",
                     "communes": ["Primavera"],
-                    "status": "local_override_pending_independent_cartographic_confirmation",
-                    "note": "Se conserva el rótulo de origen como alias y no se atribuye esta corrección a la DGA."
+                    "status": "corroborated_by_igm_and_simbio",
+                    "sources": [
+                        "https://www.igm.cl/tiendaonline/inicio/4969-bahia-felipe-shp.html",
+                        "https://simbio.mma.gob.cl/Subsubcuencas/Details/12806"
+                    ],
+                    "bna_subsubbasin_code": "12806",
+                    "note": "La carta IGM Bahía Felipe (L-070, 1:50.000) identifica Río del Oro y cubre Primavera; SIMBIO registra la subsubcuenca Río del Oro BNA 12806 y 13.907 ha en Primavera. Se conserva Río Serrano como rótulo de origen/alias, no como nombre canónico del tramo de Primavera."
                 }
             ],
             "limitations": [
