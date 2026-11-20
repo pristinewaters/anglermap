@@ -396,25 +396,51 @@ button:focus-visible,input:focus-visible,select:focus-visible{outline:2px solid 
 
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script>
+// Inventario inicial por comuna basado en cuencas MOP (Tabla 4-24 del Diagnóstico
+// del Plan de Riego de Magallanes) y nombres/localidades de estaciones DGA.
+// En cuencas compartidas el mismo río aparece en más de una comuna; no implica
+// que todo su trazado esté dentro de cada comuna ni acredita acceso de pesca.
 const RIVERS=[
-{name:"Río Serrano",zone:"Última Esperanza",desc:"Curso emblemático del entorno del Parque Nacional Torres del Paine. Sus tramos y accesos de pesca requieren validación cartográfica específica."},
-{name:"Río Baguales",zone:"Última Esperanza",desc:"Agua de Última Esperanza. La ubicación precisa de sus tramos y accesos debe verificarse antes de planificar una jornada."},
-{name:"Río Tranquilo",zone:"Última Esperanza",desc:"Curso de agua de Última Esperanza. Se incorporará información territorial y condiciones de pesca a medida que se validen sus fuentes."},
-{name:"Río Rubens",zone:"Magallanes continental",desc:"Río de la zona continental de Magallanes. Su ficha reunirá referencias territoriales, condiciones y puntos de interés confirmados."},
-{name:"Río Penitente",zone:"Magallanes continental",desc:"Curso de agua de la zona de Morro Chico. La estación fluviométrica DGA es una referencia hidrológica, no un acceso de pesca."},
-{name:"Río del Medio",zone:"Magallanes continental",desc:"Agua continental de Magallanes. Los tramos, accesos y referencias de pesca se incorporarán cuando exista información geográfica contrastada."},
-{name:"Río San Juan",zone:"Magallanes continental",desc:"Curso de agua de Magallanes. La aplicación distinguirá información oficial de referencias aportadas por pescadores."},
-{name:"Río Grande",zone:"Tierra del Fuego",desc:"Río Grande de Tierra del Fuego chilena. No confundir con el río argentino. Su ficha podrá integrar regulación, condiciones y sectores verificados."},
-{name:"Río del Oro",zone:"Tierra del Fuego",desc:"Curso de agua fueguino. Se incorporará información de ubicación, accesos y características de pesca con respaldo territorial."},
-{name:"Río Óscar",zone:"Tierra del Fuego",desc:"Agua de Tierra del Fuego. Sus referencias de pesca y accesos están pendientes de validación."},
-{name:"Río O’Higgins",zone:"Tierra del Fuego",desc:"Curso de agua fueguino. AnglerMap centralizará referencias territoriales y condiciones de pesca verificadas."},
-{name:"Río Moneta / Muneta",zone:"Tierra del Fuego",desc:"Agua del sector de Timaukel, próxima a Russfin. Se debe validar la denominación cartográfica y el trazado oficial."},
-{name:"Río Catalina",zone:"Tierra del Fuego",desc:"Curso de agua de Tierra del Fuego. La información de sectores, accesos y condiciones se completará con datos validados."},
-{name:"Río Azopardo",zone:"Tierra del Fuego",desc:"Curso de agua de Tierra del Fuego. Su ficha permitirá organizar referencias territoriales y condiciones de pesca."}
+{name:"Río Serrano",communes:["Natales","Torres del Paine"],desc:"Cuenca costera Seno Andrew–río Hollemberg; tributario principal identificado por MOP. La cuenca abarca Natales y Torres del Paine."},
+{name:"Río Las Chinas",communes:["Natales","Torres del Paine"],desc:"Curso y estaciones DGA en Cerro Guido y antes del desagüe al Toro. MOP lo identifica como tributario principal de la cuenca Seno Andrew–Hollemberg."},
+{name:"Río Paine",communes:["Natales","Torres del Paine"],desc:"Curso con estaciones DGA en el Parque Nacional y Laguna Amarga; tributario principal de la cuenca Seno Andrew–Hollemberg."},
+{name:"Río Baguales",communes:["Torres del Paine"],desc:"Curso con estación DGA en Cerro Guido. La ubicación de tramos y accesos debe verificarse cartográficamente."},
+{name:"Río Vizcachas",communes:["Torres del Paine"],desc:"Curso registrado en la red histórica de estaciones fluviométricas DGA en Cerro Guido."},
+{name:"Río Grey",communes:["Torres del Paine"],desc:"Curso registrado por DGA en la cuenca del río Serrano."},
+{name:"Río Tindall",communes:["Torres del Paine"],desc:"Curso con estación DGA en desembocadura."},
+{name:"Río Rincón",communes:["Torres del Paine"],desc:"Curso con estación DGA en ruta Y-290."},
+{name:"Río Tres Pasos",communes:["Torres del Paine"],desc:"Curso identificado por MOP/DGA en el sistema del lago del Toro."},
+{name:"Río Geikie",communes:["Torres del Paine"],desc:"Curso con estación DGA en desembocadura."},
+{name:"Río Pérez",communes:["Natales","Río Verde"],desc:"MOP identifica la cuenca costera Islas río Hollemberg–Laguna Blanca en Natales y Río Verde; DGA mantiene estación en su desembocadura, comuna de Río Verde."},
+{name:"Río Hollemberg",communes:["Natales","Río Verde"],desc:"Tributario principal de la cuenca costera identificada por MOP entre Natales y Río Verde; DGA registra estación en desembocadura."},
+{name:"Río Tranquilo",communes:["Natales"],desc:"Curso con estación DGA Río Tranquilo en ruta Nº 9."},
+{name:"Río Prat",communes:["Natales"],desc:"Curso con estación DGA en desembocadura."},
+{name:"Río Primero",communes:["Natales"],desc:"Curso con estación DGA en Seno Obstrucción."},
+{name:"Río Blanco",communes:["Natales"],desc:"Curso con estación DGA en Seno Obstrucción."},
+{name:"Río Penitente",communes:["Laguna Blanca","San Gregorio"],desc:"Curso con estación DGA en Morro Chico. MOP ubica la cuenca de la vertiente del Atlántico entre Laguna Blanca y San Gregorio."},
+{name:"Río Rubens",communes:["Laguna Blanca","San Gregorio"],desc:"Curso con estación DGA en ruta Nº 9. MOP ubica la cuenca de la vertiente del Atlántico entre Laguna Blanca y San Gregorio."},
+{name:"Río Las Minas",communes:["Punta Arenas","San Gregorio"],desc:"MOP identifica la cuenca costera Laguna Blanca–Estrecho de Magallanes entre Punta Arenas y San Gregorio; DGA registra estaciones en el río Las Minas."},
+{name:"Río San Juan",communes:["Punta Arenas","San Gregorio"],desc:"MOP identifica esta cuenca entre Punta Arenas y San Gregorio; DGA registra estación en la desembocadura."},
+{name:"Río Tres Brazos",communes:["Punta Arenas","San Gregorio"],desc:"Tributario de la cuenca costera Laguna Blanca–Estrecho de Magallanes identificada por MOP."},
+{name:"Río Grande en Isla Riesco",communes:["Punta Arenas"],desc:"Curso con estación DGA en Isla Riesco, dentro del territorio comunal de Punta Arenas."},
+{name:"Río Side",communes:["Primavera"],desc:"Curso con estación fluviométrica DGA en Cerro Sombrero."},
+{name:"Río Oro",communes:["Primavera"],desc:"Curso con estación DGA en Bahía San Felipe; ubicación comunal identificada en el inventario de estaciones."},
+{name:"Río Óscar",communes:["Primavera"],desc:"Curso con estación DGA en Bahía San Felipe."},
+{name:"Río San Martín",communes:["Primavera"],desc:"Curso con estación DGA en San Sebastián."},
+{name:"Río Onaissin",communes:["Primavera"],desc:"Curso con estación DGA en María Cristina."},
+{name:"Río Cullen",communes:["Primavera"],desc:"Curso con estación DGA en frontera."},
+{name:"Río Grande en Tierra del Fuego",communes:["Timaukel"],desc:"Curso con estación DGA y puente de la ruta Y-85 en el sector Cameron–Vicuña, comuna de Timaukel."},
+{name:"Río Catalina",communes:["Timaukel"],desc:"Curso identificado en Pampa Guanaco por antecedentes municipales y registros DGA."},
+{name:"Río McClelland",communes:["Timaukel"],desc:"Curso identificado en los antecedentes territoriales de la comuna de Timaukel, en el sector de Cameron."},
+{name:"Río Rasmussen",communes:["Timaukel"],desc:"Curso con estación DGA en frontera, sector de estancia Vicuña."},
+{name:"Río Herminita",communes:["Timaukel"],desc:"Curso con estación DGA en ruta Y-895."},
+{name:"Río Chico",communes:["Timaukel"],desc:"Curso con estación DGA en ruta Y-895."},
+{name:"Río Azopardo",communes:["Porvenir"],desc:"Curso con estación DGA en desembocadura; ficha de estación identifica la comuna de Porvenir."},
+{name:"Río Cóndor",communes:["Porvenir"],desc:"Curso con estación DGA; ficha de estación identifica la comuna de Porvenir."}
 ];
 
 const $=id=>document.getElementById(id);
-const zoneOrder=["Última Esperanza","Magallanes continental","Tierra del Fuego"];
+const zoneOrder=["Punta Arenas","Laguna Blanca","Río Verde","San Gregorio","Natales","Torres del Paine","Porvenir","Primavera","Timaukel"];
 const readStore=(key,fallback)=>{
  try{return JSON.parse(localStorage.getItem(key))??fallback}catch(e){return fallback}
 };
@@ -448,7 +474,7 @@ $("osmBtn").onclick=()=>setBase(osm,"osmBtn");
 function renderZones(filter=""){
  const root=$("zones");root.innerHTML="";
  zoneOrder.forEach((zone,index)=>{
-  const waters=RIVERS.filter(r=>r.zone===zone&&r.name.toLowerCase().includes(filter.toLowerCase()));
+  const waters=RIVERS.filter(r=>r.communes.includes(zone)&&r.name.toLowerCase().includes(filter.toLowerCase()));
   if(!waters.length)return;
   const section=document.createElement("section");
   section.className="zone"+(index===0||filter?" open":"");
@@ -475,7 +501,7 @@ function openRiver(r){
  $("generalPanel").classList.remove("show");
  $("detailKicker").textContent="Ficha de agua · Magallanes";
  $("detailTitle").textContent=r.name;
- $("detailZone").textContent=r.zone+" · Región de Magallanes";
+ $("detailZone").textContent=r.communes.join(" · ")+" · Región de Magallanes";
  $("detailDescription").textContent=r.desc;
  $("detailWarning").textContent="Ubicación y trazado geográfico pendientes de validación. No se mostrará una posición aproximada como si fuera la ubicación oficial del río.";
  $("detailGeometry").textContent="Sin geometría validada disponible en esta versión. Esta ficha no representa un punto de acceso ni garantiza la ubicación del curso de agua.";
@@ -528,7 +554,7 @@ function setView(view){
  if(view==="explore"){renderZones($("globalSearch").value);return;}
  if(view==="saved"){
   const saved=RIVERS.filter(r=>favorites.includes(r.name));
-  const html=saved.length?saved.map(r=>`<div class="panel-row"><strong>${escapeHtml(r.name)}</strong><p>${escapeHtml(r.zone)}</p><button class="action-btn" style="margin-top:9px" onclick="openRiverByName('${escapeHtml(r.name)}')">Abrir ficha</button></div>`).join(""):'<div class="empty-state">☆<br>Todavía no tienes aguas guardadas.<br>Explora los ríos y utiliza «Guardar agua» para crear tu colección.</div>';
+  const html=saved.length?saved.map(r=>`<div class="panel-row"><strong>${escapeHtml(r.name)}</strong><p>${escapeHtml(r.communes.join(" · "))}</p><button class="action-btn" style="margin-top:9px" onclick="openRiverByName('${escapeHtml(r.name)}')">Abrir ficha</button></div>`).join(""):'<div class="empty-state">☆<br>Todavía no tienes aguas guardadas.<br>Explora los ríos y utiliza «Guardar agua» para crear tu colección.</div>';
   openGeneral("Mis aguas",saved.length+" aguas guardadas",html);
  }
  if(view==="points"){
