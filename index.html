@@ -483,6 +483,7 @@ function openRiver(r){
  $("riverDga").textContent="Las estaciones DGA se muestran según la ubicación oficial publicada por el servicio. La cercanía a un río no implica que midan directamente ese tramo.";
  $("favoriteBtn").textContent=favorites.includes(r.name)?"★ En Mis aguas":"☆ Guardar agua";
  $("detailPanel").classList.add("show");
+ amLocateRiver(r);
  document.querySelectorAll(".detail-tab").forEach((b,i)=>b.classList.toggle("active",i===0));
  $("tabOverview").hidden=false;$("tabConditions").hidden=true;$("tabAccess").hidden=true;
  renderZones($("globalSearch").value);
