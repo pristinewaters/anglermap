@@ -451,6 +451,7 @@ async function loadHydroCatalog() {
      subsubbasins:[],
      sources:[],
      aliases:[],
+     toponymyNotes:[],
      features:[],
      basinCodes:[],
      desc:"Geometría hidrográfica consolidada desde las capas disponibles."
@@ -465,6 +466,7 @@ async function loadHydroCatalog() {
    item.subsubbasins = [...new Set(item.subsubbasins.concat(p.subsubbasins || []))].sort();
    item.sources = [...new Set(item.sources.concat(p.official_source || []))].sort();
    item.aliases = [...new Set(item.aliases.concat(p.aliases || []))];
+   if(p.toponymy_note) item.toponymyNotes.push(p.toponymy_note);
    item.basinCodes = [...new Set(item.basinCodes.concat(basinCodes))].sort();
    item.features.push({
     type:"Feature",
@@ -574,7 +576,7 @@ function openRiver(r){
  ].filter(Boolean);
  $("detailDescription").textContent=context.join(" · ")+".";
  $("detailWarning").textContent="La ficha reúne registros cartográficos oficiales y complementarios. La geometría no acredita acceso público, permiso de pesca ni condiciones actuales del cauce.";
- $("detailGeometry").textContent="Fuentes: "+(r.sources.join("; ")||"sin procedencia informada")+". Geometrías disponibles: "+r.features.length+". "+(r.aliases.length?"Rótulo alternativo registrado: "+r.aliases.join(", ")+".":"")+" Las cuencas y subunidades se asignan por intersección espacial.";
+ $("detailGeometry").textContent="Fuentes: "+(r.sources.join("; ")||"sin procedencia informada")+". Geometrías disponibles: "+r.features.length+". "+(r.aliases.length?"Rótulo alternativo registrado: "+r.aliases.join(", ")+". ":"")+(r.toponymyNotes.length?"Nota toponímica: "+r.toponymyNotes.join(" ")+" ":"")+"Las cuencas y subunidades se asignan por intersección espacial.";
  $("riverWeather").textContent="La meteorología corresponde al centro actual del mapa y no necesariamente a este cuerpo de agua. Mueve el mapa hasta el sector de interés para consultar el pronóstico local.";
  $("riverDga").textContent="Las estaciones DGA son puntos de monitoreo. Solo se deben asociar a un curso cuando su identificación y ubicación confirmen esa relación.";
  $("favoriteBtn").textContent=favorites.includes(r.name)?"★ En Mis aguas":"☆ Guardar agua";
