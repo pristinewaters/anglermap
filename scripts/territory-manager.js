@@ -94,6 +94,16 @@
 
   @media(max-width:760px){.tm-layout{grid-template-columns:1fr}.tm-nav{display:flex;overflow-x:auto;gap:4px;padding:8px;border-right:0;border-bottom:1px solid #294456}.tm-nav-label{display:none}.tm-nav button{width:auto;white-space:nowrap;padding:9px}.tm-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.tm-main{padding:18px 13px}.tm-head{height:52px;padding:0 12px}.tm-head small{display:none}.tm-title{font-size:21px}}
   @media(max-width:420px){.tm-form{grid-template-columns:1fr}.tm-field.full{grid-column:auto}.tm-row{align-items:flex-start;flex-wrap:wrap}.tm-tag{margin-left:auto}}
+
+  /* Navegación agrupada: etiquetas cortas, estados claros y adaptación móvil. */
+  .tm-nav{overflow:auto;scrollbar-width:thin;scrollbar-color:#29485b transparent}
+  .tm-nav-group{margin:0 0 13px}
+  .tm-nav-label{padding:10px 10px 6px;font-size:9px;letter-spacing:1.2px;color:#7895a6;font-weight:800}
+  .tm-nav button{min-height:40px;font-size:12px}
+  .tm-nav button:focus-visible,.tm-btn:focus-visible,.tm-close:focus-visible{outline:3px solid #7ce7f2;outline-offset:2px}
+  .tm-nav button.active{box-shadow:inset 3px 0 #55d9e8}
+  .tm-main{scroll-behavior:smooth}
+  @media(max-width:760px){.tm-nav{position:sticky;top:0;z-index:5;align-items:center;scroll-snap-type:x proximity}.tm-nav-group{display:flex;gap:4px;align-items:center;flex-shrink:0;margin:0}.tm-nav-group .tm-nav-label{display:none}.tm-nav button{scroll-snap-align:start;min-height:38px}.tm-nav button span{display:inline}.tm-nav button.active{box-shadow:inset 0 -3px #55d9e8}}
   `;
   document.head.appendChild(style);
 
@@ -103,18 +113,11 @@
     <header class="tm-head"><div class="tm-brand">ANGLER<span>MAP</span></div><small>· TERRITORY MANAGER</small><button class="tm-icon-btn" id="tm-settings" title="Configuración del territorio" aria-label="Configuración">⚙</button><button class="tm-close" id="tm-close">Volver al mapa ×</button></header>
     <div class="tm-layout">
       <nav class="tm-nav" aria-label="Administración territorial">
-        <div class="tm-nav-label">GESTIÓN TERRITORIAL</div>
-        <button data-tm-tab="overview" class="active">⌂ Resumen</button>
-        <button data-tm-tab="rio-medio">〰 Río del Medio</button>
-        <button data-tm-tab="territories">▱ Territorios</button>
-        <button data-tm-tab="access">◇ Accesos y reglas</button>
-        <button data-tm-tab="requests">⇄ Solicitudes</button>
-        <button data-tm-tab="operators">♧ Operadores</button>
-        <button data-tm-tab="team">♙ Equipo</button>
-        <button data-tm-tab="angler-portal">⌖ Portal pescador</button>
-        <button data-tm-tab="operator-portal">▣ Portal operador</button>
-        <button data-tm-tab="content">▤ Información</button>
-        <button data-tm-tab="settings">⚙ Configuración</button>
+        <div class="tm-nav-group"><div class="tm-nav-label">INICIO</div><button data-tm-tab="overview" class="active" title="Resumen general">⌂ <span>Resumen</span></button></div>
+        <div class="tm-nav-group"><div class="tm-nav-label">MI TERRITORIO</div><button data-tm-tab="rio-medio" title="Administrar Río del Medio">〰 <span>Río del Medio</span></button><button data-tm-tab="territories" title="Territorios y sectores">▱ <span>Territorios</span></button><button data-tm-tab="access" title="Accesos y condiciones">◇ <span>Accesos y reglas</span></button></div>
+        <div class="tm-nav-group"><div class="tm-nav-label">OPERACIÓN</div><button data-tm-tab="requests" title="Solicitudes de ingreso">⇄ <span>Solicitudes</span></button><button data-tm-tab="operators" title="Operadores y convenios">♧ <span>Operadores</span></button><button data-tm-tab="team" title="Equipo de trabajo">♙ <span>Equipo</span></button></div>
+        <div class="tm-nav-group"><div class="tm-nav-label">EXPERIENCIA DE USUARIOS</div><button data-tm-tab="angler-portal" title="Vista del pescador">⌖ <span>Vista pescador</span></button><button data-tm-tab="operator-portal" title="Vista del operador">▣ <span>Vista operador</span></button><button data-tm-tab="content" title="Información pública">▤ <span>Información pública</span></button></div>
+        <div class="tm-nav-group"><div class="tm-nav-label">PREFERENCIAS</div><button data-tm-tab="settings" title="Configuración">⚙ <span>Configuración</span></button></div>
       </nav>
       <main class="tm-main" id="tm-content" tabindex="-1"></main>
     </div>`;
