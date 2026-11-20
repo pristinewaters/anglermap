@@ -438,6 +438,25 @@ button:focus-visible,input:focus-visible,select:focus-visible{outline:2px solid 
  .detail-panel{left:9px;top:58px;width:min(350px,calc(100% - 18px));max-height:calc(100% - 125px)}
 }
 @media(prefers-reduced-motion:reduce){.sidebar{transition:none}}
+
+/* Interface finishing: explicit role switch, accessible drawer controls and map-first hierarchy */
+.role-switch{display:flex;align-items:center;gap:7px;padding:4px 7px 4px 10px;border:1px solid #29485b;border-radius:12px;background:#0d2232}
+.role-switch>span{font-size:8px;letter-spacing:1.2px;font-weight:800;color:#7794a5}
+.role-switch .profile-select{height:32px;border:0;background:transparent;padding:0 5px;font-size:10px;max-width:118px}
+.side-intro{position:relative;padding-right:37px}
+.sidebar-close{position:absolute;right:2px;top:6px;width:29px;height:29px;border-radius:8px;border:1px solid #29485b;background:#102b3d;color:#bcd0da;font-size:19px;line-height:1}
+.sidebar-close:hover{color:#fff;border-color:#55d9e8}
+.topbar .brand{flex-shrink:0}
+.map-area{isolation:isolate}
+.map-controls{max-width:calc(100% - 32px)}
+.map-chip{color:#a9c0cc}
+.detail-panel,.general-panel{backdrop-filter:blur(18px)}
+@media(max-width:600px){
+ .role-switch{gap:3px;padding:3px 4px 3px 6px}
+ .role-switch>span{display:none}
+ .role-switch .profile-select{max-width:87px;font-size:9px}
+ .side-intro{padding-right:38px}
+}
 </style>
 </head>
 <body>
@@ -455,11 +474,11 @@ button:focus-visible,input:focus-visible,select:focus-visible{outline:2px solid 
  <div class="search-wrap"><span class="search-icon">⌕</span><input id="globalSearch" placeholder="Buscar río, lago o sector..."></div>
  <div class="top-actions">
   <button class="icon-btn" id="userProfileBtn" title="Crear cuenta o editar mi perfil" aria-label="Mi perfil">♙</button>
-  <select class="profile-select" id="profileSelect" aria-label="Perfil de demostración">
-   <option value="angler">Pescador recreativo</option>
-   <option value="operator">Operador turístico</option>
-   <option value="admin">Administrador territorial</option>
-  </select>
+  <label class="role-switch"><span>VISTA</span><select class="profile-select" id="profileSelect" aria-label="Cambiar vista de usuario">
+   <option value="angler">Pescador</option>
+   <option value="operator">Operador</option>
+   <option value="admin">Administrador</option>
+  </select></label>
   <button class="help-btn" id="amHelpBtn" title="Guía rápida de navegación" aria-label="Abrir guía rápida">Guía</button>
   <button class="icon-btn" id="locateBtn" title="Mi ubicación" aria-label="Mi ubicación">◎</button>
  </div>
@@ -468,7 +487,7 @@ button:focus-visible,input:focus-visible,select:focus-visible{outline:2px solid 
 <div class="workspace">
 <aside class="sidebar" id="sidebar">
  <div class="side-scroll">
-  <div class="side-intro"><span class="side-intro-mark">01</span><div><strong>Explora Patagonia</strong><small>Mapa y herramientas de pesca</small></div></div>
+  <div class="side-intro"><span class="side-intro-mark">AM</span><div><strong>Explora Patagonia</strong><small>Mapa y herramientas de pesca</small></div><button class="sidebar-close" id="sidebarClose" aria-label="Cerrar menú">×</button></div>
   <div class="side-heading">TU ESPACIO</div>
   <nav class="nav-list primary-nav" aria-label="Tu espacio">
    <button class="nav-item active" data-view="explore"><span class="nav-icon">⌖</span><span>Explorar mapa</span><span class="nav-hint">Inicio</span></button>
@@ -1854,6 +1873,8 @@ console.info(
   window.setTimeout(()=>map.invalidateSize({pan:false}),230);
  }
  menu.addEventListener("click",()=>setMenu(!workspace.classList.contains("menu-open")));
+ const closeMenu=document.getElementById("sidebarClose");
+ if(closeMenu)closeMenu.addEventListener("click",()=>setMenu(false));
  document.addEventListener("keydown",e=>{if(e.key==="Escape")setMenu(false)});
  const zones=document.getElementById("zones");
  zones.addEventListener("click",e=>{if(e.target.closest(".water-item"))setMenu(false)});
