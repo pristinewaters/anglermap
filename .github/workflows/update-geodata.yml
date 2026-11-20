@@ -63,11 +63,8 @@ jobs:
           from pathlib import Path
 
           required = [
-              "data/magallanes/communes.geojson",
-              "data/magallanes/provinces.geojson",
+              "data/magallanes/roads.geojson",
               "data/magallanes/waterbodies.geojson",
-              "data/magallanes/dga_hydro_units.geojson",
-              "data/magallanes/dga_stations.geojson",
               "data/metadata/sources.json"
           ]
 
@@ -93,10 +90,7 @@ jobs:
                       f"Invalid GeoJSON: {filename}"
                   )
 
-              if filename in (
-                  "data/magallanes/communes.geojson",
-                  "data/magallanes/waterbodies.geojson"
-              ) and not data.get("features"):
+              if not data.get("features"):
                   raise SystemExit(
                       f"No features in required layer: {filename}"
                   )
@@ -150,7 +144,7 @@ jobs:
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
 
-          git add data/magallanes data/metadata/sources.json data/metadata/layers.json
+          git add data/magallanes/roads.geojson data/magallanes/waterbodies.geojson data/metadata/sources.json data/metadata/layers.json
 
           if git diff --cached --quiet; then
             echo "No geographic data changes."
