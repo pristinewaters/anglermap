@@ -6,57 +6,57 @@ Plataforma cartográfica de exploración para pesca recreativa en la Región de 
 
 https://pristinewaters.github.io/anglermap/
 
-## Prototipo web
-
-La aplicación se ejecuta como sitio estático desde `index.html`. No requiere instalación ni cuenta de usuario.
-
-### Funciones disponibles
+## Funciones disponibles
 
 - Mapa interactivo con cartografía satelital, topográfica y OpenStreetMap.
-- Catálogo DGA de ríos/esteros, lagos y lagunas, agrupado por las nueve comunas.
-- Búsqueda de aguas y fichas informativas con procedencia y comuna.
-- Selección de un cuerpo de agua con enfoque automático de su geometría cartográfica disponible.
-- OpenStreetMap / Overpass como fuente complementaria cuando falta geometría estática validada.
-- Meteorología de Open-Meteo vinculada al centro del mapa o al sector cartografiado.
-- Capa de caminos y accesos MOP, activable sobre el mapa.
-- Guardado local de aguas favoritas y puntos personales.
-- Herramienta de medición de distancia.
-- Catálogo modular para incorporar capas GeoJSON sin reescribir el visor.
+- Catálogo DGA de todos los registros nombrados de ríos, esteros, lagos y lagunas disponibles en las capas seleccionadas, agrupado por las nueve comunas.
+- Cuerpos que atraviesan más de una comuna conservan una identidad común y se muestran en cada comuna correspondiente.
+- Búsqueda de aguas y fichas con procedencia y comuna.
+- Selección de un cuerpo de agua con zoom a la geometría cartográfica DGA disponible.
+- Capa MOP de caminos y accesos, activable sobre el mapa.
+- Capa independiente de estaciones DGA, con inventario de tipos de estación y mediciones operacionales fluviométricas cuando están disponibles.
+- Meteorología Open-Meteo, favoritos, puntos personales y herramienta de medición.
 
-## Alcance territorial inicial
+## Alcance territorial
 
-Nueve comunas de Magallanes: Punta Arenas, Laguna Blanca, Río Verde, San Gregorio, Natales, Torres del Paine, Porvenir, Primavera y Timaukel. Cabo de Hornos y Antártica están fuera del alcance inicial.
+Nueve comunas: Punta Arenas, Laguna Blanca, Río Verde, San Gregorio, Natales, Torres del Paine, Porvenir, Primavera y Timaukel. Cabo de Hornos y Antártica quedan fuera del alcance inicial.
 
-## Estado y calidad de los datos
+## Arquitectura de datos
 
-El prototipo web está operativo como visor y herramienta de exploración, pero **no debe interpretarse como cartografía oficial completa ni como guía de accesos autorizados**.
+1. **Caminos y accesos — MOP:** Red Vial Chile Base Gris, capa 3.
+2. **Cuerpos de agua — DGA:** Red de drenajes, subcapa 2, e inventario de lagos, subcapa 5, consolidados en `waterbodies.geojson`.
+3. **Estaciones — DGA:** Red Hidrométrica Nacional, capa 0, en `dga_stations.geojson`; los datos operacionales fluviométricos complementan sus marcadores.
 
-- Los trazados obtenidos desde OpenStreetMap son cartografía colaborativa y deben contrastarse con fuentes oficiales y conocimiento local.
-- La capa de caminos usa la Red Vial Chile Base Gris del MOP; la ficha del servicio informa datos disponibles a enero de 2021. No confirma transitabilidad actual, derecho de paso ni accesos privados.
-- El catálogo de aguas utiliza exclusivamente la red de drenajes y el inventario de lagos DGA, consolidados en un GeoJSON y agrupados espacialmente por comuna.
-- Cuencas, subcuencas, unidades BNA e hidrografía IGM quedan fuera del alcance de las dos capas principales.
-- Los rótulos discrepantes se conservan con trazabilidad. La referencia Río Serrano/Río del Oro en Primavera queda como antecedente toponímico, sin introducir reglas adicionales de clasificación.
-- Las capas deben considerarse disponibles solo después de que el workflow las descargue, valide y active en el catálogo. La existencia del código de extracción no acredita que los archivos se hayan generado correctamente.
-- La extracción MOP/IGM/DGA se mantiene separada del visor. Los fallos temporales de servicios remotos no deben impedir abrir la aplicación.
-- Guardados, puntos personales y preferencias se almacenan en el navegador local; todavía no existe sincronización entre dispositivos ni cuentas.
-- Los perfiles de administrador, gestión de predios y permisos son demostrativos; no hay autenticación ni base de datos de usuarios.
+Las estaciones son puntos de monitoreo y no definen el nombre ni la geometría del cuerpo de agua. Los nombres de cuerpos de agua provienen de la cartografía DGA, no de nombres de estaciones.
 
-## Fuentes y atribución
+## Estado y limitaciones
+
+El prototipo es una herramienta de exploración; no debe interpretarse como cartografía oficial completa ni como guía de accesos autorizados.
+
+- La DGA describe su red de drenajes como representación de la mayoría, no necesariamente todas, las expresiones espaciales de drenaje.
+- La capa de lagos DGA tiene atribución 2017 y puede no incluir lagunas menores. Los informes y el Inventario Público de Lagos se usan para contraste documental y detección de omisiones; no se inventan geometrías a partir de menciones textuales.
+- La Red Hidrométrica Nacional consultada indica actualización cartográfica julio 2022; la vigencia de cada estación debe revisarse individualmente.
+- La capa de caminos MOP describe datos disponibles a enero de 2021; no confirma transitabilidad actual, derecho de paso ni acceso privado.
+- La presencia de un cuerpo de agua, estación o camino no acredita acceso público ni permiso de pesca.
+- Las geometrías OSM/Overpass son complementarias y no reemplazan las geometrías DGA.
+- Los archivos solo se consideran disponibles cuando el workflow los descarga, valida y activa en el catálogo.
+
+## Fuentes
 
 - MOP · Red Vial Chile Base Gris: https://rest-sit.mop.gob.cl/arcgis/rest/services/VIALIDAD/Red_Vial_Chile_Base_gris/MapServer/3
+- DGA · Red de drenajes: https://ideserver.sma.gob.cl/arcgis/rest/services/IDE/Recursos_hidricos_glaciares/MapServer/2
+- DGA · Lagos: https://ideserver.sma.gob.cl/arcgis/rest/services/IDE/Recursos_hidricos_glaciares/MapServer/5
+- DGA · Red Hidrométrica Nacional: https://rest-sit.mop.gob.cl/arcgis/rest/services/DGA/Red_Hidrometrica/MapServer/0
+- DGA · Datos operacionales de cauces: https://services3.arcgis.com/aSoEm9TBK2shtWjP/ArcGIS/rest/services/DGA_MONITOREO_CAUCE/FeatureServer/0
+- DGA · Catastro Público de Aguas: https://dga.mop.gob.cl/servicios-de-informacion/catastro-publico-de-aguas/
 - OpenStreetMap contributors: https://www.openstreetmap.org/copyright
 - Open-Meteo: https://open-meteo.com/
-- Dirección General de Aguas (MOP): https://dga.mop.gob.cl/
-- IDE de la Superintendencia del Medio Ambiente, capas hidrográficas con atribución a DGA/Banco Nacional de Aguas: https://ideserver.sma.gob.cl/arcgis/rest/services/IDE/Recursos_hidricos_glaciares/MapServer
-- Ministerio de Obras Públicas: https://www.mop.gob.cl/
 
 ## Desarrollo
 
 - Aplicación: `index.html`
-- Catálogo de capas: `data/metadata/layers.json`
-- Generación de datos geográficos: `scripts/build_geodata.py`
-- Workflow de actualización: `.github/workflows/update-geodata.yml`
-- Productos geográficos: `roads.geojson` (MOP) y `waterbodies.geojson` (DGA).
-- Especificación de capas: `docs/GEODATA_LAYERS.md`
-
-Para activar una capa estática, publicar su GeoJSON en la ruta indicada por el catálogo y cambiar su estado a `available`. El visor valida el formato GeoJSON antes de agregarla al mapa.
+- Catálogo: `data/metadata/layers.json`
+- Generación: `scripts/build_geodata.py`
+- Workflow: `.github/workflows/update-geodata.yml`
+- Productos: `roads.geojson`, `waterbodies.geojson`, `dga_stations.geojson`.
+- Especificación: `docs/GEODATA_LAYERS.md`
