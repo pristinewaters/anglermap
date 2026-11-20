@@ -58,6 +58,11 @@ URL_DGA_LAKES = URL_DGA_IDE + "/5"
 URL_DGA_BASINS = URL_DGA_IDE + "/10"
 URL_DGA_SUBBASINS = URL_DGA_IDE + "/9"
 URL_DGA_SUBSUBBASINS = URL_DGA_IDE + "/8"
+URL_DGA_INVENTORY_PAGE = "https://dga.mop.gob.cl/servicios-de-informacion/catastro-publico-de-aguas/inventario-publico-de-cuencas-hidrograficas-y-lagos/"
+URL_DGA_BNA_DOWNLOAD = "https://dga.mop.gob.cl/uploads/sites/13/2025/02/Cuencas_BNA.zip"
+URL_DGA_BNA_INVENTORY_XLS = "https://dga.mop.gob.cl/uploads/sites/13/2023/07/Inventario_Publico_de_Cuencas.xls"
+URL_DGA_LAKES_DOWNLOAD = "https://dga.mop.gob.cl/uploads/sites/13/2023/07/Lagos.zip"
+URL_DGA_LAKES_INVENTORY_XLS = "https://dga.mop.gob.cl/uploads/sites/13/2023/07/Inventario_Publico_de_Lagos.xls"
 
 
 # Cabo de Hornos y Antártica quedan fuera del alcance.
@@ -1487,10 +1492,21 @@ def main():
                     "institution": "DGA",
                     "url": URL_DGA_LAKES,
                     "copyright": "DGA 2017",
+                    "inventory_page": URL_DGA_INVENTORY_PAGE,
+                    "official_downloads": {
+                        "lakes_geodata_zip": URL_DGA_LAKES_DOWNLOAD,
+                        "lakes_inventory_excel": URL_DGA_LAKES_INVENTORY_XLS
+                    },
                     "status": dga_status.get("lakes")
                 },
                 "dga_basin_units": {
                     "institution": "DGA / Banco Nacional de Aguas",
+                    "inventory_page": URL_DGA_INVENTORY_PAGE,
+                    "official_downloads": {
+                        "bna_geodata_zip": URL_DGA_BNA_DOWNLOAD,
+                        "basin_inventory_excel": URL_DGA_BNA_INVENTORY_XLS
+                    },
+                    "data_vintage": "La capa DGA de cuencas informa actualización hasta 2004; las capas BNA se conservan con su código y nombre publicados.",
                     "urls": {
                         "basins": URL_DGA_BASINS,
                         "subbasins": URL_DGA_SUBBASINS,
