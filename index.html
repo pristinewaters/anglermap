@@ -321,7 +321,7 @@ button:focus-visible,input:focus-visible,select:focus-visible{outline:2px solid 
   <button class="map-control active" id="satBtn">▧ Satélite</button>
   <button class="map-control" id="topoBtn">▤ Topográfico</button>
   <button class="map-control" id="osmBtn">▦ Mapa base</button>
-  <button class="map-control" id="dgaBtn">● Estaciones DGA</button>
+  <button class="map-control" id="roadsBtn">⌁ Caminos MOP</button>
  </div>
  <div class="map-tools">
   <button class="map-tool" id="zoomIn" title="Acercar">＋</button>
@@ -331,7 +331,7 @@ button:focus-visible,input:focus-visible,select:focus-visible{outline:2px solid 
  <div class="map-bottom">
   <div class="map-chip"><b>●</b> Puntos personales</div>
   <div class="map-chip">Cartografía de referencia</div>
-  <div class="map-chip" id="dgaStatus">DGA: esperando datos</div>
+  <div class="map-chip" id="dgaStatus">Capas oficiales · MOP / DGA</div>
  </div>
 
  <section class="weather-dock" id="weatherDock">
@@ -416,90 +416,40 @@ function amWaterCategory(props) {
 
 async function loadHydroCatalog() {
  try {
-  const response = await fetch("data/magallanes/waterbodies.geojson",{cache:"no-store"});
-  if (!response.ok) throw new Error("Inventario hidrográfico HTTP " + response.status);
-  const collection = await response.json();
-  if (collection.type !== "FeatureCollection" || !Array.isArray(collection.features)) {
-   throw new Error("El inventario hidrográfico no es un GeoJSON válido");
-  }
-
-  const grouped = new Map();
-  collection.features.forEach(feature => {
-   const p = feature.properties || {};
-   const name = String(p.name || "").trim();
-   const communes = Array.isArray(p.communes) ? p.communes.filter(Boolean) : [];
-   if (!name || name === "Cuerpo de agua sin nombre" || !communes.length || !feature.geometry) return;
-
-   const category = amWaterCategory(p);
-   const basinCodes = [...new Set((p.hydro_units || [])
-    .filter(unit => unit.level === "basin" && unit.code)
-    .map(unit => String(unit.code)))].sort();
-   const basinKey = basinCodes.join(",") || communes.slice().sort().join(",");
-   const key = amCatalogNormalize(name) + "|" + category + "|" + basinKey;
-   let item = grouped.get(key);
-
-   if (!item) {
-    const labels = {river:"Río / estero",lake:"Lago",lagoon:"Laguna",reservoir:"Embalse"};
-    item = {
-     id:key,
-     name,
-     category,
-     categoryLabel:labels[category] || "Agua",
-     communes:[],
-     provinces:[],
-     basins:[],
-     subbasins:[],
-     subsubbasins:[],
-     sources:[],
-     aliases:[],
-     toponymyNotes:[],
-     features:[],
-     basinCodes:[],
-     subbasinCodes:[],
-     subsubbasinCodes:[],
-     desc:"Geometría hidrográfica consolidada desde las capas disponibles."
-    };
+  const response=await fetch("data/magallanes/waterbodies.geojson",{cache:"no-store"});
+  if(!response.ok)throw new Error("Inventario DGA HTTP "+response.status);
+  const collection=await response.json();
+  if(collection.type!=="FeatureCollection"||!Array.isArray(collection.features))throw new Error("GeoJSON DGA inválido");
+  const grouped=new Map();
+  collection.features.forEach(feature=>{
+   const p=feature.properties||{},name=String(p.name||"").trim();
+   const communes=Array.isArray(p.communes)?p.communes.filter(Boolean):[];
+   if(!name||name==="Cuerpo de agua sin nombre"||!communes.length||!feature.geometry)return;
+   const category=amWaterCategory(p),key=amCatalogNormalize(name)+"|"+category;
+   let item=grouped.get(key);
+   if(!item){
+    const labels={river:"Río / estero",lake:"Lago",lagoon:"Laguna"};
+    item={id:key,name,category,categoryLabel:labels[category]||"Agua",communes:[],sources:[],aliases:[],toponymyNotes:[],features:[]};
     grouped.set(key,item);
    }
-
-   item.communes = [...new Set(item.communes.concat(communes))].sort((a,b)=>zoneOrder.indexOf(a)-zoneOrder.indexOf(b));
-   item.provinces = [...new Set(item.provinces.concat(p.provinces || []))].sort();
-   item.basins = [...new Set(item.basins.concat(p.basins || []))].sort();
-   item.subbasins = [...new Set(item.subbasins.concat(p.subbasins || []))].sort();
-   item.subsubbasins = [...new Set(item.subsubbasins.concat(p.subsubbasins || []))].sort();
-   item.sources = [...new Set(item.sources.concat(p.official_source || []))].sort();
-   item.aliases = [...new Set(item.aliases.concat(p.aliases || []))];
-   if(p.toponymy_note) item.toponymyNotes.push(p.toponymy_note);
-   item.basinCodes = [...new Set(item.basinCodes.concat(basinCodes))].sort();
-   item.subbasinCodes = [...new Set(item.subbasinCodes.concat((p.hydro_units || []).filter(unit => unit.level === "subbasin" && unit.code).map(unit => String(unit.code))))].sort();
-   item.subsubbasinCodes = [...new Set(item.subsubbasinCodes.concat((p.hydro_units || []).filter(unit => unit.level === "subsubbasin" && unit.code).map(unit => String(unit.code))))].sort();
-   item.features.push({
-    type:"Feature",
-    geometry:feature.geometry,
-    properties:{
-     name:p.name,
-     official_source:p.official_source,
-     water_type:p.water_type,
-     water_category:category,
-     communes:p.communes || []
-    }
-   });
+   item.communes=[...new Set(item.communes.concat(communes))].sort((x,y)=>zoneOrder.indexOf(x)-zoneOrder.indexOf(y));
+   item.sources=[...new Set(item.sources.concat(p.official_source||[]))].sort();
+   item.aliases=[...new Set(item.aliases.concat(p.aliases||[]))];
+   if(p.toponymy_note)item.toponymyNotes.push(p.toponymy_note);
+   item.features.push({type:"Feature",geometry:feature.geometry,properties:{name:p.name,official_source:p.official_source,water_type:p.water_type,water_category:category,communes:p.communes||[]}});
   });
-
-  RIVERS = [...grouped.values()].sort((a,b)=>a.name.localeCompare(b.name,"es"));
-  hydroCatalogState = "ready";
-  const waterCount = document.getElementById("waterCount");
-  if (waterCount) waterCount.textContent = RIVERS.length + " REGISTRADAS";
- } catch (error) {
-  console.error("AnglerMap: no se pudo cargar el inventario hidrográfico.",error);
-  RIVERS = [];
-  hydroCatalogState = "unavailable";
-  const waterCount = document.getElementById("waterCount");
-  if (waterCount) waterCount.textContent = "SIN DATOS";
+  RIVERS=[...grouped.values()].sort((x,y)=>x.name.localeCompare(y.name,"es"));
+  hydroCatalogState="ready";
+  const count=document.getElementById("waterCount");
+  if(count)count.textContent=RIVERS.length+" AGUAS";
+ }catch(error){
+  console.error("AnglerMap: no se pudo cargar el inventario DGA.",error);
+  RIVERS=[];hydroCatalogState="unavailable";
+  const count=document.getElementById("waterCount");
+  if(count)count.textContent="SIN DATOS";
  }
- if (typeof renderZones === "function") renderZones(document.getElementById("globalSearch")?.value || "");
+ if(typeof renderZones==="function")renderZones(document.getElementById("globalSearch")?.value||"");
 }
-
 
 
 const $=id=>document.getElementById(id);
@@ -515,7 +465,7 @@ let favorites=readStore("anglerMapFavorites",[]);
 let savedPoints=readStore("anglerMapPoints",[]);
 let selectedRiver=null,addPointMode=false,measureMode=false;
 let pointMarkers=[],measureMarkers=[],measurePoints=[],measureLine=null,weatherDebounce=null,selectedWaterLayer=null;
-let dgaLayer=L.layerGroup(),dgaFeatures=[],dgaLoaded=false;
+let roadsLayer=L.layerGroup(),roadsLoaded=false;
 
 const map=L.map("map",{zoomControl:false}).setView([-52.1,-70.8],7);
 L.control.zoom({position:"bottomright"}).addTo(map);
@@ -533,6 +483,36 @@ function setBase(layer,id){
 $("satBtn").onclick=()=>setBase(satellite,"satBtn");
 $("topoBtn").onclick=()=>setBase(topo,"topoBtn");
 $("osmBtn").onclick=()=>setBase(osm,"osmBtn");
+
+async function loadRoads(){
+ if(roadsLoaded)return;
+ $("dgaStatus").textContent="MOP: cargando caminos…";
+ try{
+  const response=await fetch("data/magallanes/roads.geojson",{cache:"no-store"});
+  if(!response.ok)throw new Error("Red vial MOP HTTP "+response.status);
+  const data=await response.json();
+  if(data.type!=="FeatureCollection"||!Array.isArray(data.features))throw new Error("GeoJSON vial inválido");
+  L.geoJSON(data,{style:{color:"#e8bd70",weight:2.2,opacity:.85},onEachFeature:(feature,layer)=>{
+   const p=feature.properties||{};
+   const name=p.name||"Camino sin nombre";
+   const details=[p.route_code,p.classification,p.surface].filter(Boolean).join(" · ");
+   layer.bindPopup("<strong>"+String(name).replace(/[&<>]/g,"")+"</strong>"+(details?"<br>"+String(details).replace(/[&<>]/g,""):""));
+  }}).addTo(roadsLayer);
+  roadsLoaded=true;
+  $("dgaStatus").textContent="MOP: "+data.features.length+" tramos viales";
+ }catch(error){
+  $("dgaStatus").textContent="MOP: sin datos";
+  console.error("AnglerMap MOP roads:",error);
+ }
+}
+$("roadsBtn").onclick=async()=>{
+ if(map.hasLayer(roadsLayer)){
+  map.removeLayer(roadsLayer);$("roadsBtn").classList.remove("active");
+ }else{
+  await loadRoads();
+  roadsLayer.addTo(map);$("roadsBtn").classList.add("active");
+ }
+};
 
 function renderZones(filter=""){
  const root=$("zones");root.innerHTML="";
@@ -574,19 +554,12 @@ function openRiver(r,focusCommune=null){
  $("generalPanel").classList.remove("show");
  $("detailKicker").textContent="Ficha de agua · "+r.categoryLabel;
  $("detailTitle").textContent=r.name;
- $("detailZone").textContent=(focusCommune?"Enfoque: "+focusCommune+" · ":"")+r.communes.join(" · ")+(r.provinces.length?" · "+r.provinces.join(" / "):"")+" · Magallanes";
- const context=[
-  r.categoryLabel,
-  focusCommune?"Tramo seleccionado en "+focusCommune:"",
-  r.basins.length?"Cuenca: "+r.basins.join(", "):"",
-  r.subbasins.length?"Subcuenca: "+r.subbasins.join(", "):"",
-  r.subsubbasins.length?"Subsubcuenca: "+r.subsubbasins.join(", "):""
- ].filter(Boolean);
- $("detailDescription").textContent=context.join(" · ")+".";
- $("detailWarning").textContent="La ficha reúne registros cartográficos oficiales y complementarios. La geometría no acredita acceso público, permiso de pesca ni condiciones actuales del cauce.";
- $("detailGeometry").textContent="Fuentes: "+(r.sources.join("; ")||"sin procedencia informada")+". Geometrías disponibles: "+r.features.length+". "+(r.basinCodes.length?"Códigos BNA cuenca: "+r.basinCodes.join(", ")+". ":"")+(r.subbasinCodes.length?"Subcuencas BNA: "+r.subbasinCodes.join(", ")+". ":"")+(r.subsubbasinCodes.length?"Subsubcuencas BNA: "+r.subsubbasinCodes.join(", ")+". ":"")+(r.aliases.length?"Rótulo alternativo registrado: "+r.aliases.join(", ")+". ":"")+(r.toponymyNotes.length?"Nota toponímica: "+r.toponymyNotes.join(" ")+" ":"")+"Las cuencas y subunidades se asignan por intersección espacial.";
+ $("detailZone").textContent=(focusCommune?"Enfoque: "+focusCommune+" · ":"")+r.communes.join(" · ")+" · Magallanes";
+ $("detailDescription").textContent=[r.categoryLabel,focusCommune?"Tramo seleccionado en "+focusCommune:""].filter(Boolean).join(" · ")+".";
+ $("detailWarning").textContent="La geometría DGA identifica el cuerpo de agua, pero no acredita acceso público, permiso de pesca ni condiciones actuales del cauce.";
+ $("detailGeometry").textContent="Fuente: "+(r.sources.join("; ")||"DGA")+". Geometrías disponibles: "+r.features.length+". "+(r.aliases.length?"Nombre alternativo registrado: "+r.aliases.join(", ")+". ":"")+(r.toponymyNotes.length?r.toponymyNotes.join(" "):"");
  $("riverWeather").textContent="La meteorología corresponde al centro actual del mapa y no necesariamente a este cuerpo de agua. Mueve el mapa hasta el sector de interés para consultar el pronóstico local.";
- $("riverDga").textContent="Las estaciones DGA son puntos de monitoreo. Solo se deben asociar a un curso cuando su identificación y ubicación confirmen esa relación.";
+ $("riverDga").textContent="El inventario hidrográfico de esta ficha proviene de DGA. No se muestran estaciones de monitoreo en esta versión.";
  $("favoriteBtn").textContent=isWaterFavorite(r)?"★ En Mis aguas":"☆ Guardar agua";
  $("detailPanel").classList.add("show");
  if(selectedWaterLayer){map.removeLayer(selectedWaterLayer);selectedWaterLayer=null;}
@@ -595,11 +568,9 @@ function openRiver(r,focusCommune=null){
   const featuresToFocus=localFeatures.length?localFeatures:r.features;
   selectedWaterLayer=L.geoJSON({type:"FeatureCollection",features:featuresToFocus},{style:{color:"#55d9e8",weight:4,opacity:1,fillColor:"#55d9e8",fillOpacity:.16}}).addTo(map);
   const bounds=selectedWaterLayer.getBounds();
-  if(bounds.isValid()) map.fitBounds(bounds,{padding:[55,55],maxZoom:13});
- }else{
-  amLocateRiver(r);
- }
- document.querySelectorAll(".detail-tab").forEach((b,i)=>b.classList.toggle("active",i===0));
+  if(bounds.isValid())map.fitBounds(bounds,{padding:[55,55],maxZoom:13});
+ }else amLocateRiver(r);
+ document.querySelectorAll(".detail-tab").forEach((button,index)=>button.classList.toggle("active",index===0));
  $("tabOverview").hidden=false;$("tabConditions").hidden=true;$("tabAccess").hidden=true;
  renderZones($("globalSearch").value);
 }
@@ -907,121 +878,7 @@ weatherMinimize.addEventListener("click",e=>{
  handle.addEventListener("pointercancel",stopDrag);
 })();
 
-/* =========================================================
-   DGA · ESTACIONES FLUVIOMÉTRICAS OPERACIONALES
-   Servicio ArcGIS de monitoreo de cauces DGA / SNIA.
-   No representa la totalidad de la red de estaciones DGA.
-   ========================================================= */
-
-const DGA_QUERY_URL=
- "https://services3.arcgis.com/aSoEm9TBK2shtWjP/ArcGIS/rest/services/DGA_MONITOREO_CAUCE/FeatureServer/0/query";
-
-function dgaValue(value,unit=""){
- if(value===null||value===undefined||value==="")return "Sin dato";
- const number=Number(value);
- return Number.isFinite(number)?number.toFixed(2)+unit:String(value);
-}
-function dgaAlertColor(level){
- const v=String(level||"").toUpperCase();
- if(v.includes("ROJA")||v.includes("ROJO"))return "#e56b62";
- if(v.includes("AMAR"))return "#e8bd70";
- if(v.includes("AZUL"))return "#55bce8";
- return "#59d6a0";
-}
-function dgaPopup(p){
- const name=escapeHtml(p.NOMBRE||"Estación DGA");
- const code=escapeHtml(p.CODIGO_DGA||"Sin código");
- const date=escapeHtml(p.FECHA_DATO||p.FECHA_DESC||"No informada");
- const level=escapeHtml(p.NIVEL_ALERTA||p.ALERTA_SNIA||"Sin clasificación");
- const color=dgaAlertColor(p.NIVEL_ALERTA||p.ALERTA_SNIA);
- const trend=escapeHtml(p.TENDENCIA_Q||"Sin comparación");
- const region=escapeHtml(p.REGION||"");
- return `
- <div class="dga-popup" style="min-width:220px">
-  <strong>${name}</strong><br>
-  <small>Estación DGA · Código ${code}</small>
-  <hr style="border-color:#29485b">
-  <b>Caudal observado:</b> ${dgaValue(p.CAUDAL_M3S," m³/s")}<br>
-  <b>Nivel de agua:</b> ${dgaValue(p.NIVEL_AGUA_M," m")}<br>
-  <b>Tendencia:</b> ${trend}<br>
-  <b>Variación:</b> ${dgaValue(p.CAMBIO_M3H," m³/s/h")}<br>
-  <b>Precipitación 24 h:</b> ${dgaValue(p.PP24_MM," mm")}<br>
-  <b>Precipitación acumulada:</b> ${dgaValue(p.PP_ACUM_MM," mm")}<br>
-  <b>Alerta:</b> <span style="color:${color};font-weight:bold">${level}</span><br>
-  <b>Región:</b> ${region}<br>
-  <small>Fecha del dato: ${date}</small><br>
-  <small>Los datos en línea son provisionales y pueden estar sujetos a revisión por DGA.</small>
- </div>`;
-}
-
-async function loadDGA(){
- $("dgaStatus").textContent="DGA: actualizando...";
- const params=new URLSearchParams({
-  where:"REGION LIKE '%Magallanes%'",
-  outFields:"*",
-  returnGeometry:"true",
-  outSR:"4326",
-  f:"geojson"
- });
- try{
-  const response=await fetch(DGA_QUERY_URL+"?"+params.toString());
-  if(!response.ok)throw new Error("Error HTTP "+response.status);
-  const data=await response.json();
-  if(!data.features)throw new Error("Respuesta DGA sin estaciones");
-
-  dgaLayer.clearLayers();dgaFeatures=[];
-  data.features.forEach(feature=>{
-   const coords=feature.geometry?.coordinates;
-   const p=feature.properties||{};
-   if(!coords||coords.length<2)return;
-   const lon=Number(coords[0]),lat=Number(coords[1]);
-   if(!Number.isFinite(lat)||!Number.isFinite(lon))return;
-   dgaFeatures.push({lat,lon,properties:p});
-   const icon=L.divIcon({
-    className:"",
-    html:'<div class="dga-dot"></div>',
-    iconSize:[17,17],
-    iconAnchor:[8,8]
-   });
-   const marker=L.marker([lat,lon],{icon});
-   marker.bindPopup(dgaPopup(p),{maxWidth:300});
-   marker.addTo(dgaLayer);
-  });
-
-  dgaLoaded=true;
-  $("dgaStatus").textContent="DGA: "+dgaFeatures.length+" estaciones";
-  if(map.hasLayer(dgaLayer))dgaLayer.addTo(map);
- }catch(error){
-  $("dgaStatus").textContent="DGA: sin conexión";
-  console.error("AnglerMap DGA:",error);
- }
-}
-
-$("dgaBtn").onclick=()=>{
- if(map.hasLayer(dgaLayer)){
-  map.removeLayer(dgaLayer);$("dgaBtn").classList.remove("active");
- }else{
-  if(!dgaLoaded)loadDGA();
-  dgaLayer.addTo(map);$("dgaBtn").classList.add("active");
- }
-};
-
-/* Consultar la estación DGA más cercana a una coordenada.
-   Se usa únicamente cuando el usuario dispone de una ubicación
-   geográfica real; no se inventan coordenadas para los ríos. */
-function nearestDGA(lat,lon){
- if(!dgaFeatures.length)return null;
- let nearest=null,minDistance=Infinity;
- dgaFeatures.forEach(item=>{
-  const distance=map.distance([lat,lon],[item.lat,item.lon]);
-  if(distance<minDistance){minDistance=distance;nearest=item;}
- });
- return nearest?{...nearest,distanceKm:minDistance/1000}:null;
-}
-
-/* Carga inicial y actualización periódica de estaciones */
-loadDGA();
-setInterval(loadDGA,15*60*1000);
+/* Las estaciones fluviométricas quedan fuera de las dos capas base de AnglerMap. */
 
 /* Escala cartográfica */
 L.control.scale({metric:true,imperial:false,position:"bottomleft"}).addTo(map);
@@ -1411,38 +1268,6 @@ function amDrawRiverGeometry(data, river) {
   return null;
 }
 
-async function amUpdateNearestDGA(center, river) {
-  if (!center) return;
-
-  try {
-    if (!dgaLoaded) {
-      await loadDGA();
-    }
-
-    const nearest = nearestDGA(center.lat, center.lng);
-
-    if (!nearest) {
-      $("riverDga").textContent =
-        "No hay estaciones fluviométricas DGA disponibles para calcular " +
-        "una referencia cercana en este momento. Puedes activar la capa DGA.";
-      return;
-    }
-
-    const properties = nearest.properties || {};
-    const stationName = properties.NOMBRE || "Estación DGA";
-    const code = properties.CODIGO_DGA || "Sin código";
-
-    $("riverDga").textContent =
-      stationName + " · Código " + code +
-      ". Distancia aproximada al sector cartografiado: " +
-      nearest.distanceKm.toFixed(1) + " km. " +
-      "Esta es la estación más cercana entre las estaciones cargadas; " +
-      "no significa que mida directamente este río o tramo.";
-  } catch (error) {
-    $("riverDga").textContent =
-      "No fue posible consultar la estación DGA más cercana.";
-  }
-}
 
 async function amLocateRiver(river) {
   const requestId = ++amRiverRequestId;
@@ -1534,7 +1359,7 @@ async function amLocateRiver(river) {
 
     $("weatherPlace").textContent = river.name + " · sector cartografiado";
 
-    await amUpdateNearestDGA(center, river);
+    // La ficha usa la geometría DGA y las capas base MOP caminos / DGA aguas.
 
   } catch (error) {
     console.error("AnglerMap · búsqueda cartográfica:", error);
