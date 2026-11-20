@@ -156,5 +156,7 @@ jobs:
             echo "No geographic data changes."
           else
             git commit -m "Update AnglerMap geographic data"
-            git push
+            git fetch origin "$GITHUB_REF_NAME"
+            git rebase "origin/$GITHUB_REF_NAME"
+            git push origin "HEAD:$GITHUB_REF_NAME"
           fi
