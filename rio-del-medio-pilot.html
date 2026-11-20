@@ -156,14 +156,104 @@ tbody tr:hover{background:#f7fbfd}
  .months{grid-template-columns:repeat(4,1fr)}
 }
 
+
+/* Product-led workspace: map first, actions on demand */
+body{background:#f5f7f9;color:#183247}
+main{max-width:1660px;padding:28px clamp(18px,3vw,48px) 44px}
+.top{align-items:center;margin-bottom:19px}
+.top .h1{font-size:27px;margin:4px 0 2px}
+.top .sub{font-size:11px}
+.eyebrow{font-size:9px;letter-spacing:1.5px;font-weight:750}
+.overview-strip{display:flex;align-items:stretch;gap:0;background:#fff;border:1px solid #e5ebef;border-radius:12px;margin-bottom:14px;box-shadow:0 2px 8px rgba(25,53,73,.025)}
+.overview-metric{flex:1;padding:12px 18px;display:grid;grid-template-columns:1fr auto;align-items:center;column-gap:12px;border-right:1px solid #edf1f4}
+.overview-metric:last-child{border:0}
+.overview-metric span{font-size:8px;letter-spacing:1.1px;font-weight:750;color:#84929c}
+.overview-metric strong{grid-column:2;grid-row:1/3;font-size:23px;letter-spacing:-.8px;color:#173b52}
+.overview-metric small{font-size:9px;color:#84929c}
+.overview-layout{display:grid;grid-template-columns:minmax(0,1.72fr) minmax(290px,.78fr);gap:14px;align-items:stretch}
+.map-stage,.attention-panel{background:#fff;border:1px solid #e5ebef;border-radius:13px;box-shadow:0 2px 8px rgba(25,53,73,.025);min-width:0}
+.map-stage{padding:17px 18px 14px}
+.attention-panel{padding:17px 17px 14px}
+.workspace-head{display:flex;justify-content:space-between;align-items:center;gap:12px;margin-bottom:12px}
+.workspace-head h2{font-size:15px;letter-spacing:-.3px;margin:3px 0 0;color:#1b3a50}
+.workspace-head p{font-size:10px;color:#80909b;margin:3px 0 0}
+.live-state{font-size:9px;color:#367b68;background:#eff7f3;border-radius:20px;padding:6px 10px;white-space:nowrap}
+.live-state i{display:inline-block;width:6px;height:6px;background:#48a47c;border-radius:50%;margin-right:5px}
+.overview-map{height:320px;overflow:hidden;border-radius:9px;background:#193b40}
+.overview-map svg{width:100%;height:100%;min-height:0;display:block;object-fit:cover}
+.sector-list{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:7px;margin-top:10px}
+.sector-list .sector{border:1px solid #e7edf1;background:#fafcfd;border-radius:8px;padding:9px 10px;min-width:0}
+.sector-list .sector b{font-size:9px;display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.sector-list .sector small{font-size:8px;display:block;margin:4px 0;color:#84939e;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.sector-list .sector .meta{font-size:8px}
+.sector-list .bar{height:3px}
+.sector-list .sector:hover,.sector-list .sector.selected{transform:none;box-shadow:none}
+.attention-panel .activity{display:flex;flex-direction:column;gap:0}
+.attention-panel .act{display:grid;grid-template-columns:28px 1fr;gap:9px;padding:11px 0;border-bottom:1px solid #edf1f4}
+.attention-panel .act:last-child{border-bottom:0}
+.attention-panel .ico{width:27px;height:27px;border-radius:8px;font-size:11px}
+.attention-panel .act b{font-size:10px;display:block;line-height:1.4}
+.attention-panel .act small{font-size:9px;display:block;line-height:1.45;margin-top:3px}
+.full-action{width:100%;display:flex;justify-content:space-between;align-items:center;margin-top:8px;padding:10px 12px}
+.rail-divider{height:1px;background:#edf1f4;margin:16px 0 13px}
+.workspace-head.compact{margin-bottom:7px}
+.workspace-head.compact h2{font-size:12px}
+.text-action{border:0;background:transparent;color:#087f9b;font-size:9px;font-weight:700;padding:5px}
+.attention-count{width:24px;height:24px;border-radius:50%;background:#fff3e2;color:#a86b19;display:grid;place-items:center;font-size:10px;font-weight:800}
+.mini-agenda{display:flex;flex-direction:column}
+.mini-row{display:grid;grid-template-columns:45px 1fr auto;gap:8px;align-items:center;padding:8px 0;border-bottom:1px solid #f0f3f5}
+.mini-row:last-child{border:0}
+.mini-date{font-size:8px;color:#087f9b;font-weight:750;text-transform:uppercase}
+.mini-row b{display:block;font-size:9px;color:#294356}
+.mini-row small{display:block;font-size:8px;color:#82919b;margin-top:2px}
+.mini-pax{font-size:9px;color:#617887;background:#f3f6f8;padding:4px 6px;border-radius:6px}
+.overview-footnote{font-size:9px;color:#99a5ad;padding:10px 3px 0}
+.top .actions .btn{font-size:10px}
+.view.active{animation:amFadeIn .18s ease both}
+.card{box-shadow:none}
+.card:hover{box-shadow:0 4px 14px rgba(20,45,68,.045)}
+@media(max-width:1050px){.overview-layout{grid-template-columns:minmax(0,1.35fr) minmax(260px,.85fr)}.overview-map{height:280px}.overview-metric{padding:10px 12px}}
+@media(max-width:760px){
+ main{padding:16px 12px 28px}
+ .overview-strip{display:grid;grid-template-columns:1fr 1fr}
+ .overview-metric{border-bottom:1px solid #edf1f4;padding:10px 12px}
+ .overview-metric:nth-child(2){border-right:0}
+ .overview-metric:nth-child(3),.overview-metric:nth-child(4){border-bottom:0}
+ .overview-layout{grid-template-columns:1fr}
+ .overview-map{height:240px}
+ .sector-list{grid-template-columns:repeat(2,minmax(0,1fr))}
+ .attention-panel{padding:14px}
+ .top .h1{font-size:23px}
+}
+
 </style></head><body><div class="app">
 <aside><div class="brand">angler<span>map</span><small>TERRITORY MANAGER</small></div><div class="territory"><b>Estancia Río del Medio</b><small>Cuenca Río del Medio · Laguna Blanca<br>Temporada 2026–2027</small></div><div><div class="nav-label">GESTIÓN DEL TERRITORIO</div><nav class="nav">
 <button class="active" data-view="overview">◫ Resumen</button><button data-view="map">⌖ Mapa y sectores</button><button data-view="inbox">✉ Bandeja de entrada <span class="count" id="unreadNav">6</span></button><button data-view="reservations">▦ Reservas e ingresos</button><button data-view="operators">♧ Operadores y convenios</button><button data-view="season">▤ Temporada y resultados</button><button data-view="rules">✓ Accesos y condiciones</button></nav></div><div class="sidefoot">ENTORNO DEMO · INFORMACIÓN FICTICIA<br>No representa accesos, deslindes ni convenios reales.</div></aside>
 <main><header class="top"><div><div class="eyebrow">ADMINISTRACIÓN TERRITORIAL / LAGUNA BLANCA</div><div class="h1" id="pageTitle">Resumen general</div><div class="sub">Solicitudes, reservas, operadores y control de acceso a Río del Medio</div></div><div class="actions"><button class="btn" data-goto="inbox">Bandeja <span id="unreadTop">6</span></button><button class="btn primary" data-goto="reservations">＋ Registrar ingreso</button></div></header>
 <section class="view active" id="overview">
-<div class="stats"><div class="card stat"><small>PESCADORES CONFIRMADOS · DEMO</small><strong id="anglersTotal">11</strong><em>5 jornadas confirmadas</em></div><div class="card stat"><small>INGRESO BRUTO PROYECTADO</small><strong id="revenueTotal">$330.000</strong><em>CLP · reservas pagadas</em></div><div class="card stat"><small>CAPACIDAD POR JORNADA</small><strong>16</strong><em>4 sectores × 4 pescadores</em></div><div class="card stat"><small>SOLICITUDES POR REVISAR</small><strong id="pendingTotal">4</strong><em class="gold">3 pescadores + 1 operador</em></div></div>
-<div class="grid2"><div class="card"><div class="head"><h2>Disponibilidad por sector · próximas jornadas</h2><span class="pill">4 cupos máx. / sector / día</span></div><div class="sectorgrid" id="sectorCards"></div><div class="notice">Los cupos se controlan por sector y fecha. Una reserva de operador consume la misma capacidad que una solicitud individual.</div></div><div class="card"><div class="head"><h2>Actividad reciente</h2><span class="pill">Operación activa</span></div><div class="activity" id="activity"></div></div></div>
-<div class="card"><div class="head"><h2>Próximos ingresos al territorio</h2><button class="btn" data-goto="reservations">Ver agenda →</button></div><div class="tablewrap"><table><thead><tr><th>FECHA</th><th>SECTOR</th><th>RESPONSABLE</th><th>PESCADORES</th><th>ORIGEN</th><th>ESTADO</th></tr></thead><tbody id="upcoming"></tbody></table></div></div></section>
+<div class="overview-strip">
+ <div class="overview-metric"><span>CONFIRMADOS</span><strong id="anglersTotal">11</strong><small>pescadores</small></div>
+ <div class="overview-metric"><span>INGRESO REGISTRADO</span><strong id="revenueTotal">$330.000</strong><small>CLP · demo</small></div>
+ <div class="overview-metric"><span>POR REVISAR</span><strong id="pendingTotal">4</strong><small>solicitudes y convenio</small></div>
+ <div class="overview-metric capacity"><span>CAPACIDAD DIARIA</span><strong>16</strong><small>4 sectores · máximo 4 c/u</small></div>
+</div>
+<div class="overview-layout">
+ <section class="map-stage">
+  <div class="workspace-head"><div><div class="eyebrow">TERRITORIO ACTIVO</div><h2>Río del Medio</h2><p>Disponibilidad y operación por sector</p></div><span class="live-state"><i></i> Temporada activa</span></div>
+  <div id="overviewMap" class="overview-map"></div>
+  <div class="sector-list" id="sectorCards"></div>
+ </section>
+ <aside class="attention-panel">
+  <div class="workspace-head"><div><div class="eyebrow">CENTRO DE ACTIVIDAD</div><h2>Requiere atención</h2></div><span class="attention-count" id="attentionCount">4</span></div>
+  <div class="activity" id="activity"></div>
+  <button class="btn primary full-action" data-goto="inbox">Abrir bandeja <span>→</span></button>
+  <div class="rail-divider"></div>
+  <div class="workspace-head compact"><div><div class="eyebrow">AGENDA</div><h2>Próximos ingresos</h2></div><button class="text-action" data-goto="reservations">Ver todos →</button></div>
+  <div class="mini-agenda" id="upcomingMini"></div>
+ </aside>
+</div>
+<div class="overview-footnote">Vista de demostración · datos y cartografía ficticios, pendientes de validación con el administrador.</div>
+</section>
 <section class="view" id="map"><div class="mapgrid"><div class="card"><div class="head"><h2>Predio y zonificación · Río del Medio</h2><span class="pill">Plano esquemático</span></div><div class="mapbox"><svg viewBox="0 0 900 570" role="img" aria-label="Mapa conceptual con predio, río y cuatro sectores">
 <defs><pattern id="terrain" width="45" height="45" patternUnits="userSpaceOnUse"><path d="M0 45L45 0" stroke="#496b54" stroke-width="1" opacity=".25"/></pattern></defs><rect width="900" height="570" fill="#183b3a"/><rect width="900" height="570" fill="url(#terrain)"/>
 <path d="M65 72 225 35 410 62 610 32 820 100 850 270 815 475 630 535 420 520 210 555 65 450 38 250Z" fill="#365842" fill-opacity=".27" stroke="#e8bd70" stroke-width="5" stroke-dasharray="13 8"/>
@@ -227,7 +317,9 @@ function renderSector(){const s=sectors.find(x=>x.id===selected);$("sectorTitle"
 function renderActivity(){$("activity").innerHTML=messages.slice(0,4).map(m=>'<div class="act"><div class="ico">'+m.symbol+'</div><div><b>'+m.title+'</b><small>'+m.time+' · '+m.body+'</small></div></div>').join("")}
 function renderUpcoming(){$("upcoming").innerHTML=bookings.filter(b=>b.status==="Confirmada").sort((a,b)=>a.date.localeCompare(b.date)).slice(0,6).map(b=>'<tr><td>'+date(b.date)+'</td><td>Sector 0'+b.sector+'</td><td>'+b.name+'</td><td>'+b.people+'</td><td>'+b.source+'</td><td><span class="status">'+b.status+'</span></td></tr>').join("")}
 function unread(){let n=messages.filter(m=>m.unread).length;$("unreadNav").textContent=n;$("unreadTop").textContent=n;$("inboxUnread").textContent=n+" sin leer"}
-function renderDashboard(){let confirmed=bookings.filter(b=>b.status==="Confirmada");$("anglersTotal").textContent=confirmed.reduce((a,b)=>a+b.people,0);$("revenueTotal").textContent=money(confirmed.filter(b=>b.paid).reduce((a,b)=>a+b.people*price,0));$("pendingTotal").textContent=bookings.filter(b=>b.status==="Pendiente").length+(application.status==="Aprobada"?0:1);renderSectors();renderActivity();renderUpcoming();unread()}
+function renderOverviewMap(){const source=document.querySelector('#map .mapbox svg');const target=$('overviewMap');if(source&&target&&!target.firstChild){const clone=source.cloneNode(true);const pattern=clone.querySelector('#terrain');if(pattern)pattern.id='terrain-overview';clone.querySelectorAll('[fill="url(#terrain)"]').forEach(n=>n.setAttribute('fill','url(#terrain-overview)'));target.appendChild(clone)}}
+function renderMiniAgenda(){$('upcomingMini').innerHTML=bookings.filter(b=>b.status==='Confirmada').sort((a,b)=>a.date.localeCompare(b.date)).slice(0,4).map(b=>'<div class="mini-row"><span class="mini-date">'+date(b.date).replace(' de ',' ')+'</span><div><b>Sector 0'+b.sector+' · '+b.name+'</b><small>'+b.entry+'–'+b.exit+' · '+b.source+'</small></div><span class="mini-pax">'+b.people+' pax</span></div>').join('')}
+function renderDashboard(){let confirmed=bookings.filter(b=>b.status==="Confirmada");$("anglersTotal").textContent=confirmed.reduce((a,b)=>a+b.people,0);$("revenueTotal").textContent=money(confirmed.filter(b=>b.paid).reduce((a,b)=>a+b.people*price,0));$("pendingTotal").textContent=bookings.filter(b=>b.status==="Pendiente").length+(application.status==="Aprobada"?0:1);renderSectors();renderActivity();renderUpcoming();renderOverviewMap();renderMiniAgenda();$('attentionCount').textContent=bookings.filter(b=>b.status==='Pendiente').length+(application.status==='Aprobada'?0:1);unread()}
 function renderInbox(){let recipient=$("inboxRecipient").value;let source=recipient==="admin"?messages:roleMessages[recipient];$("inboxTitle").textContent=recipient==="admin"?"Bandeja de entrada del administrador":recipient==="operator"?"Bandeja de entrada del operador":"Bandeja de entrada del pescador";$("inboxUnread").textContent=source.filter(m=>m.unread).length+" sin leer";let f=$("inboxFilter").value;let list=source.filter(m=>f==="all"||m.type===f);$("messages").innerHTML=list.map(m=>'<article class="message '+(m.unread?"unread":"")+'"><div class="ico">'+m.symbol+'</div><div><h3>'+m.title+'</h3><p>'+m.body+'</p><small>'+m.time+'</small></div><div class="msgactions">'+(m.booking?'<button class="btn" data-review="'+m.booking+'">Revisar</button>':'')+'<button class="btn" data-read="'+m.id+'">'+(m.unread?"Marcar leído":"Leído")+'</button></div></article>').join("")||'<div class="sub">No hay mensajes en esta categoría.</div>';document.querySelectorAll("[data-read]").forEach(b=>b.onclick=()=>{let source=recipient==="admin"?messages:roleMessages[recipient];source.find(m=>m.id===b.dataset.read).unread=false;renderInbox();if(recipient==="admin")unread()});document.querySelectorAll("[data-review]").forEach(b=>b.onclick=()=>{go("reservations");toast("Solicitud "+b.dataset.review+" seleccionada")})}
 function renderBookings(){$("bookingRows").innerHTML=bookings.slice().sort((a,b)=>a.date.localeCompare(b.date)).map(b=>'<tr><td>'+date(b.date)+'</td><td>Sector 0'+b.sector+'</td><td>'+b.name+'</td><td>'+b.people+'</td><td>'+b.entry+' / '+b.exit+'</td><td>'+b.source+'</td><td><span class="status '+((b.status==="Pendiente"||b.status==="Aprobada · pago pendiente")?"pending":b.status==="Rechazada"?"rejected":"")+'">'+b.status+'</span></td><td>'+(b.status==="Pendiente"?'<button class="btn primary" data-approve="'+b.id+'">Aprobar</button> <button class="btn" data-reject="'+b.id+'">Rechazar</button>':b.status==="Aprobada · pago pendiente"?'<button class="btn primary" data-paid="'+b.id+'">Registrar pago</button>':"—")+'</td></tr>').join("");document.querySelectorAll("[data-approve]").forEach(b=>b.onclick=()=>decide(b.dataset.approve,"Confirmada"));document.querySelectorAll("[data-reject]").forEach(b=>b.onclick=()=>decide(b.dataset.reject,"Rechazada"));document.querySelectorAll("[data-paid]").forEach(b=>b.onclick=()=>registerPayment(b.dataset.paid))}
 function decide(id,status){let b=bookings.find(x=>x.id===id);if(!b)return;if(status==="Confirmada"&&occupancy(b.sector,b.date)+b.people>cap){toast("No se puede aprobar: supera 4 pescadores por sector y jornada.");return}b.status=status==="Confirmada"?"Aprobada · pago pendiente":status;b.paid=false;messages.unshift({id:"N"+Date.now(),type:"request",symbol:status==="Confirmada"?"✓":"!",title:"Solicitud "+(status==="Confirmada"?"aprobada · pago pendiente":"rechazada")+" · "+b.name,body:"La solicitud "+b.id+" cambió de estado. "+(status==="Confirmada"?"El cupo queda reservado en esta simulación hasta registrar el pago.":"Se registró la decisión del administrador."),time:"Ahora",unread:true});renderBookings();renderDashboard();renderInbox();toast("Estado actualizado en la demo: "+b.status)}
