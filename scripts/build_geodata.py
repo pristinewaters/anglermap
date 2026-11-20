@@ -958,39 +958,50 @@ def query_water_layer(
             stable.encode("utf-8")
         ).hexdigest()[:16]
 
-        output.append(
-            geojson_feature(
-                clipped,
-                {
-                    "waterbody_id": water_id,
-                    "name": name,
-                    "source_name": str(source_feature_name).strip(),
-                    "aliases": aliases,
-                    "toponymy_status": toponymy_status,
-                    "toponymy_note": toponymy_note,
-                    "water_type": effective_water_type,
-                    "water_category": water_category,
-                    "subtype": subtype,
-                    "official_source": source_name,
-                    "official_id": official_id,
-                    "source_attributes": props,
-                    "communes": communes,
-                    "provinces": sorted(set(intersecting_provinces(clipped))),
-                    "basin_code": props.get(basin_code_field) if basin_code_field else None,
-                    "subbasin_code": props.get(subbasin_code_field) if subbasin_code_field else None,
-                    "subsubbasin_code": props.get(subsubbasin_code_field) if subsubbasin_code_field else None,
-                    "representative_point": representative_point(
-                        clipped
-                    ),
-                    "geometry_status": "official_geometry",
-                    "source_confidence": (
-                        "local_toponymy_correction"
-                        if toponymy_status == "locally_corrected"
-                        else "official"
-                    )
-                }
+        # Publicar un segmento por comuna. Así, al seleccionar un río
+        # desde la lista de una comuna, el mapa puede enfocar ese tramo
+        # y no el trazado completo de varias comunas.
+        for commune in COMMUNE_GEOMETRIES:
+            commune_geometry = commune["geometry"]
+            if not clipped.intersects(commune_geometry):
+                continue
+            commune_clipped = clipped.intersection(commune_geometry)
+            if commune_clipped.is_empty:
+                continue
+
+            output.append(
+                geojson_feature(
+                    commune_clipped,
+                    {
+                        "waterbody_id": water_id,
+                        "name": name,
+                        "source_name": str(source_feature_name).strip(),
+                        "aliases": aliases,
+                        "toponymy_status": toponymy_status,
+                        "toponymy_note": toponymy_note,
+                        "water_type": effective_water_type,
+                        "water_category": water_category,
+                        "subtype": subtype,
+                        "official_source": source_name,
+                        "official_id": official_id,
+                        "source_attributes": props,
+                        "communes": [commune["name"]],
+                        "provinces": sorted(set(intersecting_provinces(commune_clipped))),
+                        "basin_code": props.get(basin_code_field) if basin_code_field else None,
+                        "subbasin_code": props.get(subbasin_code_field) if subbasin_code_field else None,
+                        "subsubbasin_code": props.get(subsubbasin_code_field) if subsubbasin_code_field else None,
+                        "representative_point": representative_point(
+                            commune_clipped
+                        ),
+                        "geometry_status": "official_geometry",
+                        "source_confidence": (
+                            "local_toponymy_correction"
+                            if toponymy_status == "locally_corrected"
+                            else "official"
+                        )
+                    }
+                )
             )
-        )
 
     return output, metadata
 
