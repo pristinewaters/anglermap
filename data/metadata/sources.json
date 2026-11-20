@@ -1,0 +1,182 @@
+{
+  "application": "AnglerMap",
+  "version": "5.0",
+  "generated_at": "2026-11-20T03:50:39.006417+00:00",
+  "geographic_scope": {
+    "region": "Magallanes y de la Antártica Chilena",
+    "communes": [
+      "Laguna Blanca",
+      "Natales",
+      "Porvenir",
+      "Primavera",
+      "Punta Arenas",
+      "Río Verde",
+      "San Gregorio",
+      "Timaukel",
+      "Torres del Paine"
+    ],
+    "commune_count": 9,
+    "antarctica_commune_included": false,
+    "cape_horn_commune_included": false
+  },
+  "architecture": {
+    "roads": "Capa MOP de caminos y accesos.",
+    "waterbodies": "Capa cartográfica DGA de cuerpos de agua: drenajes lineales y lagos poligonales.",
+    "dga_stations": "Capa puntual DGA de estaciones de la Red Hidrométrica Nacional; separada de los cuerpos de agua.",
+    "basins_subbasins": "Fuera de alcance.",
+    "igm_hydrography": "Fuera de alcance."
+  },
+  "sources": {
+    "administrative_clip_boundaries": {
+      "institution": "MOP",
+      "url": "https://rest-sit.mop.gob.cl/arcgis/rest/services/MAPA_BASE/LIMITES/MapServer/2",
+      "status": "primary",
+      "primary_url": "https://rest-sit.mop.gob.cl/arcgis/rest/services/MAPA_BASE/LIMITES/MapServer/2",
+      "fallback_url": "https://geoide.minvu.cl/server/rest/services/Hosted/DS19/FeatureServer/3",
+      "note": "MOP respondió correctamente."
+    },
+    "roads": {
+      "institution": "MOP · Dirección de Vialidad",
+      "name": "Red Vial Chile Base Gris · capa de caminos de mayor detalle",
+      "url": "https://rest-sit.mop.gob.cl/arcgis/rest/services/VIALIDAD/Red_Vial_Chile_Base_gris/MapServer/3",
+      "metadata": "https://rest-sit.mop.gob.cl/arcgis/rest/services/VIALIDAD/Red_Vial_Chile_Base_gris/MapServer/3",
+      "status": "available",
+      "data_vintage_note": "La ficha del servicio describe datos disponibles a enero de 2021; no equivale a confirmación en terreno de transitabilidad actual."
+    },
+    "waterbodies": {
+      "institution": "DGA",
+      "service": "https://ideserver.sma.gob.cl/arcgis/rest/services/IDE/Recursos_hidricos_glaciares/MapServer",
+      "drainage_layer": "https://ideserver.sma.gob.cl/arcgis/rest/services/IDE/Recursos_hidricos_glaciares/MapServer/2",
+      "lakes_layer": "https://ideserver.sma.gob.cl/arcgis/rest/services/IDE/Recursos_hidricos_glaciares/MapServer/5",
+      "status": "available",
+      "drainage_copyright": "DGA 2012 / MOP",
+      "lakes_copyright": "DGA 2017",
+      "method": "Todos los registros intersectantes de las dos subcapas se conservan y se asignan por intersección geométrica a las comunas."
+    },
+    "dga_stations": {
+      "institution": "DGA · División de Hidrología",
+      "service": "https://rest-sit.mop.gob.cl/arcgis/rest/services/DGA/Red_Hidrometrica/MapServer/0",
+      "operational_flow_data_service": "https://services3.arcgis.com/aSoEm9TBK2shtWjP/ArcGIS/rest/services/DGA_MONITOREO_CAUCE/FeatureServer/0",
+      "status": "available",
+      "station_inventory_note": "Red Hidrométrica Nacional con estaciones fluviométricas, calidad de aguas, meteorológicas, niveles de lagos y embalses, sedimentometría, pozos, nivometría y glaciología. Metadata del servicio cartográfico: actualización julio 2022."
+    },
+    "supplementary_dga_references": [
+      {
+        "title": "Inventario Público de Lagos DGA",
+        "url": "https://dga.mop.gob.cl/servicios-de-informacion/catastro-publico-de-aguas/inventario-publico-de-cuencas-hidrograficas-y-lagos/",
+        "use": "Contraste documental de nombres; no reemplaza las geometrías DGA."
+      },
+      {
+        "title": "Mapoteca Digital DGA",
+        "url": "https://dga.mop.gob.cl/mapoteca-digital/",
+        "use": "Contraste de inventarios, mapas y publicaciones hidrográficas."
+      },
+      {
+        "title": "DGA Magallanes · antecedentes de sectores hidrogeológicos y estaciones",
+        "url": "https://dga.mop.gob.cl/dga-magallanes-inicia-trabajos-de-exploracion-de-acuiferos-para-construir-pozos-de-monitoreo-de-aguas-subterraneas/",
+        "use": "Referencia documental para contrastar topónimos regionales; no se usa para inferir geometrías."
+      },
+      {
+        "title": "Decreto DGA 137/2010 · Río del Oro",
+        "url": "https://dga.mop.gob.cl/uploads/sites/13/2023/07/DTO-137_01-FEB-2010.pdf",
+        "use": "Antecedente técnico-administrativo de un cuerpo de agua nombrado; no altera automáticamente el nombre de la capa cartográfica."
+      }
+    ]
+  },
+  "counts": {
+    "roads": 179,
+    "waterbodies": 18049,
+    "dga_stations": 225,
+    "waterbodies_unique_entities": 17977,
+    "waterbodies_unnamed_segments": 14645,
+    "waterbodies_by_category": {
+      "lagoon": 13,
+      "lake": 104,
+      "river": 17860
+    },
+    "waterbodies_by_commune": {
+      "Laguna Blanca": {
+        "lagoon": 6,
+        "river": 67
+      },
+      "Natales": {
+        "lake": 56,
+        "river": 11720
+      },
+      "Porvenir": {
+        "lagoon": 2,
+        "lake": 9,
+        "river": 585
+      },
+      "Primavera": {
+        "river": 144
+      },
+      "Punta Arenas": {
+        "lagoon": 3,
+        "lake": 8,
+        "river": 2930
+      },
+      "Río Verde": {
+        "lagoon": 1,
+        "lake": 12,
+        "river": 1173
+      },
+      "San Gregorio": {
+        "lagoon": 3,
+        "lake": 2,
+        "river": 187
+      },
+      "Timaukel": {
+        "lagoon": 2,
+        "lake": 5,
+        "river": 555
+      },
+      "Torres del Paine": {
+        "lagoon": 1,
+        "lake": 13,
+        "river": 565
+      }
+    },
+    "roads_by_commune": {
+      "Punta Arenas": 30,
+      "Natales": 32,
+      "Laguna Blanca": 8,
+      "San Gregorio": 12,
+      "Torres del Paine": 46,
+      "Primavera": 14,
+      "Porvenir": 22,
+      "Timaukel": 9,
+      "Río Verde": 6
+    },
+    "dga_stations_by_commune": {
+      "Natales": 40,
+      "Torres del Paine": 63,
+      "Río Verde": 12,
+      "San Gregorio": 6,
+      "Punta Arenas": 41,
+      "Laguna Blanca": 5,
+      "Primavera": 16,
+      "Porvenir": 15,
+      "Timaukel": 27
+    },
+    "dga_stations_by_type": {
+      "Meteorológicas": 82,
+      "Fluviométricas": 60,
+      "Calidad de Aguas": 56,
+      "Glaciológicas": 5,
+      "Lagos y Embalses": 14,
+      "Sedimentometricas": 7,
+      "Nivométricas": 1
+    }
+  },
+  "toponymy_notes": [],
+  "limitations": [
+    "La red de drenajes DGA representa la mayoría de las expresiones espaciales de drenaje, no necesariamente todas.",
+    "El inventario poligonal DGA de lagos se publica como dato 2017; puede no incluir todas las lagunas menores.",
+    "La red vial MOP es cartografía oficial, pero no confirma transitabilidad, mantención, barreras, permisos ni acceso público actual.",
+    "La presencia de un camino no acredita derecho de paso ni acceso legal a una propiedad.",
+    "La presencia de un cuerpo de agua no acredita acceso público ni permiso de pesca.",
+    "Las estaciones DGA son puntos de monitoreo; sus nombres no definen el nombre del río o lago donde se encuentran.",
+    "La Red Hidrométrica Nacional publicada en la capa cartográfica consultada tiene metadata de actualización julio 2022; validar vigencia de cada estación antes de interpretar su operación."
+  ]
+}

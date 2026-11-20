@@ -2,7 +2,7 @@
   "schema_version": 1,
   "project": "AnglerMap",
   "region": "Magallanes",
-  "updated_at": null,
+  "updated_at": "2026-11-20T03:50:47.153364+00:00",
   "layers": [
     {
       "id": "roads",
@@ -10,7 +10,7 @@
       "file": "magallanes/roads.geojson",
       "group": "access",
       "source": "MOP · Dirección de Vialidad · Red Vial Chile Base Gris",
-      "status": "pending",
+      "status": "available",
       "visible_by_default": false,
       "style": {
         "color": "#e8bd70",
@@ -24,7 +24,7 @@
       "file": "magallanes/waterbodies.geojson",
       "group": "hydrography",
       "source": "DGA · Red de drenajes e inventario de lagos",
-      "status": "pending",
+      "status": "available",
       "visible_by_default": true,
       "style": {
         "color": "#55d9e8",
@@ -39,7 +39,7 @@
       "file": "magallanes/dga_stations.geojson",
       "group": "monitoring",
       "source": "DGA · Red Hidrométrica Nacional",
-      "status": "pending",
+      "status": "available",
       "visible_by_default": false,
       "style": {
         "color": "#e8bd70",
@@ -48,5 +48,10 @@
         "fillOpacity": 0.9
       }
     }
-  ]
+  ],
+  "feature_counts": {
+    "roads": 179,
+    "waterbodies": 18049,
+    "dga_stations": 225
+  }
 }
