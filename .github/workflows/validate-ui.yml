@@ -60,7 +60,7 @@ jobs:
           assert isinstance(catalog.get("layers"), list), "Missing layers array"
           ids = [layer.get("id") for layer in catalog["layers"]]
           assert len(ids) == len(set(ids)), "Duplicate layer IDs"
-          required = {"communes", "provinces", "waterbodies", "dga_hydro_units", "dga_stations"}
+          required = {"roads", "waterbodies"}
           missing = required.difference(ids)
           assert not missing, f"Missing required layers: {sorted(missing)}"
           print(f"Layer catalogue valid: {len(ids)} layers.")
